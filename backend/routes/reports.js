@@ -1,67 +1,74 @@
 const express = require('express');
 const router = express.Router();
 const XLSX = require('xlsx');
-const { getDb } = require('../database');
+const { getDb, getRate } = require('../database');
 
 // GET combined dashboard stats
 router.get('/summary', (req, res) => {
-  const db = getDb();
-  const rate = db.prepare('SELECT usd_to_mxn FROM exchange_rates WHERE id = 1').get();
-  const usdToMxn = rate ? rate.usd_to_mxn : 17.5;
+  try {
+    const db = getDb();
+    const usdToMxn = getRate();
 
-  const productStats = db.prepare(`
-    SELECT
-      COALESCE(SUM(CASE WHEN purchase_currency='MXN' THEN purchase_price * (quantity + quantity_sold)
-               ELSE purchase_price * (quantity + quantity_sold) * ${usdToMxn} END), 0) as total_invertido,
-      COALESCE(SUM(CASE WHEN status='vendido' AND sale_currency='MXN' THEN sale_price * quantity_sold
-               WHEN status='vendido' AND sale_currency='USD' THEN sale_price * quantity_sold * ${usdToMxn}
-               ELSE 0 END), 0) as total_vendido_catalogo
-    FROM products
-  `).get();
+    const productStats = db.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN purchase_currency='MXN'
+                     THEN purchase_price * (quantity + quantity_sold)
+                     ELSE purchase_price * (quantity + quantity_sold) * ?
+                 END), 0) as total_invertido,
+        COALESCE(SUM(CASE WHEN status='vendido' AND sale_currency='MXN'
+                     THEN sale_price * quantity_sold
+                     WHEN status='vendido' AND sale_currency='USD'
+                     THEN sale_price * quantity_sold * ?
+                     ELSE 0
+                 END), 0) as total_vendido_catalogo
+      FROM products
+    `).get(usdToMxn, usdToMxn);
 
-  const salesRevenue = db.prepare(`
-    SELECT COALESCE(SUM(CASE WHEN sale_currency='MXN' THEN sale_price * quantity_sold
-           ELSE sale_price * quantity_sold * ${usdToMxn} END), 0) as total
-    FROM sales
-  `).get();
+    const salesRevenue = db.prepare(`
+      SELECT COALESCE(SUM(CASE WHEN sale_currency='MXN'
+             THEN sale_price * quantity_sold
+             ELSE sale_price * quantity_sold * ? END), 0) as total
+      FROM sales
+    `).get(usdToMxn);
 
-  const iptvRevenue = db.prepare(`
-    SELECT COALESCE(SUM(CASE WHEN price_currency='MXN' THEN price_charged
-           ELSE price_charged * ${usdToMxn} END), 0) as total,
-    COALESCE(SUM(cost_per_credit * credits_used), 0) as total_costo
-    FROM iptv_subscriptions
-  `).get();
+    const iptvRevenue = db.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN price_currency='MXN' THEN price_charged
+                         ELSE price_charged * ? END), 0) as total,
+        COALESCE(SUM(COALESCE(cost_per_credit, 0) * COALESCE(credits_used, 0)), 0) as total_costo
+      FROM iptv_subscriptions
+    `).get(usdToMxn);
 
-  const iptvCost = db.prepare(`
-    SELECT COALESCE(SUM(CASE WHEN price_currency='MXN' THEN price_paid
-           ELSE price_paid * ${usdToMxn} END), 0) as total
-    FROM iptv_packages
-  `).get();
+    const iptvCost = db.prepare(`
+      SELECT COALESCE(SUM(CASE WHEN price_currency='MXN' THEN price_paid
+             ELSE price_paid * ? END), 0) as total
+      FROM iptv_packages
+    `).get(usdToMxn);
 
-  const activeClients = db.prepare(`
-    SELECT COUNT(DISTINCT client_id) as count
-    FROM iptv_subscriptions WHERE status='activo'
-  `).get();
+    const activeClients = db.prepare(`
+      SELECT COUNT(DISTINCT client_id) as count
+      FROM iptv_subscriptions WHERE status='activo'
+    `).get();
 
-  // Monthly chart (last 6 months)
-  const monthlyProducts = db.prepare(`
-    SELECT strftime('%Y-%m', sale_date) as month,
-      SUM(CASE WHEN sale_currency='MXN' THEN sale_price * quantity_sold
-               ELSE sale_price * quantity_sold * ${usdToMxn} END) as revenue
-    FROM sales
-    WHERE sale_date >= date('now', '-6 months')
-    GROUP BY month ORDER BY month
-  `).all();
+    const monthlyProducts = db.prepare(`
+      SELECT strftime('%Y-%m', sale_date) as month,
+        SUM(CASE WHEN sale_currency='MXN'
+                 THEN sale_price * quantity_sold
+                 ELSE sale_price * quantity_sold * ? END) as revenue
+      FROM sales
+      WHERE sale_date >= date('now', '-6 months')
+      GROUP BY month ORDER BY month
+    `).all(usdToMxn);
 
-  const monthlyIPTV = db.prepare(`
-    SELECT strftime('%Y-%m', start_date) as month,
-      SUM(CASE WHEN price_currency='MXN' THEN price_charged
-               ELSE price_charged * ${usdToMxn} END) as revenue,
-      SUM(cost_per_credit * credits_used) as costo
-    FROM iptv_subscriptions
-    WHERE start_date >= date('now', '-6 months')
-    GROUP BY month ORDER BY month
-  `).all();
+    const monthlyIPTV = db.prepare(`
+      SELECT strftime('%Y-%m', start_date) as month,
+        SUM(CASE WHEN price_currency='MXN' THEN price_charged
+                 ELSE price_charged * ? END) as revenue,
+        SUM(COALESCE(cost_per_credit, 0) * COALESCE(credits_used, 0)) as costo
+      FROM iptv_subscriptions
+      WHERE start_date >= date('now', '-6 months')
+      GROUP BY month ORDER BY month
+    `).all(usdToMxn);
 
   // Merge months
   const months = {};
@@ -91,44 +98,49 @@ router.get('/summary', (req, res) => {
     monthly_chart: monthlyChart,
     usd_to_mxn: usdToMxn,
   });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET monthly breakdown
 router.get('/monthly', (req, res) => {
-  const db = getDb();
-  const { year } = req.query;
-  const y = year || new Date().getFullYear();
-  const rate = db.prepare('SELECT usd_to_mxn FROM exchange_rates WHERE id = 1').get();
-  const usdToMxn = rate ? rate.usd_to_mxn : 17.5;
+  try {
+    const db = getDb();
+    const y = /^\d{4}$/.test(req.query.year) ? req.query.year : String(new Date().getFullYear());
+    const usdToMxn = getRate();
 
-  const productsByMonth = db.prepare(`
-    SELECT strftime('%m', sale_date) as mes,
-      COUNT(*) as ventas,
-      SUM(CASE WHEN sale_currency='MXN' THEN sale_price * quantity_sold
-               ELSE sale_price * quantity_sold * ${usdToMxn} END) as ingresos
-    FROM sales WHERE strftime('%Y', sale_date) = ?
-    GROUP BY mes ORDER BY mes
-  `).all(String(y));
+    const productsByMonth = db.prepare(`
+      SELECT strftime('%m', sale_date) as mes,
+        COUNT(*) as ventas,
+        SUM(CASE WHEN sale_currency='MXN' THEN sale_price * quantity_sold
+                 ELSE sale_price * quantity_sold * ? END) as ingresos
+      FROM sales WHERE strftime('%Y', sale_date) = ?
+      GROUP BY mes ORDER BY mes
+    `).all(usdToMxn, y);
 
-  const iptvByMonth = db.prepare(`
-    SELECT strftime('%m', start_date) as mes,
-      COUNT(*) as suscripciones,
-      SUM(CASE WHEN price_currency='MXN' THEN price_charged
-               ELSE price_charged * ${usdToMxn} END) as ingresos,
-      SUM(cost_per_credit * credits_used) as costos
-    FROM iptv_subscriptions WHERE strftime('%Y', start_date) = ?
-    GROUP BY mes ORDER BY mes
-  `).all(String(y));
+    const iptvByMonth = db.prepare(`
+      SELECT strftime('%m', start_date) as mes,
+        COUNT(*) as suscripciones,
+        SUM(CASE WHEN price_currency='MXN' THEN price_charged
+                 ELSE price_charged * ? END) as ingresos,
+        SUM(COALESCE(cost_per_credit, 0) * COALESCE(credits_used, 0)) as costos
+      FROM iptv_subscriptions WHERE strftime('%Y', start_date) = ?
+      GROUP BY mes ORDER BY mes
+    `).all(usdToMxn, y);
 
-  res.json({ products: productsByMonth, iptv: iptvByMonth, year: y });
+    res.json({ products: productsByMonth, iptv: iptvByMonth, year: y });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET export Excel
 router.get('/export', (req, res) => {
-  const db = getDb();
-  const { from, to } = req.query;
-  const rate = db.prepare('SELECT usd_to_mxn FROM exchange_rates WHERE id = 1').get();
-  const usdToMxn = rate ? rate.usd_to_mxn : 17.5;
+  try {
+    const db = getDb();
+    const { from, to } = req.query;
+    const usdToMxn = getRate();
 
   const wb = XLSX.utils.book_new();
 
@@ -216,10 +228,11 @@ router.get('/export', (req, res) => {
     'Precio Cobrado': s.price_charged,
     'Moneda': s.price_currency,
     'Total (MXN)': s.price_currency === 'USD' ? (s.price_charged * usdToMxn).toFixed(2) : s.price_charged,
-    'Costo Créditos (MXN)': (s.cost_per_credit * s.credits_used).toFixed(2),
-    'Ganancia (MXN)': (s.price_currency === 'MXN' ? s.price_charged : s.price_charged * usdToMxn) - (s.cost_per_credit * s.credits_used) > 0
-      ? ((s.price_currency === 'MXN' ? s.price_charged : s.price_charged * usdToMxn) - (s.cost_per_credit * s.credits_used)).toFixed(2)
-      : '0',
+    'Costo Créditos (MXN)': ((s.cost_per_credit || 0) * (s.credits_used || 0)).toFixed(2),
+    'Ganancia (MXN)': Math.max(0,
+      (s.price_currency === 'MXN' ? s.price_charged : s.price_charged * usdToMxn)
+      - ((s.cost_per_credit || 0) * (s.credits_used || 0))
+    ).toFixed(2),
     'Inicio': s.start_date,
     'Vencimiento': s.end_date,
     'Estado': s.status,
@@ -252,7 +265,10 @@ router.get('/export', (req, res) => {
 
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.send(buffer);
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

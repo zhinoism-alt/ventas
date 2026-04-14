@@ -5,18 +5,10 @@ import {
 } from 'recharts'
 import { Download, TrendingUp, TrendingDown, DollarSign, Package, Tv } from 'lucide-react'
 import { getSummary, getMonthlyReport, exportExcel, formatMXN } from '../lib/api'
+import { TOOLTIP_STYLE, MONTH_NAMES } from '../lib/constants'
+import { fmt } from '../lib/utils'
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4']
-
-const tooltipStyle = {
-  backgroundColor: '#1e293b', border: '1px solid #2d3f58',
-  borderRadius: '8px', color: '#f1f5f9', fontSize: '12px',
-}
-
-const monthNames: Record<string, string> = {
-  '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr', '05': 'May', '06': 'Jun',
-  '07': 'Jul', '08': 'Ago', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dic'
-}
 
 export default function Reports() {
   const [summary, setSummary] = useState<any>(null)
@@ -37,7 +29,7 @@ export default function Reports() {
     const map: Record<string, any> = {}
     for (let i = 1; i <= 12; i++) {
       const mo = String(i).padStart(2, '0')
-      map[mo] = { name: monthNames[mo], productos: 0, iptv: 0, ganancia: 0 }
+      map[mo] = { name: MONTH_NAMES[mo], productos: 0, iptv: 0, ganancia: 0 }
     }
     monthly.products.forEach((p: any) => {
       if (map[p.mes]) map[p.mes].productos = p.ingresos || 0
@@ -159,7 +151,7 @@ export default function Reports() {
               <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false}
                 tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatMXN(v)} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatMXN(v)} />
               <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
               <Bar dataKey="productos" name="Artículos" fill="#6366f1" radius={[3, 3, 0, 0]} />
               <Bar dataKey="iptv" name="IPTV" fill="#22c55e" radius={[3, 3, 0, 0]} />
@@ -177,7 +169,7 @@ export default function Reports() {
                     dataKey="value" paddingAngle={4}>
                     {pieData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
                   </Pie>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatMXN(v)} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatMXN(v)} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-2 mt-2">
@@ -224,8 +216,8 @@ export default function Reports() {
               return (
                 <tr key={m.name} style={{ borderBottom: '1px solid #1e293b' }}>
                   <td className="py-2 px-3 text-white font-medium">{m.name}</td>
-                  <td className="py-2 px-3 text-slate-300">{m.productos > 0 ? formatMXN(m.productos) : '-'}</td>
-                  <td className="py-2 px-3 text-slate-300">{m.iptv > 0 ? formatMXN(m.iptv) : '-'}</td>
+                  <td className="py-2 px-3 text-slate-300">{m.productos > 0 ? fmt(m.productos) : <span className="text-slate-600">$0</span>}</td>
+                  <td className="py-2 px-3 text-slate-300">{m.iptv > 0 ? fmt(m.iptv) : <span className="text-slate-600">$0</span>}</td>
                   <td className="py-2 px-3">
                     <span className={total > 0 ? 'text-white font-semibold' : 'text-slate-600'}>
                       {total > 0 ? formatMXN(total) : '-'}

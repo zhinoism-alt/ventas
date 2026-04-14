@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true }); // no-op if already exists
 
 const DB_PATH = path.join(DATA_DIR, 'ventas.db');
 
@@ -112,4 +112,11 @@ function initializeDb() {
   `);
 }
 
-module.exports = { getDb };
+/** Returns the current USD→MXN rate, always a safe positive number */
+function getRate() {
+  const row = getDb().prepare('SELECT usd_to_mxn FROM exchange_rates WHERE id = 1').get()
+  const r = parseFloat(row?.usd_to_mxn)
+  return isNaN(r) || r <= 0 ? 17.5 : r
+}
+
+module.exports = { getDb, getRate };

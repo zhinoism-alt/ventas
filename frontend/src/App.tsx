@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff
@@ -69,13 +70,7 @@ function Layout() {
           {navItems.map(item => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'}
               onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150
-                ${isActive
-                  ? 'bg-indigo-600 text-white font-medium'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                }`
-              }>
+              className={({ isActive }) => navLinkClass(isActive)}>
               {item.icon}
               {item.label}
             </NavLink>

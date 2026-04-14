@@ -13,42 +13,8 @@ import {
   getIPTVPricing, getPreviewRenewals, sendRenewalReminders,
   getExchangeRate, formatMXN, toMXN
 } from '../lib/api'
-
-const PANEL_PRICES = {
-  '1': [
-    { credits: 15, price_mxn: 1200, price_usd: 75 },
-    { credits: 30, price_mxn: 2100, price_usd: 135 },
-    { credits: 50, price_mxn: 3250, price_usd: 250 },
-  ],
-  '2': [
-    { credits: 15, price_mxn: 1450, price_usd: 95 },
-    { credits: 30, price_mxn: 2700, price_usd: 174 },
-    { credits: 50, price_mxn: 4250, price_usd: 270 },
-  ],
-}
-
-const SELL_PRICES = {
-  '1': [
-    { months: 1, price_mxn: 200, price_usd: 15 },
-    { months: 3, price_mxn: 540, price_usd: 41 },
-    { months: 6, price_mxn: 990, price_usd: 66 },
-  ],
-  '2': [
-    { months: 1, price_mxn: 260, price_usd: 17 },
-    { months: 3, price_mxn: 675, price_usd: 45 },
-    { months: 6, price_mxn: 1200, price_usd: 71 },
-  ],
-}
-
-const tooltipStyle = {
-  backgroundColor: '#1e293b', border: '1px solid #2d3f58',
-  borderRadius: '8px', color: '#f1f5f9', fontSize: '12px',
-}
-
-const monthNames: Record<string, string> = {
-  '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr', '05': 'May', '06': 'Jun',
-  '07': 'Jul', '08': 'Ago', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dic'
-}
+import { TOOLTIP_STYLE, PANEL_PRICES, SELL_PRICES, formatMonth } from '../lib/constants'
+import { safeDiv, fmt, profitClass } from '../lib/utils'
 
 export default function IPTV() {
   const [tab, setTab] = useState('overview')
@@ -142,12 +108,12 @@ export default function IPTV() {
 
   const filteredSubs = filterStatus === 'todos' ? subs : subs.filter(s => s.status === filterStatus)
 
-  const chartData = stats?.monthly_revenue?.map((m: any) => ({
-    name: monthNames[m.month?.split('-')[1]] || m.month,
+  const chartData = (stats?.monthly_revenue ?? []).map((m: any) => ({
+    name: formatMonth(m.month),
     Ingresos: Math.round(m.revenue_mxn || 0),
     Costo: Math.round(m.cost_mxn || 0),
     Ganancia: Math.round((m.revenue_mxn || 0) - (m.cost_mxn || 0)),
-  })) || []
+  }))
 
   const balance1 = stats?.credits?.find((c: any) => c.connections === 1)
   const balance2 = stats?.credits?.find((c: any) => c.connections === 2)
@@ -226,7 +192,7 @@ export default function IPTV() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#2d3f58" vertical={false} />
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatMXN(v)} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatMXN(v)} />
                   <Bar dataKey="Ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Costo" fill="#ef4444" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Ganancia" fill="#6366f1" radius={[4, 4, 0, 0]} />
@@ -258,7 +224,7 @@ export default function IPTV() {
                 <div className="w-full rounded-full h-2" style={{ background: '#0f172a' }}>
                   <div className="h-2 rounded-full" style={{
                     background: 'linear-gradient(90deg, #6366f1, #22c55e)',
-                    width: data?.total_comprados > 0 ? `${(data.disponibles / data.total_comprados) * 100}%` : '0%'
+                    width: `${Math.min(100, safeDiv(data?.disponibles || 0, data?.total_comprados || 0) * 100).toFixed(1)}%`
                   }} />
                 </div>
                 <p className="text-xs text-slate-400 mt-2">
@@ -295,7 +261,7 @@ export default function IPTV() {
           {/* Packages list */}
           <div className="space-y-2">
             {packages.map(pkg => {
-              const pct = pkg.credits > 0 ? (pkg.credits_remaining / pkg.credits) * 100 : 0
+              const pct = Math.min(100, safeDiv(pkg.credits_remaining || 0, pkg.credits || 0) * 100)
               return (
                 <div key={pkg.id} className="card flex items-center gap-4">
                   <div className="flex-1">
@@ -401,7 +367,8 @@ export default function IPTV() {
           <div className="space-y-2">
             {filteredSubs.map(sub => {
               const daysLeft = Math.ceil((new Date(sub.end_date).getTime() - Date.now()) / 86400000)
-              const gainMXN = toMXN(sub.price_charged, sub.price_currency, rate) - (sub.cost_per_credit * sub.credits_used)
+              const gainMXN = toMXN(sub.price_charged || 0, sub.price_currency, rate)
+                - ((sub.cost_per_credit || 0) * (sub.credits_used || 0))
               return (
                 <div key={sub.id} className="card flex items-center gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
@@ -419,8 +386,8 @@ export default function IPTV() {
                       <span>{sub.months} mes{sub.months > 1 ? 'es' : ''}</span>
                       <span>{sub.start_date} → {sub.end_date}</span>
                       <span className="text-white font-medium">{formatMXN(toMXN(sub.price_charged, sub.price_currency, rate))}</span>
-                      <span className={gainMXN >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        Ganancia: {formatMXN(gainMXN)}
+                      <span className={profitClass(gainMXN)}>
+                        Ganancia: {fmt(gainMXN)}
                       </span>
                     </div>
                   </div>

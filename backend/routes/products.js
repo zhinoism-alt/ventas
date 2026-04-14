@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getDb } = require('../database');
+const { getDb, getRate } = require('../database');
 
 function generateFBPost(product) {
   const conditionMap = {
@@ -164,25 +164,31 @@ router.get('/:id/fb-post', (req, res) => {
 
 // GET stats
 router.get('/meta/stats', (req, res) => {
-  const db = getDb();
-  const rate = db.prepare('SELECT usd_to_mxn FROM exchange_rates WHERE id = 1').get();
-  const usdToMxn = rate ? rate.usd_to_mxn : 17.5;
-
-  const stats = db.prepare(`
-    SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN status = 'disponible' THEN 1 ELSE 0 END) as disponibles,
-      SUM(CASE WHEN status = 'vendido' THEN 1 ELSE 0 END) as vendidos,
-      SUM(CASE WHEN status = 'reservado' THEN 1 ELSE 0 END) as reservados,
-      SUM(CASE WHEN purchase_currency = 'MXN' THEN purchase_price * quantity
-               ELSE purchase_price * quantity * ${usdToMxn} END) as total_invertido,
-      SUM(CASE WHEN status = 'vendido' AND sale_currency = 'MXN' THEN sale_price * quantity_sold
-               WHEN status = 'vendido' AND sale_currency = 'USD' THEN sale_price * quantity_sold * ${usdToMxn}
-               ELSE 0 END) as total_vendido
-    FROM products
-  `).get();
-
-  res.json({ ...stats, usd_to_mxn: usdToMxn });
+  try {
+    const db = getDb();
+    const usdToMxn = getRate();
+    const stats = db.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'disponible' THEN 1 ELSE 0 END) as disponibles,
+        SUM(CASE WHEN status = 'vendido'    THEN 1 ELSE 0 END) as vendidos,
+        SUM(CASE WHEN status = 'reservado'  THEN 1 ELSE 0 END) as reservados,
+        SUM(CASE WHEN purchase_currency = 'MXN'
+                 THEN purchase_price * quantity
+                 ELSE purchase_price * quantity * ?
+            END) as total_invertido,
+        SUM(CASE WHEN status = 'vendido' AND sale_currency = 'MXN'
+                 THEN sale_price * quantity_sold
+                 WHEN status = 'vendido' AND sale_currency = 'USD'
+                 THEN sale_price * quantity_sold * ?
+                 ELSE 0
+            END) as total_vendido
+      FROM products
+    `).get(usdToMxn, usdToMxn);
+    res.json({ ...stats, usd_to_mxn: usdToMxn });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET categories list

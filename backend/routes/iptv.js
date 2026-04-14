@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getDb } = require('../database');
+const { getDb, getRate } = require('../database');
 
 // ─── PANEL PRICES (from Elite TV Plus) ───────────────────────────────────────
 const PANEL_PRICES = {
@@ -224,61 +224,66 @@ router.delete('/subscriptions/:id', (req, res) => {
 
 // ─── STATS ────────────────────────────────────────────────────────────────────
 router.get('/stats', (req, res) => {
-  const db = getDb();
-  const rate = db.prepare('SELECT usd_to_mxn FROM exchange_rates WHERE id = 1').get();
-  const usdToMxn = rate ? rate.usd_to_mxn : 17.5;
+  try {
+    const db = getDb();
+    const usdToMxn = getRate();
 
-  const clients = db.prepare('SELECT COUNT(*) as total, SUM(is_active) as activos FROM iptv_clients').get();
-  const subs = db.prepare(`
-    SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN status='activo' THEN 1 ELSE 0 END) as activas,
-      SUM(CASE WHEN status='vencido' THEN 1 ELSE 0 END) as vencidas,
-      SUM(CASE WHEN status='activo' AND price_currency='MXN' THEN price_charged
-               WHEN status='activo' AND price_currency='USD' THEN price_charged * ${usdToMxn}
-               ELSE 0 END) as ingresos_activos_mxn
-    FROM iptv_subscriptions
-  `).get();
+    const clients = db.prepare('SELECT COUNT(*) as total, SUM(is_active) as activos FROM iptv_clients').get();
 
-  const monthlyRevenue = db.prepare(`
-    SELECT
-      strftime('%Y-%m', start_date) as month,
-      SUM(CASE WHEN price_currency='MXN' THEN price_charged
-               ELSE price_charged * ${usdToMxn} END) as revenue_mxn,
-      SUM(CASE WHEN price_currency='MXN' THEN cost_per_credit * credits_used
-               ELSE cost_per_credit * credits_used * ${usdToMxn} END) as cost_mxn,
-      COUNT(*) as subscriptions
-    FROM iptv_subscriptions
-    WHERE start_date >= date('now', '-12 months')
-    GROUP BY strftime('%Y-%m', start_date)
-    ORDER BY month
-  `).all();
+    const subs = db.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status='activo' THEN 1 ELSE 0 END) as activas,
+        SUM(CASE WHEN status='vencido' THEN 1 ELSE 0 END) as vencidas,
+        SUM(CASE WHEN status='activo' AND price_currency='MXN' THEN price_charged
+                 WHEN status='activo' AND price_currency='USD' THEN price_charged * ?
+                 ELSE 0 END) as ingresos_activos_mxn
+      FROM iptv_subscriptions
+    `).get(usdToMxn);
 
-  const credits = db.prepare(`
-    SELECT connections, SUM(credits) as total, SUM(credits_remaining) as disponibles
-    FROM iptv_packages WHERE is_active = 1 GROUP BY connections
-  `).all();
+    const monthlyRevenue = db.prepare(`
+      SELECT
+        strftime('%Y-%m', start_date) as month,
+        SUM(CASE WHEN price_currency='MXN' THEN price_charged
+                 ELSE price_charged * ? END) as revenue_mxn,
+        SUM(COALESCE(cost_per_credit, 0) * COALESCE(credits_used, 0)) as cost_mxn,
+        COUNT(*) as subscriptions
+      FROM iptv_subscriptions
+      WHERE start_date >= date('now', '-12 months')
+      GROUP BY strftime('%Y-%m', start_date)
+      ORDER BY month
+    `).all(usdToMxn);
 
-  const expiringSoon = db.prepare(`
-    SELECT COUNT(*) as count FROM iptv_subscriptions
-    WHERE status='activo' AND date(end_date) <= date('now', '+7 days')
-  `).get();
+    const credits = db.prepare(`
+      SELECT connections,
+        SUM(credits) as total_comprados,
+        SUM(credits_remaining) as disponibles,
+        SUM(credits - credits_remaining) as usados
+      FROM iptv_packages WHERE is_active = 1 GROUP BY connections
+    `).all();
 
-  res.json({
-    clients,
-    subscriptions: subs,
-    monthly_revenue: monthlyRevenue,
-    credits,
-    expiring_soon: expiringSoon.count,
-    usd_to_mxn: usdToMxn
-  });
+    const expiringSoon = db.prepare(`
+      SELECT COUNT(*) as count FROM iptv_subscriptions
+      WHERE status='activo' AND date(end_date) <= date('now', '+7 days')
+    `).get();
+
+    res.json({
+      clients,
+      subscriptions: subs,
+      monthly_revenue: monthlyRevenue,
+      credits,
+      expiring_soon: expiringSoon.count,
+      usd_to_mxn: usdToMxn,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── PRICING OPTIMIZER ───────────────────────────────────────────────────────
 router.get('/pricing', (req, res) => {
   const db = getDb();
-  const rate = db.prepare('SELECT usd_to_mxn FROM exchange_rates WHERE id = 1').get();
-  const usdToMxn = rate ? rate.usd_to_mxn : 17.5;
+  const usdToMxn = getRate();
 
   const analysis = [];
 
