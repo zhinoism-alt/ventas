@@ -2,9 +2,26 @@ import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api' })
 
+// Si el servidor devuelve 401, redirigir al login
+api.interceptors.response.use(
+  r => r,
+  err => {
+    if (err.response?.status === 401 && window.location.pathname !== '/login') {
+      window.location.href = '/login'
+    }
+    return Promise.reject(err)
+  }
+)
+
 export default api
 
-// ── Products ──────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────────
+export const authLogin = (username: string, password: string) =>
+  api.post('/auth/login', { username, password })
+export const authLogout = () => api.post('/auth/logout')
+export const authMe = () => api.get('/auth/me')
+
+// ── Productos ─────────────────────────────────────────────────────────────────
 export const getProducts = (params?: object) => api.get('/products', { params })
 export const createProduct = (data: object) => api.post('/products', data)
 export const updateProduct = (id: number, data: object) => api.put(`/products/${id}`, data)
@@ -14,7 +31,7 @@ export const getFBPost = (id: number) => api.get(`/products/${id}/fb-post`)
 export const getProductStats = () => api.get('/products/meta/stats')
 export const getCategories = () => api.get('/products/meta/categories')
 
-// ── Sales ─────────────────────────────────────────────────────────────────────
+// ── Ventas ────────────────────────────────────────────────────────────────────
 export const getSales = (params?: object) => api.get('/sales', { params })
 export const getSalesStats = () => api.get('/sales/stats')
 export const getMonthlySales = () => api.get('/sales/monthly')
@@ -40,7 +57,7 @@ export const deleteIPTVSubscription = (id: number) => api.delete(`/iptv/subscrip
 export const getIPTVStats = () => api.get('/iptv/stats')
 export const getIPTVPricing = () => api.get('/iptv/pricing')
 
-// ── Reports ───────────────────────────────────────────────────────────────────
+// ── Reportes ──────────────────────────────────────────────────────────────────
 export const getSummary = () => api.get('/reports/summary')
 export const getMonthlyReport = (year?: number) => api.get('/reports/monthly', { params: { year } })
 export const exportExcel = (from?: string, to?: string) => {
@@ -50,7 +67,7 @@ export const exportExcel = (from?: string, to?: string) => {
   window.open(`/api/reports/export?${params.toString()}`, '_blank')
 }
 
-// ── Exchange Rate ─────────────────────────────────────────────────────────────
+// ── Tipo de cambio ─────────────────────────────────────────────────────────────
 export const getExchangeRate = () => api.get('/exchange-rate')
 export const refreshExchangeRate = () => api.post('/exchange-rate/refresh')
 
@@ -61,7 +78,7 @@ export const sendWhatsApp = (phone: string, message: string) => api.post('/whats
 export const getPreviewRenewals = (days?: number) => api.get('/whatsapp/preview-renewals', { params: { days } })
 export const sendRenewalReminders = (days?: number) => api.post('/whatsapp/send-renewals', { days })
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers de formato ────────────────────────────────────────────────────────
 export const formatMXN = (amount: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount || 0)
 
