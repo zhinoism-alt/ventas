@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/api' })
+const BASE_URL = import.meta.env.VITE_API_URL ?? ''
+
+const api = axios.create({ baseURL: `${BASE_URL}/api` })
 
 // Si el servidor devuelve 401, redirigir al login
 api.interceptors.response.use(
@@ -64,7 +66,7 @@ export const exportExcel = (from?: string, to?: string) => {
   const params = new URLSearchParams()
   if (from) params.append('from', from)
   if (to) params.append('to', to)
-  window.open(`/api/reports/export?${params.toString()}`, '_blank')
+  window.open(`${BASE_URL}/api/reports/export?${params.toString()}`, '_blank')
 }
 
 // ── Tipo de cambio ─────────────────────────────────────────────────────────────

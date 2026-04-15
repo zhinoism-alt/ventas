@@ -8,7 +8,7 @@ export default defineConfig({
     host: true, // allow mobile access on same network
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_API_URL ?? 'http://localhost:3001',
         changeOrigin: true,
       }
     }

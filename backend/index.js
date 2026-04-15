@@ -10,8 +10,12 @@ const requireAuth = require('./middleware/requireAuth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : true; // allow all in dev
+
 app.use(cors({
-  origin: true,
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
