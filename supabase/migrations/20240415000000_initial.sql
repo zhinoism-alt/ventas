@@ -115,12 +115,20 @@ ALTER TABLE iptv_clients         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE iptv_subscriptions   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exchange_rates       ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "auth_all" ON products           FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "auth_all" ON sales              FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "auth_all" ON iptv_packages      FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "auth_all" ON iptv_clients       FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "auth_all" ON iptv_subscriptions FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "auth_all" ON exchange_rates     FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='products'           AND policyname='auth_all') THEN
+    CREATE POLICY "auth_all" ON products           FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='sales'              AND policyname='auth_all') THEN
+    CREATE POLICY "auth_all" ON sales              FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='iptv_packages'      AND policyname='auth_all') THEN
+    CREATE POLICY "auth_all" ON iptv_packages      FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='iptv_clients'       AND policyname='auth_all') THEN
+    CREATE POLICY "auth_all" ON iptv_clients       FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='iptv_subscriptions' AND policyname='auth_all') THEN
+    CREATE POLICY "auth_all" ON iptv_subscriptions FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='exchange_rates'     AND policyname='auth_all') THEN
+    CREATE POLICY "auth_all" ON exchange_rates     FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF;
+END $$;
 
 -- ── RPC Functions ─────────────────────────────────────────────────────────────
 
