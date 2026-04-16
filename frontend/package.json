@@ -1,6 +1,6 @@
 {
   "name": "ventas-frontend",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -8,9 +8,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.6.7",
+    "@clerk/clerk-react": "^5.0.0",
+    "@clerk/backend": "^1.0.0",
+    "@pinecone-database/pinecone": "^3.0.0",
+    "@sentry/react": "^8.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "@upstash/redis": "^1.0.0",
     "date-fns": "^3.3.1",
     "lucide-react": "^0.341.0",
+    "posthog-js": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.0",
@@ -18,8 +24,11 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^2.0.0",
+    "@types/node": "^20.0.0",
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
+    "@vercel/node": "^3.0.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",

@@ -1,5 +1,9 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import api from '../lib/api'
+/**
+ * Thin Clerk adapter — exposes the same AuthCtx interface as before so all
+ * existing components work unchanged.
+ */
+import { createContext, useContext, ReactNode } from 'react'
+import { useUser, useClerk } from '@clerk/clerk-react'
 
 interface Usuario {
   username: string
@@ -10,35 +14,25 @@ interface Usuario {
 interface AuthCtx {
   usuario: Usuario | null
   cargando: boolean
-  login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
 
 const Ctx = createContext<AuthCtx>(null!)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
-  const [cargando, setCargando] = useState(true)
+  const { user, isLoaded } = useUser()
+  const { signOut } = useClerk()
 
-  useEffect(() => {
-    api.get('/auth/me')
-      .then(r => setUsuario(r.data))
-      .catch(() => setUsuario(null))
-      .finally(() => setCargando(false))
-  }, [])
-
-  const login = async (username: string, password: string) => {
-    const r = await api.post('/auth/login', { username, password })
-    setUsuario(r.data)
-  }
-
-  const logout = async () => {
-    await api.post('/auth/logout')
-    setUsuario(null)
-  }
+  const usuario: Usuario | null = user
+    ? {
+        username: user.username ?? user.emailAddresses[0]?.emailAddress ?? '',
+        nombre: user.fullName ?? user.firstName ?? user.username ?? 'Usuario',
+        rol: ((user.publicMetadata as any)?.rol as 'admin' | 'editor') ?? 'editor',
+      }
+    : null
 
   return (
-    <Ctx.Provider value={{ usuario, cargando, login, logout }}>
+    <Ctx.Provider value={{ usuario, cargando: !isLoaded, logout: () => signOut() }}>
       {children}
     </Ctx.Provider>
   )

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
+import { ClerkProvider } from '@clerk/clerk-react'
 import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
@@ -204,13 +205,15 @@ function LoginGuard() {
 // ─── App raiz ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginGuard />} />
-          <Route path="/*"     element={<LayoutProtegido />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginGuard />} />
+            <Route path="/*"     element={<LayoutProtegido />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </ClerkProvider>
   )
 }
