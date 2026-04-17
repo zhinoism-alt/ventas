@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
+import { ClerkProvider } from '@clerk/clerk-react'
 import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
-  Wallet
+  Wallet, Heart, PiggyBank, Truck, Leaf
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -13,6 +14,11 @@ import Inventory from './pages/Inventory'
 import IPTV from './pages/IPTV'
 import Reports from './pages/Reports'
 import Presupuesto from './pages/Presupuesto'
+import Personal from './pages/Personal'
+import Ahorros from './pages/Ahorros'
+import Mudanza from './pages/Mudanza'
+import Pareja from './pages/Pareja'
+import Bienestar from './pages/Bienestar'
 import { getExchangeRate, refreshExchangeRate, getWhatsAppStatus } from './lib/api'
 
 // ─── Layout protegido ─────────────────────────────────────────────────────────
@@ -45,11 +51,16 @@ function Layout() {
   }
 
   const navItems = [
-    { to: '/',            icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-    { to: '/inventario',  icon: <Package size={18} />,         label: 'Inventario' },
-    { to: '/iptv',        icon: <Tv size={18} />,              label: 'IPTV' },
-    { to: '/presupuesto', icon: <Wallet size={18} />,          label: 'Presupuesto' },
-    { to: '/reportes',    icon: <BarChart3 size={18} />,       label: 'Reportes' },
+    { to: '/',            icon: <LayoutDashboard size={18} />, label: 'Dashboard',    group: 'negocio' },
+    { to: '/inventario',  icon: <Package size={18} />,         label: 'Inventario',   group: 'negocio' },
+    { to: '/iptv',        icon: <Tv size={18} />,              label: 'IPTV',         group: 'negocio' },
+    { to: '/presupuesto', icon: <Wallet size={18} />,          label: 'Presupuesto',  group: 'negocio' },
+    { to: '/reportes',    icon: <BarChart3 size={18} />,       label: 'Reportes',     group: 'negocio' },
+    { to: '/ahorros',     icon: <PiggyBank size={18} />,       label: 'Ahorros',      group: 'vida' },
+    { to: '/mudanza',     icon: <Truck size={18} />,           label: 'Mudanza',      group: 'vida' },
+    { to: '/pareja',      icon: <Heart size={18} />,           label: 'Pareja',       group: 'vida' },
+    { to: '/bienestar',   icon: <Leaf size={18} />,            label: 'Bienestar',    group: 'vida' },
+    { to: '/personal',    icon: <LayoutDashboard size={18} />, label: 'Personal',     group: 'vida' },
   ]
 
   return (
@@ -77,8 +88,17 @@ function Layout() {
         </div>
 
         {/* Navegacion */}
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(item => (
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <p className="text-xs text-slate-600 font-medium px-2 mb-1 mt-1 uppercase tracking-wider">Negocio</p>
+          {navItems.filter(i => i.group === 'negocio').map(item => (
+            <NavLink key={item.to} to={item.to} end={item.to === '/'}
+              className={({ isActive }) => navLinkClass(isActive)}>
+              {item.icon}
+              {item.label}
+            </NavLink>
+          ))}
+          <p className="text-xs text-slate-600 font-medium px-2 mb-1 mt-3 uppercase tracking-wider">Vida Personal</p>
+          {navItems.filter(i => i.group === 'vida').map(item => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'}
               className={({ isActive }) => navLinkClass(isActive)}>
               {item.icon}
@@ -166,6 +186,11 @@ function Layout() {
             <Route path="/iptv"        element={<IPTV />} />
             <Route path="/presupuesto" element={<Presupuesto />} />
             <Route path="/reportes"    element={<Reports />} />
+            <Route path="/ahorros"     element={<Ahorros />} />
+            <Route path="/mudanza"     element={<Mudanza />} />
+            <Route path="/pareja"      element={<Pareja />} />
+            <Route path="/bienestar"   element={<Bienestar />} />
+            <Route path="/personal"    element={<Personal />} />
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -204,13 +229,15 @@ function LoginGuard() {
 // ─── App raiz ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginGuard />} />
-          <Route path="/*"     element={<LayoutProtegido />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginGuard />} />
+            <Route path="/*"     element={<LayoutProtegido />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </ClerkProvider>
   )
 }

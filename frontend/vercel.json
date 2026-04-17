@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/cron/refresh-exchange-rate", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/expire-subscriptions",  "schedule": "0 8 * * *" }
+  ]
+}
