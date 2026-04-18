@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
-function getSupabase() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSupabase(): any {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 }
 
@@ -48,7 +49,8 @@ function splitCSVLine(line: string): string[] {
 }
 
 /** Sync a single sheets_config row — fetches CSV, upserts rows into sheets_datos */
-async function syncOne(configId: number, supabase: ReturnType<typeof createClient>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncOne(configId: number, supabase: any) {
   // Fetch config
   const { data: cfg, error: cfgErr } = await supabase
     .from('sheets_config')

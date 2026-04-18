@@ -8,7 +8,7 @@ async function verifyAuth(req: VercelRequest): Promise<boolean> {
   if (!token) return false
   try {
     const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
-    await clerk.verifyToken(token)
+    await (clerk as any).verifyToken(token)
     return true
   } catch {
     return false
