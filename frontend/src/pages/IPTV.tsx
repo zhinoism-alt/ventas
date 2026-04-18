@@ -91,10 +91,11 @@ export default function IPTV() {
     setSendingRenewals(true)
     try {
       const r = await sendRenewalReminders(7)
-      if (r.data.manual_mode) {
-        alert(`WhatsApp no conectado. Aquí están ${r.data.count} mensajes listos para copiar.`)
+      const d = r.data as { manual_mode?: boolean; count?: number; sent?: number }
+      if (d.manual_mode) {
+        alert(`WhatsApp no conectado. Aquí están ${d.count} mensajes listos para copiar.`)
       } else {
-        alert(`Enviados: ${r.data.count} mensajes de renovación`)
+        alert(`Enviados: ${d.sent ?? d.count} mensajes de renovación`)
       }
       loadAll()
     } finally { setSendingRenewals(false) }
