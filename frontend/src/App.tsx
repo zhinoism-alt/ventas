@@ -5,7 +5,7 @@ import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
-  Wallet, Heart, PiggyBank, Truck, Leaf
+  Wallet, Heart, PiggyBank, Truck, Leaf, FileSpreadsheet
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -19,6 +19,7 @@ import Ahorros from './pages/Ahorros'
 import Mudanza from './pages/Mudanza'
 import Pareja from './pages/Pareja'
 import Bienestar from './pages/Bienestar'
+import SheetsSync from './pages/SheetsSync'
 import { getExchangeRate, refreshExchangeRate, getWhatsAppStatus } from './lib/api'
 
 // ─── Layout protegido ─────────────────────────────────────────────────────────
@@ -54,8 +55,9 @@ function Layout() {
     { to: '/',            icon: <LayoutDashboard size={18} />, label: 'Dashboard',    group: 'negocio' },
     { to: '/inventario',  icon: <Package size={18} />,         label: 'Inventario',   group: 'negocio' },
     { to: '/iptv',        icon: <Tv size={18} />,              label: 'IPTV',         group: 'negocio' },
-    { to: '/presupuesto', icon: <Wallet size={18} />,          label: 'Presupuesto',  group: 'negocio' },
-    { to: '/reportes',    icon: <BarChart3 size={18} />,       label: 'Reportes',     group: 'negocio' },
+    { to: '/presupuesto', icon: <Wallet size={18} />,           label: 'Presupuesto',  group: 'negocio' },
+    { to: '/reportes',    icon: <BarChart3 size={18} />,        label: 'Reportes',     group: 'negocio' },
+    { to: '/sheets',      icon: <FileSpreadsheet size={18} />,  label: 'Sheets Sync',  group: 'negocio' },
     { to: '/ahorros',     icon: <PiggyBank size={18} />,       label: 'Ahorros',      group: 'vida' },
     { to: '/mudanza',     icon: <Truck size={18} />,           label: 'Mudanza',      group: 'vida' },
     { to: '/pareja',      icon: <Heart size={18} />,           label: 'Pareja',       group: 'vida' },
@@ -191,6 +193,7 @@ function Layout() {
             <Route path="/pareja"      element={<Pareja />} />
             <Route path="/bienestar"   element={<Bienestar />} />
             <Route path="/personal"    element={<Personal />} />
+            <Route path="/sheets"      element={<SheetsSync />} />
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
         </main>
