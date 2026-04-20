@@ -5,7 +5,8 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle,
-  Bell, PiggyBank, Tv, Package, ExternalLink, Star,
+  Bell, PiggyBank, Tv, Package, ExternalLink, Star, ArrowRight,
+  Percent, RefreshCw,
 } from 'lucide-react'
 import { getSummary, getExpiringSubscriptions, formatMXN } from '../lib/api'
 import { supabase } from '../lib/supabase'
@@ -82,26 +83,31 @@ function formatDateTime(dt: string) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatCard({
-  title, value, sub, icon, color, trend,
+  title, value, sub, icon, color, trend, accent,
 }: {
   title: string; value: string; sub?: string; icon: React.ReactNode
-  color: string; trend?: 'up' | 'down' | 'neutral'
+  color: string; trend?: 'up' | 'down' | 'neutral'; accent?: string
 }) {
   return (
-    <div className="stat-card">
+    <div className="stat-card" style={accent ? { borderTop: `2px solid ${accent}` } : {}}>
       <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-xs text-slate-400 mb-1">{title}</p>
-          <p className="text-xl font-bold text-white truncate">{value}</p>
-          {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-slate-400 mb-1.5 uppercase tracking-wide font-medium">{title}</p>
+          <p className="text-2xl font-bold text-white truncate leading-tight">{value}</p>
+          {sub && <p className="text-xs text-slate-400 mt-1.5">{sub}</p>}
         </div>
-        <div className="p-2 rounded-lg flex-shrink-0 ml-2" style={{ background: color + '22' }}>
+        <div
+          className="p-2.5 rounded-xl flex-shrink-0 ml-3"
+          style={{ background: `linear-gradient(135deg, ${color}28, ${color}12)`, border: `1px solid ${color}22` }}
+        >
           <span style={{ color }}>{icon}</span>
         </div>
       </div>
       {trend && (
-        <div className={`flex items-center gap-1 text-xs mt-1 ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-slate-400'}`}>
-          {trend === 'up' ? <TrendingUp size={12} /> : trend === 'down' ? <TrendingDown size={12} /> : null}
+        <div className={`flex items-center gap-1 text-xs mt-0.5 font-medium ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-slate-500'}`}>
+          {trend === 'up' && <TrendingUp size={11} />}
+          {trend === 'down' && <TrendingDown size={11} />}
+          {trend === 'up' ? 'En positivo' : trend === 'down' ? 'En pérdida' : 'Sin variación'}
         </div>
       )}
     </div>
@@ -111,10 +117,10 @@ function StatCard({
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   return (
-    <div className="w-full h-1.5 rounded-full" style={{ background: '#1e293b' }}>
+    <div className="w-full h-2 rounded-full" style={{ background: '#0f172a' }}>
       <div
-        className="h-1.5 rounded-full transition-all duration-500"
-        style={{ width: `${pct}%`, background: color }}
+        className="h-2 rounded-full transition-all duration-700"
+        style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}cc, ${color})` }}
       />
     </div>
   )
@@ -157,7 +163,10 @@ export default function Dashboard() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+      <div className="flex flex-col items-center gap-3">
+        <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+        <p className="text-slate-500 text-sm">Cargando datos...</p>
+      </div>
     </div>
   )
 
@@ -175,6 +184,9 @@ export default function Dashboard() {
 
   const ganancia = summary.ganancia_neta_mxn ?? 0
   const isProfit = ganancia >= 0
+  const profitMargin = summary.total_ingresos_mxn > 0
+    ? ((ganancia / summary.total_ingresos_mxn) * 100).toFixed(1)
+    : '0'
 
   const chartData = (summary.monthly_chart || []).map(m => ({
     name: formatMonth(m.month),
@@ -184,6 +196,7 @@ export default function Dashboard() {
 
   const totalAcumulado = ahorros.reduce((s, a) => s + a.acumulado, 0)
   const totalMeta = ahorros.reduce((s, a) => s + a.meta, 0)
+  const ahorrosPct = totalMeta > 0 ? Math.round((totalAcumulado / totalMeta) * 100) : 0
 
   // Upcoming reminders with urgency
   const upcomingRecs = recordatorios.map(r => ({
@@ -200,31 +213,47 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-white">{greet()}, Brandon 👋</h1>
           <p className="text-slate-400 text-sm mt-0.5 capitalize">{todayLabel()}</p>
         </div>
-        <a
-          href="/presupuesto"
-          className="btn-secondary text-xs flex items-center gap-1.5"
-          style={{ textDecoration: 'none' }}
-        >
-          <ExternalLink size={13} /> Ver Presupuesto Personal
-        </a>
+        <div className="flex items-center gap-2 flex-wrap">
+          {summary.usd_to_mxn > 0 && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+              style={{ background: '#1e293b', border: '1px solid #2d3f58' }}
+            >
+              <RefreshCw size={11} className="text-slate-500" />
+              <span className="text-slate-400">USD</span>
+              <span className="text-white font-semibold">${summary.usd_to_mxn.toFixed(2)}</span>
+              <span className="text-slate-500">MXN</span>
+            </div>
+          )}
+          <a
+            href="/presupuesto"
+            className="btn-secondary text-xs flex items-center gap-1.5"
+            style={{ textDecoration: 'none' }}
+          >
+            <ExternalLink size={13} /> Ver Presupuesto
+          </a>
+        </div>
       </div>
 
       {/* ── IPTV Expiration Alert ── */}
       {expiring.length > 0 && (
         <div
-          className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/30"
-          style={{ background: '#713f1222' }}
+          className="flex items-start gap-3 p-4 rounded-xl border"
+          style={{ background: '#713f1215', borderColor: '#92400e55' }}
         >
           <AlertTriangle size={18} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-yellow-400 font-medium text-sm">
+          <div className="flex-1">
+            <p className="text-yellow-300 font-medium text-sm">
               {expiring.length} suscripción{expiring.length > 1 ? 'es' : ''} por vencer esta semana
             </p>
             <p className="text-slate-400 text-xs mt-0.5">
-              {expiring.slice(0, 3).map(e => e.client_name).join(', ')}
+              {expiring.slice(0, 3).map((e: ExpiringSub) => e.client_name).join(', ')}
               {expiring.length > 3 ? ` y ${expiring.length - 3} más` : ''}
             </p>
           </div>
+          <a href="/iptv" className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 flex-shrink-0">
+            Gestionar <ArrowRight size={11} />
+          </a>
         </div>
       )}
 
@@ -233,32 +262,36 @@ export default function Dashboard() {
         <StatCard
           title="Ingresos Totales"
           value={fmt(summary.total_ingresos_mxn)}
-          sub="Productos + IPTV"
+          sub={`Prod. ${fmt(summary.ingresos_productos)} · IPTV ${fmt(summary.ingresos_iptv)}`}
           icon={<DollarSign size={20} />}
           color="#22c55e"
+          accent="#22c55e"
           trend="up"
         />
         <StatCard
           title={isProfit ? 'Ganancia Neta' : 'Pérdida Neta'}
           value={fmt(Math.abs(ganancia))}
-          sub={isProfit ? 'Después de gastos' : 'Estás en pérdida'}
+          sub={`Margen: ${profitMargin}% · ${isProfit ? 'Después de gastos' : 'Estás en pérdida'}`}
           icon={isProfit ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
           color={isProfit ? '#6366f1' : '#ef4444'}
+          accent={isProfit ? '#6366f1' : '#ef4444'}
           trend={isProfit ? 'up' : 'down'}
         />
         <StatCard
           title="Clientes IPTV"
           value={String(summary.clientes_activos_iptv || 0)}
-          sub="Activos actualmente"
+          sub={expiring.length > 0 ? `${expiring.length} vencen esta semana` : 'Al día, sin vencimientos'}
           icon={<Users size={20} />}
           color="#06b6d4"
+          accent="#06b6d4"
         />
         <StatCard
           title="Ahorros"
           value={fmt(totalAcumulado)}
-          sub={totalMeta > 0 ? `Meta: ${fmt(totalMeta)}` : `${ahorros.length} cuentas`}
+          sub={totalMeta > 0 ? `${ahorrosPct}% de meta ${fmt(totalMeta)}` : `${ahorros.length} cuentas activas`}
           icon={<PiggyBank size={20} />}
           color="#f59e0b"
+          accent="#f59e0b"
           trend={totalAcumulado > 0 ? 'up' : 'neutral'}
         />
       </div>
@@ -268,79 +301,88 @@ export default function Dashboard() {
 
         {/* Revenue Chart */}
         <div className="card lg:col-span-2">
-          <h2 className="text-sm font-semibold text-white mb-4">Ingresos Mensuales (MXN)</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Ingresos Mensuales</h2>
+              <p className="text-xs text-slate-500 mt-0.5">En MXN — últimos meses</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#6366f1', display: 'inline-block' }} />
+                Productos
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#22c55e', display: 'inline-block' }} />
+                IPTV
+              </span>
+            </div>
+          </div>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d3f58" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false}
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e3050" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatMXN(v)} />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(v: number) => formatMXN(v)}
+                  cursor={{ fill: 'rgba(99, 102, 241, 0.06)' }}
+                />
                 <Bar dataKey="Productos" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="IPTV" fill="#22c55e" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-slate-500 text-sm text-center">
+            <div className="h-[220px] flex items-center justify-center text-center">
               <div>
-                <Package size={32} className="mx-auto mb-2 opacity-30" />
-                <p>Sin datos aún. Agrega ventas para ver la gráfica.</p>
+                <Package size={40} className="mx-auto mb-2 text-slate-700" />
+                <p className="text-slate-500 text-sm">Sin datos aún</p>
+                <p className="text-slate-600 text-xs mt-1">Agrega ventas para ver la gráfica</p>
               </div>
             </div>
           )}
-          {/* Legend */}
-          <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#6366f1', display: 'inline-block' }} />
-              Productos
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#22c55e', display: 'inline-block' }} />
-              IPTV
-            </span>
-          </div>
         </div>
 
         {/* Ahorros Progress */}
         <div className="card flex flex-col">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
               <PiggyBank size={14} className="text-yellow-400" />
               Metas de Ahorro
             </h2>
-            <a href="/ahorros" className="text-xs text-indigo-400 hover:text-indigo-300">
-              Ver todo →
+            <a href="/ahorros" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+              Ver todo <ArrowRight size={11} />
             </a>
           </div>
 
           {ahorros.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-center text-slate-500 text-sm">
               <div>
-                <PiggyBank size={28} className="mx-auto mb-2 opacity-30" />
+                <PiggyBank size={32} className="mx-auto mb-2 text-slate-700" />
                 <p>Sin metas de ahorro</p>
-                <a href="/ahorros" className="text-indigo-400 text-xs mt-1 block hover:text-indigo-300">
+                <a href="/ahorros" className="text-indigo-400 text-xs mt-2 block hover:text-indigo-300">
                   Crear primera meta →
                 </a>
               </div>
             </div>
           ) : (
-            <div className="space-y-3 flex-1">
+            <div className="space-y-3.5 flex-1">
               {ahorros.slice(0, 4).map(a => {
                 const pct = a.meta > 0 ? Math.min(100, Math.round((a.acumulado / a.meta) * 100)) : 0
                 return (
                   <div key={a.id}>
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs text-slate-300 flex items-center gap-1.5">
                         <span>{a.icono}</span>
-                        <span className="truncate max-w-[100px]">{a.nombre}</span>
+                        <span className="truncate max-w-[110px]">{a.nombre}</span>
                       </span>
-                      <span className="text-xs text-slate-400">{pct}%</span>
+                      <span className="text-xs font-semibold" style={{ color: a.color || '#6366f1' }}>{pct}%</span>
                     </div>
                     <ProgressBar value={a.acumulado} max={a.meta} color={a.color || '#6366f1'} />
-                    <div className="flex justify-between mt-0.5">
-                      <span className="text-[10px] text-slate-500">{fmt(a.acumulado)}</span>
-                      <span className="text-[10px] text-slate-600">/ {fmt(a.meta)}</span>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-[10px] text-slate-400">{fmt(a.acumulado)}</span>
+                      <span className="text-[10px] text-slate-600">de {fmt(a.meta)}</span>
                     </div>
                   </div>
                 )
@@ -351,14 +393,14 @@ export default function Dashboard() {
                 </p>
               )}
               {totalMeta > 0 && (
-                <div className="pt-2 border-t" style={{ borderColor: '#2d3f58' }}>
-                  <div className="flex justify-between text-xs">
+                <div className="pt-3 border-t" style={{ borderColor: '#1e3050' }}>
+                  <div className="flex justify-between text-xs mb-0.5">
                     <span className="text-slate-400">Total acumulado</span>
-                    <span className="text-white font-medium">{fmt(totalAcumulado)}</span>
+                    <span className="text-white font-semibold">{fmt(totalAcumulado)}</span>
                   </div>
-                  <div className="flex justify-between text-xs mt-0.5">
+                  <div className="flex justify-between text-xs">
                     <span className="text-slate-500">Meta total</span>
-                    <span className="text-slate-400">{fmt(totalMeta)}</span>
+                    <span className="text-slate-400">{fmt(totalMeta)} ({ahorrosPct}%)</span>
                   </div>
                 </div>
               )}
@@ -377,40 +419,38 @@ export default function Dashboard() {
               <Bell size={14} className="text-indigo-400" />
               Próximos Recordatorios
             </h2>
-            <a href="/bienestar" className="text-xs text-indigo-400 hover:text-indigo-300">
-              Ver todo →
+            <a href="/bienestar" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+              Ver todo <ArrowRight size={11} />
             </a>
           </div>
 
           {upcomingRecs.length === 0 ? (
-            <div className="py-6 text-center text-slate-500 text-sm">
-              <Bell size={28} className="mx-auto mb-2 opacity-30" />
-              <p>Sin recordatorios próximos</p>
+            <div className="py-6 text-center">
+              <Bell size={28} className="mx-auto mb-2 text-slate-700" />
+              <p className="text-slate-500 text-sm">Sin recordatorios próximos</p>
             </div>
           ) : (
             <div className="space-y-2">
               {upcomingRecs.map(r => {
                 const urgent = r.daysLeft <= 1
                 const soon = r.daysLeft <= 3
+                const accentColor = urgent ? '#ef4444' : soon ? '#f59e0b' : (r.color || '#6366f1')
                 return (
                   <div
                     key={r.id}
                     className="flex items-center gap-3 p-2.5 rounded-lg"
-                    style={{
-                      background: '#1e293b',
-                      borderLeft: `3px solid ${urgent ? '#ef4444' : soon ? '#f59e0b' : (r.color || '#6366f1')}`,
-                    }}
+                    style={{ background: '#0f172a', borderLeft: `3px solid ${accentColor}` }}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         {r.importante && <Star size={11} className="text-yellow-400 flex-shrink-0" />}
                         <p className="text-sm text-white truncate">{r.titulo}</p>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(r.fecha_hora)}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{formatDateTime(r.fecha_hora)}</p>
                     </div>
                     <span
-                      className="text-xs font-medium flex-shrink-0"
-                      style={{ color: urgent ? '#ef4444' : soon ? '#f59e0b' : '#94a3b8' }}
+                      className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
+                      style={{ color: accentColor, background: accentColor + '18' }}
                     >
                       {r.daysLeft <= 0 ? 'Hoy' : r.daysLeft === 1 ? 'Mañana' : `${r.daysLeft}d`}
                     </span>
@@ -428,29 +468,29 @@ export default function Dashboard() {
               <Tv size={14} className="text-cyan-400" />
               Vencimientos IPTV (7 días)
             </h2>
-            <a href="/iptv" className="text-xs text-indigo-400 hover:text-indigo-300">
-              Ver todo →
+            <a href="/iptv" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+              Ver todo <ArrowRight size={11} />
             </a>
           </div>
 
           {expiring.length === 0 ? (
-            <div className="py-6 text-center text-slate-500 text-sm">
-              <Tv size={28} className="mx-auto mb-2 opacity-30" />
-              <p>Sin vencimientos próximos 🎉</p>
+            <div className="py-6 text-center">
+              <Tv size={28} className="mx-auto mb-2 text-slate-700" />
+              <p className="text-slate-500 text-sm">Sin vencimientos próximos 🎉</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {expiring.map(sub => {
+              {expiring.map((sub: ExpiringSub) => {
                 const days = daysUntil(sub.end_date)
                 return (
                   <div
                     key={sub.id}
                     className="flex items-center justify-between p-2.5 rounded-lg"
-                    style={{ background: '#1e293b' }}
+                    style={{ background: '#0f172a' }}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">{sub.client_name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         {sub.connections} equipo{sub.connections > 1 ? 's' : ''} · vence {sub.end_date}
                       </p>
                     </div>
@@ -466,25 +506,33 @@ export default function Dashboard() {
       </div>
 
       {/* ── Business Totals Footer ── */}
-      <div className="card">
-        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+      <div className="card" style={{ background: 'linear-gradient(135deg, #1e293b, #1a2540)' }}>
+        <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
           <Package size={14} className="text-slate-400" />
           Resumen del Negocio
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Ingresos Productos', value: fmt(summary.ingresos_productos), color: '#6366f1' },
-            { label: 'Ingresos IPTV', value: fmt(summary.ingresos_iptv), color: '#22c55e' },
-            { label: 'Total Gastos', value: fmt(summary.total_gastos_mxn), color: '#ef4444' },
-            { label: 'USD → MXN', value: `$${(summary.usd_to_mxn || 17.5).toFixed(2)}`, color: '#f59e0b' },
+            { label: 'Ingresos Productos', value: fmt(summary.ingresos_productos), color: '#6366f1', icon: <Package size={14} /> },
+            { label: 'Ingresos IPTV', value: fmt(summary.ingresos_iptv), color: '#22c55e', icon: <Tv size={14} /> },
+            { label: 'Total Gastos', value: fmt(summary.total_gastos_mxn), color: '#ef4444', icon: <TrendingDown size={14} /> },
+            { label: 'Margen Neto', value: `${profitMargin}%`, color: isProfit ? '#a78bfa' : '#ef4444', icon: <Percent size={14} /> },
           ].map(item => (
-            <div key={item.label}>
-              <p className="text-xs text-slate-500 mb-1">{item.label}</p>
-              <p className="text-base font-bold" style={{ color: item.color }}>{item.value}</p>
+            <div
+              key={item.label}
+              className="rounded-xl p-3 text-center"
+              style={{ background: '#0f172a', border: `1px solid ${item.color}22` }}
+            >
+              <div className="flex items-center justify-center gap-1.5 mb-1.5" style={{ color: item.color }}>
+                {item.icon}
+              </div>
+              <p className="text-lg font-bold" style={{ color: item.color }}>{item.value}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{item.label}</p>
             </div>
           ))}
         </div>
       </div>
+
     </div>
   )
 }

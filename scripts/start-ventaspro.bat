@@ -1,48 +1,90 @@
 @echo off
-title VentasPro - Iniciando...
+title VentasPro - Servidor Local
 color 0B
 
 echo.
 echo  ============================================
-echo    VentasPro - Iniciando sistema
+echo    VentasPro - Servidor Local
 echo  ============================================
 echo.
 
-:: Ubicar la raiz del proyecto (carpeta padre de scripts\)
+:: Ubicar la raiz del proyecto
 set ROOT=%~dp0..
-cd /d "%ROOT%"
+cd /d "%ROOT%\frontend"
 
-:: Verificar que existe .env
-if not exist backend\.env (
-    echo  [ERROR] No se encontro backend\.env
-    echo  Copia backend\.env.example a backend\.env y configura las variables.
+:: ── 1. Verificar Vercel CLI ──────────────────────────────────────────────────
+where vercel >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo  [!] Vercel CLI no encontrado. Instalando globalmente...
+    call npm install -g vercel
+    if %ERRORLEVEL% NEQ 0 (
+        echo  [ERROR] No se pudo instalar Vercel CLI.
+        echo          Ejecuta manualmente: npm install -g vercel
+        pause & exit /b 1
+    )
+    echo  [OK] Vercel CLI instalado.
     echo.
-    pause
-    exit /b 1
 )
 
-:: Verificar que node_modules existen
-if not exist backend\node_modules (
-    echo  Instalando dependencias del backend...
-    cd backend && npm install && cd ..
+:: ── 2. Vincular proyecto Vercel (solo la primera vez) ────────────────────────
+if not exist ".vercel\project.json" (
+    echo  [*] Primera vez: vinculando con tu proyecto Vercel...
+    echo.
+    echo      Cuando pregunte:
+    echo        - Set up and develop? -> Y
+    echo        - Which scope?        -> tu cuenta personal
+    echo        - Link to existing?   -> Y
+    echo        - Project name?       -> ventas-appforbrandonanditzel
+    echo.
+    call vercel link
+    if %ERRORLEVEL% NEQ 0 (
+        echo  [ERROR] No se pudo vincular el proyecto.
+        pause & exit /b 1
+    )
+    echo.
 )
-if not exist frontend\node_modules (
-    echo  Instalando dependencias del frontend...
-    cd frontend && npm install && cd ..
+
+:: ── 3. Descargar variables de entorno de Vercel ──────────────────────────────
+echo  [*] Sincronizando variables de entorno desde Vercel...
+call vercel env pull .env.local --yes 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo  [!] No se pudieron descargar las env vars automaticamente.
+    if not exist ".env.local" (
+        echo.
+        echo  [ERROR] Tampoco existe .env.local localmente.
+        echo          Crea frontend\.env.local con estas variables:
+        echo.
+        echo    VITE_SUPABASE_URL=https://xxxx.supabase.co
+        echo    VITE_SUPABASE_ANON_KEY=eyJhbGci...
+        echo    VITE_CLERK_PUBLISHABLE_KEY=pk_live_...
+        echo    SUPABASE_URL=https://xxxx.supabase.co
+        echo    SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+        echo    CLERK_SECRET_KEY=sk_live_...
+        echo.
+        pause & exit /b 1
+    ) else (
+        echo  [OK] Usando .env.local existente.
+    )
+) else (
+    echo  [OK] Variables de entorno actualizadas.
 )
 
-echo  Iniciando Backend  (http://localhost:3001)
-echo  Iniciando Frontend (http://localhost:5173)
-echo  Tunel Cloudflare   (https://zhinoism.online)
+:: ── 4. Instalar dependencias si faltan ───────────────────────────────────────
+if not exist "node_modules" (
+    echo.
+    echo  [*] Instalando dependencias del frontend...
+    call npm install
+)
+
+:: ── 5. Iniciar con vercel dev ────────────────────────────────────────────────
 echo.
-echo  Presiona Ctrl+C para detener.
+echo  ============================================
+echo    Abre en tu navegador:
+echo    http://localhost:3000
+echo.
+echo    Frontend + API funcionando juntos.
+echo    Presiona Ctrl+C para detener.
+echo  ============================================
 echo.
 
-:: Iniciar backend y frontend en paralelo
-start "VentasPro Backend" cmd /k "cd /d %ROOT%\backend && node index.js"
-timeout /t 2 /nobreak >/dev/null
-start "VentasPro Frontend" cmd /k "cd /d %ROOT%\frontend && npm run dev"
-
-echo  Sistema iniciado. Abre https://zhinoism.online en tu navegador.
-echo.
-pause
+call vercel dev --listen 3000

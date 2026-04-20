@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Edit2, Trash2, ShoppingCart, Copy, Check, Tag, Package } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, ShoppingCart, Copy, Check, Tag, Package, ArrowUpDown } from 'lucide-react'
 import {
   getProducts, createProduct, updateProduct, deleteProduct,
   sellProduct, getFBPost, getProductStats, getExchangeRate, formatMXN, toMXN
@@ -38,6 +38,7 @@ export default function Inventory() {
   const [sellForm, setSellForm] = useState({ quantity_sold: '1', sale_price: '', buyer_name: '', payment_method: 'efectivo', notes: '' })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [sortBy, setSortBy] = useState('default')
 
   const load = async () => {
     const [p, s, r] = await Promise.all([
@@ -127,6 +128,25 @@ export default function Inventory() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // Sort products
+  const sortedProducts = [...products].sort((a, b) => {
+    if (sortBy === 'name_asc') return a.name.localeCompare(b.name)
+    if (sortBy === 'name_desc') return b.name.localeCompare(a.name)
+    if (sortBy === 'profit_desc') {
+      const ga = calcProfit(a.sale_price, a.sale_currency, a.purchase_price, a.purchase_currency, rate)
+      const gb = calcProfit(b.sale_price, b.sale_currency, b.purchase_price, b.purchase_currency, rate)
+      return gb - ga
+    }
+    if (sortBy === 'profit_asc') {
+      const ga = calcProfit(a.sale_price, a.sale_currency, a.purchase_price, a.purchase_currency, rate)
+      const gb = calcProfit(b.sale_price, b.sale_currency, b.purchase_price, b.purchase_currency, rate)
+      return ga - gb
+    }
+    if (sortBy === 'price_desc') return (b.sale_price || 0) - (a.sale_price || 0)
+    if (sortBy === 'price_asc') return (a.sale_price || 0) - (b.sale_price || 0)
+    return 0
+  })
+
   // Preview profit (safe — no NaN)
   const previewProfit = (() => {
     const sp = safeFloat(form.sale_price)
@@ -179,26 +199,45 @@ export default function Inventory() {
           <option value="vendido">Vendidos</option>
           <option value="reservado">Reservados</option>
         </select>
+        <div className="relative">
+          <ArrowUpDown size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <select className="input w-auto pl-8" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+            <option value="default">Ordenar por</option>
+            <option value="profit_desc">Mayor ganancia</option>
+            <option value="profit_asc">Menor ganancia</option>
+            <option value="price_desc">Mayor precio</option>
+            <option value="price_asc">Menor precio</option>
+            <option value="name_asc">Nombre A→Z</option>
+            <option value="name_desc">Nombre Z→A</option>
+          </select>
+        </div>
       </div>
 
       {/* Product grid */}
-      {products.length === 0 ? (
-        <div className="card text-center py-16 text-slate-500">
-          <Package size={48} className="mx-auto mb-3 opacity-30" />
-          <p>No hay artículos. ¡Agrega el primero!</p>
+      {sortedProducts.length === 0 ? (
+        <div className="card text-center py-16">
+          <Package size={48} className="mx-auto mb-3 text-slate-700" />
+          <p className="text-slate-400 font-medium">No hay artículos</p>
+          <p className="text-slate-600 text-sm mt-1">
+            {search || filterStatus !== 'todos' ? 'Intenta con otros filtros' : '¡Agrega el primero!'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {products.map(p => {
+          {sortedProducts.map(p => {
             const gain = calcProfit(p.sale_price, p.sale_currency, p.purchase_price, p.purchase_currency, rate)
+            // ROI: gain / cost_in_mxn * 100
+            const costMxn = p.purchase_currency === 'USD' ? p.purchase_price * rate : p.purchase_price
+            const roi = costMxn > 0 ? (gain / costMxn) * 100 : null
             return (
               <div key={p.id} className="card flex flex-col gap-3 hover:border-indigo-500/40 transition-colors">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-white truncate">{p.name}</h3>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       {p.brand && <span className="text-xs text-slate-400">{p.brand}</span>}
                       {p.color && <span className="text-xs text-slate-500">· {p.color}</span>}
+                      {p.category && <span className="text-xs text-slate-600">· {p.category}</span>}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -210,39 +249,52 @@ export default function Inventory() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-lg p-2" style={{ background: '#0f172a' }}>
-                    <p className="text-xs text-slate-500 mb-0.5">Compré</p>
-                    <p className="font-medium text-slate-300">${p.purchase_price} {p.purchase_currency}</p>
+                  <div className="rounded-lg p-2.5" style={{ background: '#0f172a' }}>
+                    <p className="text-xs text-slate-500 mb-1">Compré</p>
+                    <p className="font-semibold text-slate-300">${p.purchase_price} {p.purchase_currency}</p>
                     {p.purchase_currency === 'USD' && (
-                      <p className="text-xs text-slate-500">≈ {fmt(p.purchase_price * rate)}</p>
+                      <p className="text-xs text-slate-600 mt-0.5">≈ {fmt(p.purchase_price * rate)}</p>
                     )}
                   </div>
-                  <div className="rounded-lg p-2" style={{ background: '#0f172a' }}>
-                    <p className="text-xs text-slate-500 mb-0.5">Vendo</p>
-                    <p className="font-medium text-white">${p.sale_price} {p.sale_currency}</p>
+                  <div className="rounded-lg p-2.5" style={{ background: '#0f172a' }}>
+                    <p className="text-xs text-slate-500 mb-1">Vendo</p>
+                    <p className="font-semibold text-white">${p.sale_price} {p.sale_currency}</p>
                     {p.sale_currency === 'USD' && (
-                      <p className="text-xs text-slate-500">≈ {fmt(p.sale_price * rate)}</p>
+                      <p className="text-xs text-slate-600 mt-0.5">≈ {fmt(p.sale_price * rate)}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">
+                      Gan: <span className={`font-bold ${profitClass(gain)}`}>{fmt(gain)}</span>
+                    </span>
+                    {roi !== null && (
+                      <span
+                        className="px-1.5 py-0.5 rounded text-xs font-semibold"
+                        style={{
+                          background: roi >= 30 ? '#14532d55' : roi >= 10 ? '#71380055' : '#7f1d1d55',
+                          color: roi >= 30 ? '#86efac' : roi >= 10 ? '#fcd34d' : '#fca5a5',
+                        }}
+                      >
+                        {roi >= 0 ? '+' : ''}{roi.toFixed(0)}% ROI
+                      </span>
+                    )}
+                  </div>
                   <span className="text-slate-400">
-                    Ganancia: <span className={`font-semibold ${profitClass(gain)}`}>{fmt(gain)}</span>
-                  </span>
-                  <span className="text-slate-400">
-                    Stock: <span className="text-white font-medium">{p.quantity}</span>
+                    Stock: <span className="text-white font-semibold">{p.quantity}</span>
                     {p.quantity_sold > 0 && <span className="text-slate-500"> ({p.quantity_sold} vend.)</span>}
                   </span>
                 </div>
 
                 {p.notes && (
-                  <p className="text-xs text-slate-500 italic border-t pt-2" style={{ borderColor: '#2d3f58' }}>
+                  <p className="text-xs text-slate-500 italic border-t pt-2" style={{ borderColor: '#1e3050' }}>
                     {p.notes}
                   </p>
                 )}
 
-                <div className="flex gap-2 pt-1 border-t" style={{ borderColor: '#2d3f58' }}>
+                <div className="flex gap-2 pt-1 border-t" style={{ borderColor: '#1e3050' }}>
                   {p.status !== 'vendido' && (
                     <button onClick={() => openSell(p)} className="btn-success flex-1 justify-center py-1.5 text-xs">
                       <ShoppingCart size={12} />Vender
