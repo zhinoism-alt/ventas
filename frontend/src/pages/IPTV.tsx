@@ -9,7 +9,8 @@ import {
 import {
   getIPTVStats, getIPTVPackages, createIPTVPackage, deleteIPTVPackage,
   getIPTVClients, createIPTVClient, updateIPTVClient, deleteIPTVClient,
-  getIPTVSubscriptions, createIPTVSubscription, deleteIPTVSubscription, updateSubscriptionStatus,
+  getIPTVSubscriptions, createIPTVSubscription, deleteIPTVSubscription,
+  updateSubscriptionStatus, updateIPTVSubscription,
   getIPTVPricing, getPreviewRenewals, sendRenewalReminders,
   getExchangeRate, formatMXN, toMXN
 } from '../lib/api'
@@ -35,11 +36,19 @@ export default function IPTV() {
   const [showClientModal, setShowClientModal] = useState(false)
   const [showSubModal, setShowSubModal] = useState(false)
   const [editingClient, setEditingClient] = useState<any>(null)
+  const [editingSub, setEditingSub] = useState<any>(null)
   const [saving, setSaving] = useState(false)
 
   const [pkgForm, setPkgForm] = useState({ connections: '1', credits: '', price_paid: '', price_currency: 'MXN', purchase_date: new Date().toISOString().split('T')[0], notes: '' })
   const [clientForm, setClientForm] = useState({ name: '', phone: '', country: 'MX', email: '', notes: '' })
-  const [subForm, setSubForm] = useState({ client_id: '', package_id: '', connections: '1', months: '1', price_charged: '', price_currency: 'MXN', start_date: new Date().toISOString().split('T')[0], notes: '' })
+  const [subForm, setSubForm] = useState({
+    client_id: '', package_id: '', connections: '1', months: '1',
+    price_charged: '', price_currency: 'MXN', costo_token: '',
+    cuenta_codigo: '',
+    segundo_cliente_id: '', segundo_precio: '', segundo_es_propio: false,
+    start_date: new Date().toISOString().split('T')[0], notes: '',
+  })
+  const [editSubForm, setEditSubForm] = useState({ price_charged: '', price_currency: 'MXN', costo_token: '', start_date: '', end_date: '', status: 'activo', notes: '' })
 
   const loadAll = async () => {
     const [s, p, c, sb, pr, r, ex] = await Promise.all([
@@ -81,8 +90,59 @@ export default function IPTV() {
     }
     setSaving(true)
     try {
-      await createIPTVSubscription({ ...subForm, client_id: parseInt(subForm.client_id), package_id: subForm.package_id ? parseInt(subForm.package_id) : undefined, months: parseInt(subForm.months), connections: parseInt(subForm.connections), price_charged: parseFloat(subForm.price_charged) })
+      await createIPTVSubscription({
+        ...subForm,
+        client_id:          parseInt(subForm.client_id),
+        package_id:         subForm.package_id ? parseInt(subForm.package_id) : undefined,
+        months:             parseInt(subForm.months),
+        connections:        parseInt(subForm.connections),
+        price_charged:      parseFloat(subForm.price_charged),
+        segundo_cliente_id: subForm.segundo_cliente_id ? parseInt(subForm.segundo_cliente_id) : undefined,
+        segundo_precio:     subForm.segundo_precio ? parseFloat(subForm.segundo_precio) : 0,
+        cuenta_codigo:      subForm.cuenta_codigo || undefined,
+      })
       setShowSubModal(false)
+      setSubForm({
+        client_id: '', package_id: '', connections: '1', months: '1',
+        price_charged: '', price_currency: 'MXN', costo_token: '',
+        cuenta_codigo: '',
+        segundo_cliente_id: '', segundo_precio: '', segundo_es_propio: false,
+        start_date: new Date().toISOString().split('T')[0], notes: '',
+      })
+      loadAll()
+    } finally { setSaving(false) }
+  }
+
+  const openEditSub = (sub: any) => {
+    const costoToken = (sub.cost_per_credit || 0) * (sub.credits_used || 1)
+    setEditingSub(sub)
+    setEditSubForm({
+      price_charged:  String(sub.price_charged || ''),
+      price_currency: sub.price_currency || 'MXN',
+      costo_token:    costoToken > 0 ? String(costoToken) : '',
+      start_date:     sub.start_date || '',
+      end_date:       sub.end_date || '',
+      status:         sub.status || 'activo',
+      notes:          sub.notes || '',
+    })
+  }
+
+  const handleEditSubSave = async () => {
+    if (!editingSub) return
+    setSaving(true)
+    try {
+      const costoToken = parseFloat(editSubForm.costo_token) || 0
+      await updateIPTVSubscription(editingSub.id, {
+        price_charged:  parseFloat(editSubForm.price_charged),
+        price_currency: editSubForm.price_currency,
+        cost_per_credit: costoToken,
+        credits_used:   costoToken > 0 ? 1 : 0,
+        start_date:     editSubForm.start_date,
+        end_date:       editSubForm.end_date,
+        status:         editSubForm.status,
+        notes:          editSubForm.notes,
+      })
+      setEditingSub(null)
       loadAll()
     } finally { setSaving(false) }
   }
@@ -360,21 +420,37 @@ export default function IPTV() {
                 <option value="vencido">Vencidas</option>
                 <option value="cancelado">Canceladas</option>
               </select>
-              <button onClick={() => { setSubForm({ client_id: '', package_id: '', connections: '1', months: '1', price_charged: '', price_currency: 'MXN', start_date: new Date().toISOString().split('T')[0], notes: '' }); setShowSubModal(true) }} className="btn-primary">
+              <button onClick={() => { setSubForm({ client_id: '', package_id: '', connections: '1', months: '1', price_charged: '', price_currency: 'MXN', costo_token: '', cuenta_codigo: '', segundo_cliente_id: '', segundo_precio: '', segundo_es_propio: false, start_date: new Date().toISOString().split('T')[0], notes: '' }); setShowSubModal(true) }} className="btn-primary">
                 <Plus size={14} />Nueva suscripción
               </button>
             </div>
           </div>
           <div className="space-y-2">
             {filteredSubs.map(sub => {
-              const daysLeft = Math.ceil((new Date(sub.end_date).getTime() - Date.now()) / 86400000)
-              const gainMXN = toMXN(sub.price_charged || 0, sub.price_currency, rate)
-                - ((sub.cost_per_credit || 0) * (sub.credits_used || 0))
+              const daysLeft     = Math.ceil((new Date(sub.end_date).getTime() - Date.now()) / 86400000)
+              const ingreso1     = toMXN(sub.price_charged || 0, sub.price_currency, rate)
+              const ingreso2     = sub.segundo_es_propio ? 0 : (sub.segundo_precio || 0)
+              const ingresoTotal = ingreso1 + ingreso2
+              const costoToken   = (sub.cost_per_credit || 0) * (sub.credits_used || 0)
+              const gainMXN      = ingresoTotal - costoToken
+              const sinCosto     = costoToken === 0
               return (
                 <div key={sub.id} className="card flex items-center gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
+                      {/* Cliente principal */}
                       <span className="font-semibold text-white">{sub.client_name}</span>
+                      {/* Segundo cliente */}
+                      {sub.segundo_cliente_nombre && (
+                        <>
+                          <span className="text-slate-500 text-xs">+</span>
+                          <span className="font-semibold text-slate-300">{sub.segundo_cliente_nombre}</span>
+                          {sub.segundo_es_propio && <span className="badge badge-gray">uso propio</span>}
+                        </>
+                      )}
+                      {sub.cuenta_codigo && (
+                        <span className="badge badge-blue font-mono">{sub.cuenta_codigo}</span>
+                      )}
                       <span className="badge badge-blue">{sub.connections} equipo{sub.connections > 1 ? 's' : ''}</span>
                       <span className={`badge ${sub.status === 'activo' ? 'badge-green' : sub.status === 'vencido' ? 'badge-red' : 'badge-gray'}`}>
                         {sub.status}
@@ -383,16 +459,23 @@ export default function IPTV() {
                         <span className="badge badge-yellow">Vence en {daysLeft}d</span>
                       )}
                     </div>
-                    <div className="flex gap-4 text-xs text-slate-400 flex-wrap">
+                    <div className="flex gap-3 text-xs text-slate-400 flex-wrap items-center">
                       <span>{sub.months} mes{sub.months > 1 ? 'es' : ''}</span>
                       <span>{sub.start_date} → {sub.end_date}</span>
-                      <span className="text-white font-medium">{formatMXN(toMXN(sub.price_charged, sub.price_currency, rate))}</span>
-                      <span className={profitClass(gainMXN)}>
-                        Ganancia: {fmt(gainMXN)}
+                      <span className="text-white font-medium">
+                        {formatMXN(ingreso1)}{ingreso2 > 0 ? ` + ${formatMXN(ingreso2)}` : ''}
+                        {ingreso2 > 0 && <span className="text-slate-500"> = {formatMXN(ingresoTotal)}</span>}
+                      </span>
+                      {costoToken > 0 && <span className="text-red-400">−{fmt(costoToken)} token</span>}
+                      <span className={sinCosto ? 'text-yellow-400' : profitClass(gainMXN)}>
+                        {sinCosto ? '⚠ sin costo' : `= ${fmt(gainMXN)} ganancia`}
                       </span>
                     </div>
                   </div>
                   <div className="flex gap-1.5">
+                    <button onClick={() => openEditSub(sub)} className="btn-secondary px-2 py-1.5" title="Editar">
+                      <Edit2 size={12} />
+                    </button>
                     {sub.status === 'activo' && (
                       <button onClick={async () => { await updateSubscriptionStatus(sub.id, 'cancelado'); loadAll() }} className="btn-secondary px-2 py-1.5 text-xs">
                         Cancelar
@@ -651,11 +734,17 @@ export default function IPTV() {
                 </div>
                 <div>
                   <label>Paquete de créditos (opcional)</label>
-                  <select className="input" value={subForm.package_id} onChange={e => setSubForm(f => ({ ...f, package_id: e.target.value }))}>
+                  <select className="input" value={subForm.package_id} onChange={e => {
+                    const pkgId = e.target.value
+                    const pkg = packages.find(p => String(p.id) === pkgId)
+                    // Auto-calcular costo del token si se selecciona paquete
+                    const costoPorToken = pkg ? (pkg.price_paid / pkg.credits).toFixed(2) : ''
+                    setSubForm(f => ({ ...f, package_id: pkgId, costo_token: costoPorToken || f.costo_token }))
+                  }}>
                     <option value="">Sin descontar de paquete</option>
                     {packages.filter(p => p.credits_remaining > 0).map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.connections} conn · {p.credits_remaining} créd disponibles ({formatMXN(p.price_paid)})
+                        {p.connections} conn · {p.credits_remaining} créd · {formatMXN(p.price_paid / p.credits)}/token
                       </option>
                     ))}
                   </select>
@@ -699,11 +788,165 @@ export default function IPTV() {
                   <label>Fecha inicio *</label>
                   <input className="input" type="date" value={subForm.start_date} onChange={e => setSubForm(f => ({ ...f, start_date: e.target.value }))} />
                 </div>
+                {/* Código de cuenta */}
+                <div>
+                  <label>Código de cuenta (opcional)</label>
+                  <input className="input" placeholder="Ej: BSCB, MARIO1..."
+                    value={subForm.cuenta_codigo}
+                    onChange={e => setSubForm(f => ({ ...f, cuenta_codigo: e.target.value.toUpperCase() }))} />
+                  <p className="text-xs text-slate-500 mt-1">Identificador de la cuenta en el panel IPTV</p>
+                </div>
+
+                {/* Segundo cliente (solo en cuentas dobles) */}
+                {subForm.connections === '2' && (
+                  <div className="rounded-lg p-3 space-y-2" style={{ background: '#0f172a', border: '1px solid #2d3f58' }}>
+                    <p className="text-xs font-medium text-slate-300">Segundo dispositivo (cuenta doble)</p>
+                    <div>
+                      <label className="text-xs text-slate-400">Cliente del 2do dispositivo</label>
+                      <select className="input mt-1" value={subForm.segundo_cliente_id}
+                        onChange={e => setSubForm(f => ({ ...f, segundo_cliente_id: e.target.value, segundo_es_propio: false }))}>
+                        <option value="">Sin asignar</option>
+                        <option value="propio">📱 Uso propio (sin cobro)</option>
+                        {clients.filter(c => String(c.id) !== subForm.client_id).map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {subForm.segundo_cliente_id && subForm.segundo_cliente_id !== 'propio' && (
+                      <div>
+                        <label className="text-xs text-slate-400">Precio cobrado al 2do cliente (MXN)</label>
+                        <input className="input mt-1" type="number" step="0.01" placeholder="0.00"
+                          value={subForm.segundo_precio}
+                          onChange={e => setSubForm(f => ({ ...f, segundo_precio: e.target.value }))} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Costo del token */}
+                <div>
+                  <label>Costo del token (MXN)</label>
+                  <input className="input" type="number" step="0.01"
+                    placeholder="Ej: 90 (2,700÷30 dobles)"
+                    value={subForm.costo_token}
+                    onChange={e => setSubForm(f => ({ ...f, costo_token: e.target.value }))} />
+                  {subForm.price_charged && subForm.costo_token && (
+                    <p className="text-xs mt-1" style={{
+                      color: (parseFloat(subForm.price_charged) + parseFloat(subForm.segundo_precio || '0') - parseFloat(subForm.costo_token)) >= 0
+                        ? '#22c55e' : '#ef4444'
+                    }}>
+                      Ganancia = {fmt(
+                        parseFloat(subForm.price_charged) +
+                        parseFloat(subForm.segundo_precio || '0') -
+                        parseFloat(subForm.costo_token)
+                      )}
+                    </p>
+                  )}
+                </div>
                 <div><label>Notas</label><input className="input" value={subForm.notes} onChange={e => setSubForm(f => ({ ...f, notes: e.target.value }))} /></div>
               </div>
               <div className="flex gap-3 mt-5">
                 <button onClick={() => setShowSubModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button onClick={handleSubSave} disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Guardando...' : 'Crear suscripción'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── MODAL: EDITAR SUSCRIPCIÓN ── */}
+      {editingSub && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditingSub(null)}>
+          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+            <div className="p-5">
+              <h2 className="text-lg font-bold text-white mb-1">Editar suscripción</h2>
+              <p className="text-sm text-slate-400 mb-5">
+                {editingSub.client_name} · {editingSub.connections} equipo{editingSub.connections > 1 ? 's' : ''}
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Precio cobrado *</label>
+                  <div className="flex gap-2">
+                    <input className="input flex-1" type="number" step="0.01"
+                      value={editSubForm.price_charged}
+                      onChange={e => setEditSubForm(f => ({ ...f, price_charged: e.target.value }))} />
+                    <select className="input w-24"
+                      value={editSubForm.price_currency}
+                      onChange={e => setEditSubForm(f => ({ ...f, price_currency: e.target.value }))}>
+                      <option>MXN</option><option>USD</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Costo del token (MXN)</label>
+                  <input className="input w-full" type="number" step="0.01"
+                    placeholder="Ej: 90 para 1 doble (2700÷30)"
+                    value={editSubForm.costo_token}
+                    onChange={e => setEditSubForm(f => ({ ...f, costo_token: e.target.value }))} />
+                  <p className="text-xs text-slate-500 mt-1">
+                    2700 ÷ 30 dobles = <span className="text-white">$90/token</span>
+                  </p>
+                </div>
+                {/* Vista previa de ganancia */}
+                {editSubForm.price_charged && (
+                  <div className="rounded-lg p-3" style={{ background: '#0f172a' }}>
+                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                      <span>Cobrado</span>
+                      <span className="text-white">{fmt(parseFloat(editSubForm.price_charged) || 0)}</span>
+                    </div>
+                    {editSubForm.costo_token && (
+                      <div className="flex justify-between text-xs text-slate-400 mb-1">
+                        <span>Costo token</span>
+                        <span className="text-red-400">−{fmt(parseFloat(editSubForm.costo_token) || 0)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-bold pt-1" style={{ borderTop: '1px solid #2d3f58' }}>
+                      <span className="text-slate-300">Ganancia</span>
+                      <span className={
+                        (parseFloat(editSubForm.price_charged) - (parseFloat(editSubForm.costo_token) || 0)) >= 0
+                          ? 'text-green-400' : 'text-red-400'
+                      }>
+                        {fmt((parseFloat(editSubForm.price_charged) || 0) - (parseFloat(editSubForm.costo_token) || 0))}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">Fecha inicio</label>
+                    <input className="input w-full" type="date"
+                      value={editSubForm.start_date}
+                      onChange={e => setEditSubForm(f => ({ ...f, start_date: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">Fecha fin</label>
+                    <input className="input w-full" type="date"
+                      value={editSubForm.end_date}
+                      onChange={e => setEditSubForm(f => ({ ...f, end_date: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Estado</label>
+                  <select className="input w-full"
+                    value={editSubForm.status}
+                    onChange={e => setEditSubForm(f => ({ ...f, status: e.target.value }))}>
+                    <option value="activo">Activo</option>
+                    <option value="vencido">Vencido</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Notas</label>
+                  <input className="input w-full"
+                    value={editSubForm.notes}
+                    onChange={e => setEditSubForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Ej: Mario + uso propio" />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button onClick={() => setEditingSub(null)} className="btn-secondary flex-1">Cancelar</button>
+                <button onClick={handleEditSubSave} disabled={saving} className="btn-primary flex-1 justify-center">
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
               </div>
             </div>
           </div>

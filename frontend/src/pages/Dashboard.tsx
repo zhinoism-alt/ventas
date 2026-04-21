@@ -37,6 +37,15 @@ interface Ahorro {
   fecha_meta: string | null
 }
 
+interface Fondo {
+  id: number
+  nombre: string
+  saldo: number
+  rendimiento: number
+  icono: string
+  color: string
+}
+
 interface Recordatorio {
   id: number
   titulo: string
@@ -129,12 +138,13 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [expiring, setExpiring] = useState<ExpiringSub[]>([])
-  const [ahorros, setAhorros] = useState<Ahorro[]>([])
+  const [summary, setSummary]         = useState<Summary | null>(null)
+  const [expiring, setExpiring]       = useState<ExpiringSub[]>([])
+  const [ahorros, setAhorros]         = useState<Ahorro[]>([])
+  const [fondos, setFondos]           = useState<Fondo[]>([])
   const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState('')
 
   useEffect(() => {
     const now = new Date().toISOString()
@@ -143,6 +153,7 @@ export default function Dashboard() {
       getSummary(),
       getExpiringSubscriptions(7),
       supabase.from('ahorros').select('*').eq('activo', true).order('created_at', { ascending: false }),
+      supabase.from('fondos_ahorro').select('*').eq('activo', true).order('created_at', { ascending: false }),
       supabase
         .from('recordatorios')
         .select('*')
@@ -151,13 +162,18 @@ export default function Dashboard() {
         .order('fecha_hora', { ascending: true })
         .limit(5),
     ])
-      .then(([s, e, a, r]) => {
+      .then(([s, e, a, f, r]) => {
         setSummary(s.data)
         setExpiring(e.data)
         setAhorros(a.data ?? [])
+        setFondos(f.data ?? [])
         setRecordatorios(r.data ?? [])
       })
-      .catch(() => setError('No se pudo conectar con el servidor. Verifica la conexión a Supabase.'))
+      .catch((err: unknown) => {
+        const e = err as { message?: string; code?: string; details?: string }
+        const msg = e?.message || e?.details || e?.code || JSON.stringify(err)
+        setError(`[${e?.code || '?'}] ${msg}`)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -194,9 +210,12 @@ export default function Dashboard() {
     IPTV: Math.round(m.iptv || 0),
   }))
 
-  const totalAcumulado = ahorros.reduce((s, a) => s + a.acumulado, 0)
-  const totalMeta = ahorros.reduce((s, a) => s + a.meta, 0)
-  const ahorrosPct = totalMeta > 0 ? Math.round((totalAcumulado / totalMeta) * 100) : 0
+  const totalAcumulado      = ahorros.reduce((s, a) => s + a.acumulado, 0)
+  const totalMeta           = ahorros.reduce((s, a) => s + a.meta, 0)
+  const ahorrosPct          = totalMeta > 0 ? Math.round((totalAcumulado / totalMeta) * 100) : 0
+  const totalFondos         = fondos.reduce((s, f) => s + f.saldo, 0)
+  const rendimientoAnual    = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
+  const totalAhorradoGeneral = totalAcumulado + totalFondos
 
   // Upcoming reminders with urgency
   const upcomingRecs = recordatorios.map(r => ({
@@ -287,12 +306,18 @@ export default function Dashboard() {
         />
         <StatCard
           title="Ahorros"
-          value={fmt(totalAcumulado)}
-          sub={totalMeta > 0 ? `${ahorrosPct}% de meta ${fmt(totalMeta)}` : `${ahorros.length} cuentas activas`}
+          value={fmt(totalAhorradoGeneral)}
+          sub={
+            fondos.length > 0
+              ? `${fmt(totalFondos)} fondos · ${fmt(totalAcumulado)} metas${rendimientoAnual > 0 ? ` · +${fmt(rendimientoAnual)}/año` : ''}`
+              : totalMeta > 0
+                ? `${ahorrosPct}% de meta ${fmt(totalMeta)}`
+                : `${ahorros.length} cuentas activas`
+          }
           icon={<PiggyBank size={20} />}
           color="#f59e0b"
           accent="#f59e0b"
-          trend={totalAcumulado > 0 ? 'up' : 'neutral'}
+          trend={totalAhorradoGeneral > 0 ? 'up' : 'neutral'}
         />
       </div>
 
@@ -344,66 +369,101 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Ahorros Progress */}
+        {/* Ahorros + Fondos Panel */}
         <div className="card flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
               <PiggyBank size={14} className="text-yellow-400" />
-              Metas de Ahorro
+              Ahorros
             </h2>
             <a href="/ahorros" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
               Ver todo <ArrowRight size={11} />
             </a>
           </div>
 
-          {ahorros.length === 0 ? (
+          {fondos.length === 0 && ahorros.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-center text-slate-500 text-sm">
               <div>
                 <PiggyBank size={32} className="mx-auto mb-2 text-slate-700" />
-                <p>Sin metas de ahorro</p>
+                <p>Sin ahorros registrados</p>
                 <a href="/ahorros" className="text-indigo-400 text-xs mt-2 block hover:text-indigo-300">
-                  Crear primera meta →
+                  Crear primer fondo →
                 </a>
               </div>
             </div>
           ) : (
-            <div className="space-y-3.5 flex-1">
-              {ahorros.slice(0, 4).map(a => {
+            <div className="space-y-3 flex-1">
+
+              {/* Fondos */}
+              {fondos.slice(0, 3).map(f => {
+                const gananciaAnual = f.saldo * (f.rendimiento / 100)
+                return (
+                  <div key={f.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: '#0f172a' }}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base flex-shrink-0">{f.icono}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-300 truncate">{f.nombre}</p>
+                        {f.rendimiento > 0 && (
+                          <p className="text-[10px] text-green-400">+{fmt(gananciaAnual)}/año</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-white flex-shrink-0" style={{ color: f.color }}>{fmt(f.saldo)}</span>
+                  </div>
+                )
+              })}
+
+              {/* Separator if both exist */}
+              {fondos.length > 0 && ahorros.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px" style={{ background: '#1e3050' }} />
+                  <span className="text-[10px] text-slate-600">METAS</span>
+                  <div className="flex-1 h-px" style={{ background: '#1e3050' }} />
+                </div>
+              )}
+
+              {/* Metas de ahorro */}
+              {ahorros.slice(0, 3).map(a => {
                 const pct = a.meta > 0 ? Math.min(100, Math.round((a.acumulado / a.meta) * 100)) : 0
                 return (
                   <div key={a.id}>
-                    <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-slate-300 flex items-center gap-1.5">
                         <span>{a.icono}</span>
-                        <span className="truncate max-w-[110px]">{a.nombre}</span>
+                        <span className="truncate max-w-[100px]">{a.nombre}</span>
                       </span>
                       <span className="text-xs font-semibold" style={{ color: a.color || '#6366f1' }}>{pct}%</span>
                     </div>
                     <ProgressBar value={a.acumulado} max={a.meta} color={a.color || '#6366f1'} />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-[10px] text-slate-400">{fmt(a.acumulado)}</span>
-                      <span className="text-[10px] text-slate-600">de {fmt(a.meta)}</span>
-                    </div>
                   </div>
                 )
               })}
-              {ahorros.length > 4 && (
-                <p className="text-xs text-slate-500 text-center">
-                  +{ahorros.length - 4} metas más
-                </p>
-              )}
-              {totalMeta > 0 && (
-                <div className="pt-3 border-t" style={{ borderColor: '#1e3050' }}>
-                  <div className="flex justify-between text-xs mb-0.5">
-                    <span className="text-slate-400">Total acumulado</span>
-                    <span className="text-white font-semibold">{fmt(totalAcumulado)}</span>
-                  </div>
+
+              {/* Total summary */}
+              <div className="pt-2 mt-1 border-t space-y-1" style={{ borderColor: '#1e3050' }}>
+                {totalFondos > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Meta total</span>
-                    <span className="text-slate-400">{fmt(totalMeta)} ({ahorrosPct}%)</span>
+                    <span className="text-slate-500">Fondos</span>
+                    <span className="text-white font-medium">{fmt(totalFondos)}</span>
                   </div>
+                )}
+                {totalAcumulado > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Metas</span>
+                    <span className="text-white font-medium">{fmt(totalAcumulado)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-400">Total</span>
+                  <span className="text-yellow-400">{fmt(totalAhorradoGeneral)}</span>
                 </div>
-              )}
+                {rendimientoAnual > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-600">Rendimiento est./año</span>
+                    <span className="text-green-400">+{fmt(rendimientoAnual)}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

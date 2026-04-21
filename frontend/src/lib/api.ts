@@ -1,6 +1,13 @@
 import { supabase } from './supabase'
 import { PANEL_PRICES, SELL_PRICES } from './constants'
 
+// ── Clerk type augmentation ───────────────────────────────────────────────────
+declare global {
+  interface Window {
+    Clerk?: { session?: { getToken: () => Promise<string> } }
+  }
+}
+
 // ── Clerk token helper ────────────────────────────────────────────────────────
 async function getToken(): Promise<string> {
   return (await window.Clerk?.session?.getToken()) ?? ''
@@ -336,20 +343,25 @@ export const deleteIPTVPackage = async (id: number) => {
 }
 
 export const getIPTVClients = async () => {
-  const { data, error } = await supabase
-    .from('iptv_clients')
-    .select('*, iptv_subscriptions(status, end_date)')
-    .order('created_at', { ascending: false })
-  if (error) throw error
+  // Dos queries separadas para evitar ambigüedad FK (client_id + segundo_cliente_id → iptv_clients)
+  const [{ data: clientsRaw, error: cErr }, { data: subsRaw, error: sErr }] = await Promise.all([
+    supabase.from('iptv_clients').select('*').order('created_at', { ascending: false }),
+    supabase.from('iptv_subscriptions').select('id, client_id, status, end_date'),
+  ])
+  if (cErr) throw cErr
+  if (sErr) throw sErr
 
-  const clients = (data ?? []).map((c: Record<string, unknown>) => {
-    const subs = (c.iptv_subscriptions as Array<{ status: string; end_date: string }>) ?? []
-    const activeSubs  = subs.filter(s => s.status === 'activo')
-    const active_subs = activeSubs.length
-    const nextExpiry  = activeSubs.length
-      ? activeSubs.map(s => s.end_date).sort().pop() ?? null
-      : null
-    return { ...c, iptv_subscriptions: undefined, active_subs, next_expiry: nextExpiry }
+  const subsMap: Record<number, Array<{ status: string; end_date: string }>> = {}
+  for (const s of subsRaw ?? []) {
+    if (!subsMap[s.client_id]) subsMap[s.client_id] = []
+    subsMap[s.client_id].push({ status: s.status, end_date: s.end_date })
+  }
+
+  const clients = (clientsRaw ?? []).map((c: Record<string, unknown>) => {
+    const subs       = subsMap[c.id as number] ?? []
+    const activeSubs = subs.filter(s => s.status === 'activo')
+    const nextExpiry = activeSubs.length ? activeSubs.map(s => s.end_date).sort().pop() ?? null : null
+    return { ...c, active_subs: activeSubs.length, next_expiry: nextExpiry }
   })
 
   return { data: clients }
@@ -383,24 +395,35 @@ export const deleteIPTVClient = async (id: number) => {
 }
 
 export const getIPTVSubscriptions = async (params?: { status?: string; client_id?: number }) => {
-  let query = supabase
+  // Dos queries separadas para evitar PGRST201 (iptv_subscriptions tiene 2 FKs → iptv_clients)
+  let subsQuery = supabase
     .from('iptv_subscriptions')
-    .select('*, iptv_clients(phone, country)')
+    .select('*')
     .order('created_at', { ascending: false })
 
-  if (params?.status && params.status !== 'todos') query = query.eq('status', params.status)
-  if (params?.client_id)                           query = query.eq('client_id', params.client_id)
+  if (params?.status && params.status !== 'todos') subsQuery = subsQuery.eq('status', params.status)
+  if (params?.client_id)                           subsQuery = subsQuery.eq('client_id', params.client_id)
 
-  const { data, error } = await query
-  if (error) throw error
+  const [{ data: subsRaw, error: sErr }, { data: clientsRaw, error: cErr }] = await Promise.all([
+    subsQuery,
+    supabase.from('iptv_clients').select('id, name, phone, country'),
+  ])
+  if (sErr) throw sErr
+  if (cErr) throw cErr
 
-  const flattened = (data ?? []).map((s: Record<string, unknown>) => {
-    const cl = s.iptv_clients as Record<string, unknown> | null
+  const clientMap: Record<number, { name: string; phone: string; country: string }> = {}
+  for (const c of clientsRaw ?? []) clientMap[c.id] = c
+
+  const flattened = (subsRaw ?? []).map((s: Record<string, unknown>) => {
+    const cl  = clientMap[s.client_id as number]
+    const cl2 = s.segundo_cliente_id ? clientMap[s.segundo_cliente_id as number] : null
     return {
       ...s,
-      iptv_clients:  undefined,
-      client_phone:  cl?.phone ?? '',
-      client_country: cl?.country ?? '',
+      client_name:            cl?.name    ?? '',
+      client_phone:           cl?.phone   ?? '',
+      client_country:         cl?.country ?? '',
+      segundo_cliente_nombre: cl2?.name   ?? '',
+      segundo_cliente_phone:  cl2?.phone  ?? '',
     }
   })
 
@@ -410,29 +433,37 @@ export const getIPTVSubscriptions = async (params?: { status?: string; client_id
 export const getExpiringSubscriptions = async (days = 7) => {
   const future = new Date()
   future.setDate(future.getDate() + days)
-  const today  = new Date().toISOString().split('T')[0]
+  const today     = new Date().toISOString().split('T')[0]
   const futureStr = future.toISOString().split('T')[0]
 
-  const { data, error } = await supabase
-    .from('iptv_subscriptions')
-    .select('*, iptv_clients(phone, country)')
-    .eq('status', 'activo')
-    .lte('end_date', futureStr)
-    .gte('end_date', today)
-    .order('end_date', { ascending: true })
-  if (error) throw error
+  // Sin join FK para evitar PGRST201 — join manual en JS
+  const [{ data: subsRaw, error: sErr }, { data: clientsRaw, error: cErr }] = await Promise.all([
+    supabase
+      .from('iptv_subscriptions')
+      .select('*')
+      .eq('status', 'activo')
+      .lte('end_date', futureStr)
+      .gte('end_date', today)
+      .order('end_date', { ascending: true }),
+    supabase.from('iptv_clients').select('id, name, phone, country'),
+  ])
+  if (sErr) throw sErr
+  if (cErr) throw cErr
 
-  const flattened = (data ?? []).map((s: Record<string, unknown>) => {
-    const cl = s.iptv_clients as Record<string, unknown> | null
-    return {
-      ...s,
-      iptv_clients:   undefined,
-      client_phone:   cl?.phone ?? '',
-      client_country: cl?.country ?? '',
-    }
-  })
+  const clientMap: Record<number, { name: string; phone: string; country: string }> = {}
+  for (const c of clientsRaw ?? []) clientMap[c.id] = c
 
-  return { data: flattened }
+  return {
+    data: (subsRaw ?? []).map((s: Record<string, unknown>) => {
+      const cl = clientMap[s.client_id as number]
+      return {
+        ...s,
+        client_name:    cl?.name    ?? '',
+        client_phone:   cl?.phone   ?? '',
+        client_country: cl?.country ?? '',
+      }
+    })
+  }
 }
 
 export const createIPTVSubscription = async (data: Record<string, unknown>) => {
@@ -447,6 +478,22 @@ export const createIPTVSubscription = async (data: Record<string, unknown>) => {
     p_notes:          data.notes ?? '',
   })
   if (error) throw error
+
+  // Guardar campos extra (cuenta_codigo, segundo cliente, costo token)
+  const extra: Record<string, unknown> = {}
+  if (data.cuenta_codigo)      extra.cuenta_codigo      = data.cuenta_codigo
+  if (data.segundo_cliente_id) extra.segundo_cliente_id = data.segundo_cliente_id
+  if (data.segundo_precio !== undefined) extra.segundo_precio = data.segundo_precio
+  if (data.segundo_es_propio !== undefined) extra.segundo_es_propio = data.segundo_es_propio
+  if (data.costo_token) {
+    extra.cost_per_credit = parseFloat(data.costo_token as string)
+    extra.credits_used    = 1
+  }
+
+  if (Object.keys(extra).length > 0 && result?.id) {
+    await supabase.from('iptv_subscriptions').update(extra).eq('id', result.id)
+  }
+
   return { data: result }
 }
 
@@ -454,6 +501,24 @@ export const updateSubscriptionStatus = async (id: number, status: string) => {
   const { error } = await supabase
     .from('iptv_subscriptions')
     .update({ status })
+    .eq('id', id)
+  if (error) throw error
+  return { data: { success: true } }
+}
+
+export const updateIPTVSubscription = async (id: number, data: {
+  price_charged?: number
+  price_currency?: string
+  cost_per_credit?: number   // costo total del token/cuenta (ej: 90 para 1 doble)
+  credits_used?: number
+  start_date?: string
+  end_date?: string
+  status?: string
+  notes?: string
+}) => {
+  const { error } = await supabase
+    .from('iptv_subscriptions')
+    .update({ ...data, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
   return { data: { success: true } }
@@ -762,26 +827,44 @@ export const exportExcel = async (from?: string, to?: string) => {
 }
 
 // ── Tipo de cambio ─────────────────────────────────────────────────────────────
+// En dev local no hay servidor Vercel, así que consultamos directo a Supabase
+// y como fallback a open.er-api.com desde el navegador.
 export const getExchangeRate = async () => {
-  const res = await fetch('/api/exchange-rate')
-  if (!res.ok) {
-    // Fallback: fetch from Supabase directly
-    const { data } = await supabase.from('exchange_rates').select('*').eq('id', 1).single()
-    return { data: data ?? { usd_to_mxn: 17.5, updated_at: new Date().toISOString() } }
-  }
-  const data = await res.json()
-  return { data }
+  // 1. Intentar Supabase (valor cacheado del último refresh)
+  const { data, error } = await supabase.from('exchange_rates').select('*').eq('id', 1).single()
+  if (!error && data) return { data }
+
+  // 2. Fallback: llamar a open.er-api.com directamente desde el navegador
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(5000) })
+    if (res.ok) {
+      const json = await res.json()
+      return { data: { usd_to_mxn: json.rates.MXN as number, updated_at: new Date().toISOString() } }
+    }
+  } catch { /* sin red — usar valor por defecto */ }
+
+  // 3. Último recurso: valor fijo
+  return { data: { usd_to_mxn: 17.5, updated_at: new Date().toISOString() } }
 }
 
 export const refreshExchangeRate = async () => {
-  const token = await getToken()
-  const res = await fetch('/api/exchange-rate', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error('No se pudo actualizar el tipo de cambio')
-  const data = await res.json()
-  return { data }
+  // En dev local: actualizar tasa directo desde open.er-api.com y guardar en Supabase
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(5000) })
+    if (!res.ok) throw new Error('External API error')
+    const json = await res.json()
+    const mxnRate: number = json.rates.MXN
+    const updated_at = new Date().toISOString()
+
+    await supabase
+      .from('exchange_rates')
+      .update({ usd_to_mxn: mxnRate, updated_at })
+      .eq('id', 1)
+
+    return { data: { usd_to_mxn: mxnRate, updated_at } }
+  } catch (err: any) {
+    throw new Error('No se pudo actualizar el tipo de cambio: ' + (err?.message ?? 'error desconocido'))
+  }
 }
 
 // ── WhatsApp (disabled in serverless) ─────────────────────────────────────────

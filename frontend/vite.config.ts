@@ -20,6 +20,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    // No proxy needed — vercel dev serves frontend + /api functions together on port 3000
+    // Sin proxy — en dev local no hay servidor Vercel.
+    // El tipo de cambio se obtiene directo de Supabase/open.er-api.com.
   }
 })
