@@ -4,7 +4,10 @@ import { PANEL_PRICES, SELL_PRICES } from './constants'
 // ── Clerk type augmentation ───────────────────────────────────────────────────
 declare global {
   interface Window {
-    Clerk?: { session?: { getToken: () => Promise<string> } }
+    Clerk?: {
+      session?: { getToken: () => Promise<string> }
+      user?:    { id: string }
+    }
   }
 }
 
