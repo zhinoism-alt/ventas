@@ -7,7 +7,9 @@ Una experiencia interactiva estilo **Mapa del Merodeador** para revelar la cita 
 | Archivo | Qué es |
 |---|---|
 | `index.html` | La sorpresa. Un solo archivo, se abre con doble clic en cualquier navegador o teléfono. No necesita instalar nada. |
-| `MENU-MAGICO.md` | Cómo recrear el menú temático de Cinépolis en casa y dónde conseguir cada cosa en Ciudad Juárez. |
+| `MENU-MAGICO.pdf` | La guía del menú en PDF, con portada y todo — lista para imprimir o mandar. |
+| `MENU-MAGICO.md` | La misma guía en texto plano. |
+| `MENU-MAGICO.print.html` | El diseño del PDF. Edítalo y regenera el PDF con el comando de abajo. |
 
 ## Cómo funciona
 
@@ -53,4 +55,12 @@ out=("<title>El Mapa del Merodeador</title>\n"
      + body.strip() + "\n")
 io.open('sorpresa-itzel/artifact.html','w',encoding='utf-8').write(out)
 EOF
+```
+
+## Cómo regenero el PDF
+
+```
+chromium --headless --no-pdf-header-footer \
+  --print-to-pdf=sorpresa-itzel/MENU-MAGICO.pdf \
+  sorpresa-itzel/MENU-MAGICO.print.html
 ```

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Menú Mágico</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Caveat:wght@600&display=swap">
+<style>
+:root{
+  --pergamino:#F6EDD8;
+  --pergamino-hondo:#EBDCBC;
+  --tinta:#3A2A16;
+  --tinta-suave:#7A6647;
+  --oro:#8A6A22;
+  --grifo:#7A1113;
+  --linea:rgba(58,42,22,.22);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+@page{ size:A4; margin:10mm; }
+html{-webkit-print-color-adjust:exact; print-color-adjust:exact; background:var(--pergamino)}
+.fondo{
+  position:fixed; inset:0; z-index:-1;
+  border:.8pt solid rgba(138,106,34,.5);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(138,106,34,.07) 0 18%, transparent 46%),
+    radial-gradient(circle at 90% 88%, rgba(138,106,34,.06) 0 20%, transparent 50%),
+    var(--pergamino);
+}
+body{
+  background:transparent;
+  color:var(--tinta);
+  font-family:"EB Garamond",Charter,"Bitstream Charter","Liberation Serif",Georgia,serif;
+  font-size:11.2pt; line-height:1.55; padding:8mm 7mm;
+}
+h1,h2,h3{font-family:Cinzel,"Liberation Serif",Georgia,serif; text-wrap:balance}
+
+/* ---------- PORTADA ---------- */
+.portada{
+  height:261mm; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center;
+  padding:14mm 14mm;
+  break-after:page;
+}
+.portada .marca{
+  font-family:Cinzel,serif; font-size:9pt; letter-spacing:.42em;
+  text-transform:uppercase; color:var(--oro);
+}
+.portada h1{
+  font-size:31pt; font-weight:800; line-height:1.15; margin:9mm 0 4mm;
+  color:var(--tinta);
+}
+.portada .sub{
+  font-family:Caveat,cursive; font-size:20pt; color:var(--grifo);
+}
+.escudo{ margin:10mm 0 8mm; }
+.escudo svg{width:34mm;height:34mm}
+.portada .pie{
+  font-style:italic; color:var(--tinta-suave); font-size:11pt;
+  max-width:110mm; line-height:1.7;
+}
+.regla{
+  width:52mm; height:1pt; margin:7mm auto;
+  background:linear-gradient(90deg,transparent,var(--oro),transparent);
+}
+
+/* ---------- SECCIONES ---------- */
+section{break-inside:auto; margin-bottom:9mm}
+h2{
+  font-size:15pt; color:var(--grifo); letter-spacing:.02em;
+  margin:0 0 1.5mm; break-after:avoid; break-inside:avoid;
+}
+h2 .num{
+  font-size:10pt; color:var(--oro); letter-spacing:.2em; display:block;
+  font-weight:600; margin-bottom:1.5mm;
+}
+h3{
+  font-size:11pt; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--oro); margin:5mm 0 2mm; break-after:avoid;
+}
+.lema{
+  font-family:Caveat,cursive; font-size:14pt; color:var(--tinta-suave);
+  margin-bottom:3mm;
+}
+p{margin-bottom:2.6mm}
+ol,ul{margin:0 0 3mm 5.5mm}
+li{margin-bottom:1.4mm}
+b,strong{color:var(--tinta)}
+.intro{
+  border-left:2.5pt solid var(--oro); padding:1mm 0 1mm 5mm;
+  margin-bottom:8mm; color:var(--tinta-suave); font-style:italic;
+}
+.intro b{color:var(--tinta);font-style:normal}
+
+/* ---------- TABLAS ---------- */
+table{width:100%; border-collapse:collapse; margin:3mm 0 4mm; font-size:10.2pt}
+th{
+  font-family:Cinzel,serif; font-size:8.5pt; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--oro); text-align:left;
+  padding:2mm 3mm; border-bottom:1pt solid var(--oro);
+}
+td{padding:2.2mm 3mm; border-bottom:.5pt solid var(--linea); vertical-align:top}
+tbody tr:nth-child(even){background:rgba(138,106,34,.055)}
+td:first-child{font-weight:600; width:32%}
+
+/* ---------- CAJAS ---------- */
+.truco{
+  background:rgba(138,106,34,.09); border:.5pt solid rgba(138,106,34,.4);
+  border-radius:2pt; padding:3.5mm 4.5mm; margin:3.5mm 0;
+  font-family:Caveat,cursive; font-size:13.5pt; line-height:1.45; color:#4B3319;
+  break-inside:avoid;
+}
+.truco b{font-family:"EB Garamond",serif; font-size:10.5pt; color:var(--grifo)}
+.receta{
+  border:.5pt solid var(--linea); border-radius:2pt; padding:4mm 5mm;
+  margin:3mm 0; background:rgba(255,255,255,.34); break-inside:avoid;
+}
+.receta h4{
+  font-family:Cinzel,serif; font-size:9pt; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--oro); margin-bottom:2mm;
+}
+.receta ul{margin-left:5mm}
+
+/* ---------- LISTA DE COMPRAS ---------- */
+.compras{display:grid; grid-template-columns:1fr 1fr; gap:5mm 9mm; margin-top:3mm}
+.grupo{break-inside:avoid}
+.grupo h3{margin-top:0}
+.grupo li{list-style:none; padding-left:6.5mm; position:relative; margin-bottom:1.8mm}
+.grupo li::before{
+  content:""; position:absolute; left:0; top:1.1mm;
+  width:3.2mm; height:3.2mm; border:.6pt solid var(--tinta-suave); border-radius:.6pt;
+}
+.grupo ul{margin:0}
+
+/* ---------- CIERRE ---------- */
+.cierre{
+  break-before:page; height:255mm;
+  display:flex; flex-direction:column; justify-content:center;
+  text-align:center;
+}
+.cierre .marca-final{margin-bottom:9mm}
+.cierre .marca-final svg{width:26mm;height:26mm}
+.cierre .frase{font-family:Caveat,cursive; font-size:22pt; color:var(--grifo)}
+.orden{counter-reset:paso; margin:3mm 0 0; padding:0}
+.orden li{
+  list-style:none; counter-increment:paso; position:relative;
+  padding-left:9mm; margin-bottom:2.4mm; text-align:left;
+}
+.orden li::before{
+  content:counter(paso); position:absolute; left:0; top:-.3mm;
+  font-family:Cinzel,serif; font-weight:800; font-size:11pt; color:var(--oro);
+}
+</style>
+</head>
+<body>
+<div class="fondo"></div>
+
+<div class="portada">
+  <div class="marca">Proveedores de Auxilios Mágicos</div>
+  <div class="escudo">
+    <svg viewBox="0 0 100 100" fill="none" stroke="#8A6A22" stroke-width="2.2">
+      <path d="M50 6 L88 20 V52 C88 74 71 88 50 95 C29 88 12 74 12 52 V20 Z"/>
+      <path d="M50 14 L80 25 V52 C80 70 66 82 50 88 C34 82 20 70 20 52 V25 Z" stroke-width="1"/>
+      <path d="M36 62 C40 44 46 34 56 30" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="58" cy="29" r="3.4" fill="#8A6A22" stroke="none"/>
+      <path d="M38 66 l-4 4 M42 68 l-3 5" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <h1>Menú Mágico</h1>
+  <div class="sub">Harry Potter y la Piedra Filosofal</div>
+  <div class="regla"></div>
+  <p class="pie">
+    Guía para recrear en casa el menú temático de Cinépolis<br>
+    — con dónde conseguir cada cosa en Ciudad Juárez —
+  </p>
+  <div class="regla"></div>
+  <div class="marca" style="letter-spacing:.3em">Edición Casera · Para Itzel</div>
+</div>
+
+<div class="intro">
+  El menú oficial es exclusivo de salas <b>VIP</b>, así que aquí está la versión casera —
+  que además sale más barata y se ve mejor en fotos. <b>El menú de Cinépolis trae:</b>
+  palomitas con grageas de sabores, <i>Emparedado de la Madriguera</i> (sándwich de brisket
+  con queso), <i>Bebida del Hechicero</i> (vainilla burbujeante con crema batida),
+  <i>Vera Verto</i> (menta, limón y Sprite) y una <i>Rana de Chocolate</i>. Eso es lo que
+  vamos a imitar.
+</div>
+
+<section>
+  <h2><span class="num">I</span>La Rana de Chocolate</h2>
+  <p class="lema">La estrella. Es la que hay que conseguir sí o sí.</p>
+
+  <h3>Opción A — Comprarla ya hecha</h3>
+  <table>
+    <thead><tr><th>Dónde</th><th>Qué buscar</th><th>Nota</th></tr></thead>
+    <tbody>
+      <tr><td>Mercado Libre / Amazon MX</td><td>“Rana de chocolate Harry Potter”, o el molde oficial Cinereplicas (trae 12 cartas de mago y 6 cajas)</td><td>Pide con 2–3 días de anticipación</td></tr>
+      <tr><td>Dulcerías en Cd. Juárez</td><td>La Gota de Miel (es juarense), Dulcelandia, Candy Fruit, La Dulcería Candies N More, El Loco</td><td>Pregunta por <i>dulce importado</i>: es donde suelen tenerlo</td></tr>
+      <tr><td>Ixcacao — chocolate artesanal, CJ</td><td>Chocolate hecho a la medida</td><td>Les puedes pedir que lo moldeen</td></tr>
+      <tr><td>Cruzando a El Paso (~30 min)</td><td>Target, Walmart, Barnes &amp; Noble, World Market, tiendas tipo Rocket Fizz</td><td>Ahí sí es producto de línea: <i>Chocolate Frog</i> y <i>Bertie Bott’s</i> de Jelly Belly</td></tr>
+    </tbody>
+  </table>
+  <div class="truco"><b>Ojo:</b> llama o manda WhatsApp antes de ir. El dulce importado se agota rápido justo ahora por el reestreno.</div>
+
+  <h3>Opción B — Hacerla tú</h3>
+  <p>Mejor historia, y ella lo va a notar.</p>
+  <ol>
+    <li>Compra un <b>molde de silicón de rana</b> (repostería local o Mercado Libre, ~$69–$250). Si no encuentras de rana, cualquier molde grande sirve: la carta es lo que la vende.</li>
+    <li>Derrite <b>200 g de chocolate de cobertura</b> semiamargo a baño María.</li>
+    <li>Mézclalo con <b>2 cucharadas de arroz inflado</b> — la rana original es <i>crispy</i>.</li>
+    <li>Vacía al molde, refrigera <b>20 minutos</b> y desmolda.</li>
+    <li><b>La carta de mago:</b> imprime una de Dumbledore tamaño tarjeta de presentación (búscala como <i>“Chocolate Frog Card printable”</i>), pégala en cartón y métela en la caja.</li>
+  </ol>
+  <div class="truco"><b>El detalle que se queda:</b> en el reverso de la carta, en vez de la biografía de Dumbledore, escribe una carta tuya a mano.</div>
+</section>
+
+<section>
+  <h2><span class="num">II</span>Poción Multijugos <span style="font-family:'EB Garamond';font-style:italic;color:var(--tinta-suave);font-size:12pt">· matcha</span></h2>
+  <p class="lema">Turbia, verde y burbujeante. Justo como la describe el libro.</p>
+  <div class="receta">
+    <h4>Ingredientes · 2 vasos</h4>
+    <ul>
+      <li>2 cdtas de <b>matcha en polvo</b> — Sam’s, Costco, tiendas naturistas o cualquier café local</li>
+      <li>300 ml de leche entera o de avena <i>(la de avena queda más “pantanosa”)</i></li>
+      <li>2 cdas de miel o jarabe de vainilla · hielo</li>
+      <li><b>Agua mineral fría</b> (o un chorrito de Sprite) para el final</li>
+    </ul>
+    <h4 style="margin-top:3mm">Preparación</h4>
+    <ol>
+      <li>Disuelve el matcha en 40 ml de agua caliente (no hirviendo) y bate hasta que espume.</li>
+      <li>Viértelo sobre hielo y agrega la leche <b>sin revolver</b>: se ve mejor con las capas separadas.</li>
+      <li>Al servirle, agrega el agua mineral: <b>burbujea frente a ella</b>. Ese es el show.</li>
+      <li>Sirve en frasco de vidrio con tapa y etiqueta escrita a mano.</li>
+    </ol>
+  </div>
+  <div class="truco">Etiqueta sugerida: <i>“Poción Multijugos — Efecto: 1 hora. No usar con pelo de gato.”</i></div>
+</section>
+
+<section>
+  <h2><span class="num">III</span>El Café — Elixir de Felix Felicis</h2>
+  <p class="lema">Felix Felicis es la suerte líquida, y en la película es dorada.</p>
+  <div class="receta">
+    <h4>Ingredientes</h4>
+    <ul>
+      <li>1 shot de espresso, o café bien cargado</li>
+      <li>Leche vaporizada · crema batida</li>
+      <li>2 cdas de <b>cajeta o caramelo</b> — lo que le da el tono dorado</li>
+      <li>Opcional: <b>brillo comestible dorado</b> (se consigue en repostería)</li>
+    </ul>
+    <h4 style="margin-top:3mm">Preparación</h4>
+    <p style="margin:0">Caramelo al fondo del vaso, luego el espresso, la leche, la crema batida y el brillo dorado hasta arriba. En vaso transparente, para que se vean las capas.</p>
+  </div>
+  <h3>Otros nombres, si prefieres cambiarlo</h3>
+  <table>
+    <thead><tr><th>Nombre</th><th>Qué es</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td>Amortentia</td><td>Latte de vainilla y canela</td><td>La poción de amor huele a lo que más amas</td></tr>
+      <tr><td>Cerveza de Mantequilla</td><td>Latte de butterscotch con espuma</td><td>El clásico de Hogsmeade</td></tr>
+      <tr><td>Bebida del Hechicero</td><td>Frappé de vainilla con crema batida</td><td>Es literalmente la del menú de Cinépolis</td></tr>
+      <tr><td>Vera Verto</td><td>Limonada con menta y Sprite</td><td>La otra bebida oficial, sin café</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="num">IV</span>El Plato Fuerte — Emparedado de la Madriguera</h2>
+  <p class="lema">Brisket con queso, como la comida casera de los Weasley.</p>
+  <p>Es el del menú oficial. Y en Chihuahua tenemos ventaja: aquí el brisket y el queso son de otro nivel.</p>
+  <div class="receta">
+    <h4>Ingredientes</h4>
+    <ul>
+      <li><b>Brisket</b> de barbacoa local, o carne deshebrada / arrachera picada</li>
+      <li><b>Queso menonita o asadero</b> — se derrite perfecto</li>
+      <li>Baguette, bolillo o telera · mantequilla</li>
+      <li>Cebolla caramelizada y un toque de salsa BBQ</li>
+    </ul>
+    <h4 style="margin-top:3mm">Preparación</h4>
+    <ol>
+      <li>Unta mantequilla por fuera del pan.</li>
+      <li>Rellena con el brisket caliente, la cebolla y el queso.</li>
+      <li><b>Prénsalo en un comal o sandwichera</b> hasta que el queso escurra.</li>
+      <li>Córtalo en diagonal y envuélvelo en papel encerado con un sello de lacre (o cera de vela roja), como si viniera por lechuza.</li>
+    </ol>
+  </div>
+  <h3>Alternativas</h3>
+  <ul>
+    <li><b>Hamburguesa de Hagrid</b> — doble carne, exageradamente grande. “Es un poco tosca, pero hecha con cariño.”</li>
+    <li><b>Pastel de carne de la Sra. Weasley</b> — si quieres algo más elaborado.</li>
+  </ul>
+</section>
+
+<section style="break-inside:avoid">
+  <h2><span class="num">V</span>Palomitas de Todos los Sabores</h2>
+  <ul>
+    <li>Palomitas de mantequilla, las de siempre.</li>
+    <li>Encima, <b>grageas de colores</b>: Jelly Belly <i>BeanBoozled</i> si las consigues en El Paso, o gomitas y chochitos surtidos de cualquier dulcería.</li>
+    <li>Sírvelas en <b>bolsa de papel estraza</b> con el escudo de Hogwarts impreso y pegado.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">VI</span>Lista de compras</h2>
+  <div class="compras">
+    <div class="grupo">
+      <h3>Dulcería y súper (CJ)</h3>
+      <ul>
+        <li>Chocolate de cobertura semiamargo (200 g)</li>
+        <li>Arroz inflado</li>
+        <li>Grageas o gomitas de colores</li>
+        <li>Palomitas para microondas</li>
+        <li>Matcha en polvo</li>
+        <li>Leche y agua mineral</li>
+        <li>Cajeta o caramelo</li>
+        <li>Crema batida</li>
+        <li>Brillo comestible dorado</li>
+      </ul>
+    </div>
+    <div class="grupo">
+      <h3>Carnicería y panadería</h3>
+      <ul>
+        <li>Brisket o carne deshebrada</li>
+        <li>Queso menonita o asadero</li>
+        <li>Baguette o teleras</li>
+      </ul>
+      <h3>Encargar con anticipación</h3>
+      <ul>
+        <li>Molde de rana de chocolate</li>
+        <li>Cartas de mago coleccionables <i>(opcional)</i></li>
+      </ul>
+    </div>
+    <div class="grupo">
+      <h3>Los detalles</h3>
+      <ul>
+        <li>Frascos de vidrio con tapa</li>
+        <li>Etiquetas escritas a mano</li>
+        <li>Papel estraza y papel encerado</li>
+        <li>Velas LED colgadas con hilo transparente — las velas flotantes del Gran Comedor</li>
+      </ul>
+    </div>
+    <div class="grupo">
+      <h3>Plan sugerido</h3>
+      <table style="margin-top:2mm">
+        <tbody>
+          <tr><td>2–3 días antes</td><td>Pedir molde y cartas en línea</td></tr>
+          <tr><td>El día anterior</td><td>Comprar dulces, matcha, carne y queso. Imprimir cartas y etiquetas</td></tr>
+          <tr><td>Esa mañana</td><td>Hacer las ranas (necesitan refrigerarse)</td></tr>
+          <tr><td>1 hora antes</td><td>Armar el sándwich y preparar las bebidas</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="cierre">
+  <div class="marca-final">
+    <svg viewBox="0 0 100 100" fill="none" stroke="#8A6A22" stroke-width="2.2">
+      <path d="M50 6 L88 20 V52 C88 74 71 88 50 95 C29 88 12 74 12 52 V20 Z"/>
+      <path d="M36 62 C40 44 46 34 56 30" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="58" cy="29" r="3.4" fill="#8A6A22" stroke="none"/>
+      <path d="M38 66 l-4 4 M42 68 l-3 5" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <h2 style="color:var(--tinta)">El orden de la sorpresa</h2>
+  <ol class="orden" style="max-width:135mm;margin-left:auto;margin-right:auto">
+    <li>Ella abre el Mapa del Merodeador y tiene que decir el juramento.</li>
+    <li>Contesta las pruebas: van apareciendo las huellas en el pergamino.</li>
+    <li>El Mapa revela el boleto — fecha, hora, cine, sala y asientos.</li>
+    <li>En ese momento entras tú con la charola: la poción, el café dorado, el emparedado sellado y la rana de chocolate con tu carta dentro.</li>
+  </ol>
+  <div class="regla"></div>
+  <div class="frase">Travesura realizada.</div>
+</section>
+
+</body>
+</html>
