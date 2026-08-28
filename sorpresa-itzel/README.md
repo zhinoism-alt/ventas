@@ -30,3 +30,27 @@ Abre `index.html` con cualquier editor de texto y busca el bloque `const CONFIG`
 del final). Ahí están el nombre, la fecha, la hora, el cine, la sala, los asientos y la
 dedicatoria. Justo abajo está `PREGUNTAS`: puedes agregar, quitar o cambiar preguntas —
 `r` indica cuál es la respuesta correcta (`0` = A, `1` = B, `2` = C).
+
+## Versión en línea (link para WhatsApp)
+
+`artifact.html` es la misma experiencia publicada como página web, para poder mandarle
+un link en vez de un archivo:
+
+**https://claude.ai/code/artifact/b57dd087-c815-45d0-ad55-862669403076**
+
+El link empieza **privado**: hay que compartirlo desde el menú de la página para que ella
+pueda abrirlo. Si editas `index.html`, corre este comando para regenerar la versión web:
+
+```
+python3 - <<'EOF'
+import io,re
+s=io.open('sorpresa-itzel/index.html',encoding='utf-8').read()
+head=re.search(r'<head>(.*?)</head>', s, re.S).group(1)
+body=re.search(r'<body>(.*?)</body>', s, re.S).group(1)
+out=("<title>El Mapa del Merodeador</title>\n"
+     + "\n".join(re.findall(r'<link[^>]*>', head)) + "\n"
+     + re.search(r'<style>.*?</style>', head, re.S).group(0) + "\n"
+     + body.strip() + "\n")
+io.open('sorpresa-itzel/artifact.html','w',encoding='utf-8').write(out)
+EOF
+```

@@ -1,0 +1,412 @@
+<title>El Mapa del Merodeador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@600;800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pergamino:#e9d5aa;
+    --pergamino-osc:#d8bd8a;
+    --tinta:#3a2a16;
+    --tinta-suave:#6b5334;
+    --oro:#c9a227;
+    --grifo:#7f0909;
+    --sombra:rgba(58,42,22,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100vh;
+    background:#120d07;
+    background-image:radial-gradient(ellipse at 50% 0%,#2a1e10 0%,#120d07 60%,#080503 100%);
+    font-family:"IM Fell English",Georgia,"Times New Roman",serif;
+    color:var(--tinta);
+    display:flex;align-items:center;justify-content:center;
+    padding:16px;
+    overflow-x:hidden;
+  }
+  /* ---------- PERGAMINO ---------- */
+  .pergamino{
+    width:100%;max-width:560px;
+    background:
+      radial-gradient(circle at 18% 12%, rgba(140,100,50,.18) 0 12%, transparent 40%),
+      radial-gradient(circle at 82% 78%, rgba(140,100,50,.16) 0 14%, transparent 42%),
+      radial-gradient(circle at 60% 40%, rgba(120,85,40,.10) 0 30%, transparent 60%),
+      linear-gradient(160deg,var(--pergamino) 0%,#e2c896 45%,var(--pergamino-osc) 100%);
+    border-radius:6px;
+    padding:34px 26px 30px;
+    position:relative;
+    box-shadow:0 24px 60px rgba(0,0,0,.7), inset 0 0 70px rgba(120,80,30,.35);
+    animation:desenrollar .9s ease-out;
+  }
+  .pergamino::before,.pergamino::after{
+    content:"";position:absolute;left:-10px;right:-10px;height:26px;
+    background:linear-gradient(90deg,#8a6a3a,#c9a869 12%,#e6d0a3 50%,#c9a869 88%,#8a6a3a);
+    border-radius:14px;box-shadow:0 3px 10px rgba(0,0,0,.55);
+  }
+  .pergamino::before{top:-14px}
+  .pergamino::after{bottom:-14px}
+  @keyframes desenrollar{from{opacity:0;transform:scaleY(.4)}to{opacity:1;transform:scaleY(1)}}
+  .aparece{animation:aparece .55s ease both}
+  @keyframes aparece{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  h1{
+    font-family:Cinzel,Georgia,serif;font-size:clamp(20px,5.4vw,28px);
+    text-align:center;letter-spacing:.06em;color:var(--tinta);
+    text-shadow:0 1px 0 rgba(255,245,220,.5);line-height:1.25;
+  }
+  .filete{
+    height:2px;margin:16px auto;width:78%;
+    background:linear-gradient(90deg,transparent,var(--tinta-suave),transparent);opacity:.55;
+  }
+  .merodeadores{
+    text-align:center;font-style:italic;font-size:14px;color:var(--tinta-suave);
+    line-height:1.65;margin:6px 0 4px;
+  }
+  p{line-height:1.65;font-size:17px}
+  .centro{text-align:center}
+  .manuscrito{font-family:Caveat,"Segoe Script",cursive;font-size:23px;color:#4b3319}
+
+  /* ---------- HUELLAS ---------- */
+  .huellas{display:flex;justify-content:center;gap:9px;margin:18px 0 6px;min-height:26px}
+  .huella{
+    width:13px;height:19px;border-radius:50% 50% 45% 45%;
+    background:var(--tinta);opacity:.12;transform:rotate(-12deg);
+    transition:opacity .45s ease, transform .45s ease;
+  }
+  .huella:nth-child(even){transform:rotate(12deg) translateY(7px)}
+  .huella.pisada{opacity:.85;animation:pisar .5s ease}
+  @keyframes pisar{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.25)}100%{opacity:.85}}
+
+  /* ---------- CONTROLES ---------- */
+  input[type=text]{
+    width:100%;padding:13px 14px;margin-top:14px;
+    font-family:Caveat,cursive;font-size:21px;color:#4b3319;
+    background:rgba(255,250,235,.45);
+    border:1px solid rgba(58,42,22,.35);border-radius:4px;outline:none;
+  }
+  input[type=text]:focus{border-color:var(--tinta);background:rgba(255,250,235,.7)}
+  button{
+    width:100%;margin-top:12px;padding:13px 16px;
+    font-family:Cinzel,Georgia,serif;font-weight:600;font-size:15px;letter-spacing:.09em;
+    color:#f4e7c8;background:linear-gradient(180deg,#4a3418,#2f2010);
+    border:1px solid rgba(201,162,39,.55);border-radius:4px;cursor:pointer;
+    transition:transform .12s ease,filter .2s ease;
+  }
+  button:hover{filter:brightness(1.18)}
+  button:active{transform:translateY(1px)}
+  .opcion{
+    text-align:left;font-family:"IM Fell English",serif;font-size:17px;letter-spacing:0;
+    text-transform:none;font-weight:400;
+    color:var(--tinta);background:rgba(255,250,235,.4);
+    border:1px solid rgba(58,42,22,.3);
+  }
+  .opcion:hover{background:rgba(255,250,235,.75);filter:none}
+  .opcion.bien{background:rgba(60,110,60,.35);border-color:#3d6b3d}
+  .opcion.mal{background:rgba(140,40,40,.28);border-color:#8b2b2b}
+  .letra{font-family:Cinzel,serif;font-weight:800;margin-right:10px;color:var(--grifo)}
+
+  .contador{
+    text-align:center;font-size:13px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--tinta-suave);margin-bottom:6px;
+  }
+  .pregunta{font-size:20px;line-height:1.5;margin:10px 0 16px;text-align:center;font-weight:600}
+  .reaccion{
+    min-height:26px;text-align:center;margin-top:14px;
+    font-family:Caveat,cursive;font-size:21px;color:#5a3d1c;
+  }
+  .nota{font-size:14px;color:var(--tinta-suave);font-style:italic;text-align:center;margin-top:16px}
+
+  /* ---------- BOLETO ---------- */
+  .boleto{
+    margin:20px 0 6px;padding:20px 18px;border-radius:8px;
+    background:linear-gradient(165deg,#1c1208,#2a1a0c 55%,#160e06);
+    border:1px solid var(--oro);
+    box-shadow:0 0 28px rgba(201,162,39,.25), inset 0 0 40px rgba(0,0,0,.6);
+    color:#f0e2c0;text-align:center;
+  }
+  .boleto .sello{
+    font-family:Cinzel,serif;font-size:11px;letter-spacing:.3em;color:var(--oro);
+    text-transform:uppercase;
+  }
+  .boleto h2{
+    font-family:Cinzel,serif;font-size:clamp(17px,4.6vw,22px);margin:10px 0 4px;
+    color:#fff3d4;line-height:1.3;letter-spacing:.03em;
+  }
+  .boleto .sub{font-size:13px;color:#c8b48a;font-style:italic;margin-bottom:14px}
+  .perforado{
+    height:1px;margin:14px -18px;
+    background:repeating-linear-gradient(90deg,rgba(201,162,39,.6) 0 7px,transparent 7px 14px);
+  }
+  .datos{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px;text-align:left}
+  .datos .campo{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#a8905f}
+  .datos .valor{font-family:Cinzel,serif;font-size:16px;color:#fff3d4;margin-top:2px}
+  .ancho{grid-column:1/-1}
+  .menu{margin-top:18px;text-align:left}
+  .menu li{
+    list-style:none;padding:9px 0;border-bottom:1px dashed rgba(201,162,39,.28);
+    font-size:15px;color:#e8d9b6;
+  }
+  .menu li:last-child{border-bottom:none}
+  .menu b{color:var(--oro);font-family:Cinzel,serif;font-size:14px;letter-spacing:.03em}
+  .menu span{display:block;font-size:13px;color:#b9a67e;font-style:italic;margin-top:2px}
+
+  .final{
+    margin-top:20px;text-align:center;font-family:Caveat,cursive;
+    font-size:24px;color:#4b3319;line-height:1.5;
+  }
+  .oculto{display:none}
+  .apagado{animation:apagar 2.4s ease forwards}
+  @keyframes apagar{to{opacity:0;filter:blur(6px);transform:scale(.97)}}
+  .polvo{
+    position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:radial-gradient(circle at 50% 50%,rgba(201,162,39,.10),transparent 60%);
+    opacity:0;transition:opacity 1.2s ease;
+  }
+</style>
+<div class="polvo" id="polvo"></div>
+<main class="pergamino" id="pergamino">
+
+  <!-- ============ 1. EL JURAMENTO ============ -->
+  <section id="pantalla-juramento">
+    <h1>El Mapa del Merodeador</h1>
+    <div class="filete"></div>
+    <p class="merodeadores">
+      Los señores <i>Lunático, Colagusano, Canuto y Cornamenta</i><br>
+      Proveedores de Auxilios Mágicos para Magos Malhechores<br>
+      se enorgullecen en presentar
+    </p>
+    <div class="filete"></div>
+    <p class="centro" style="margin-top:14px">
+      Este pergamino está en blanco, Itzel.<br>
+      Sólo se abre para quien conoce la frase.
+    </p>
+    <p class="centro manuscrito" style="margin-top:12px">
+      Toca la varita a la tinta y di las palabras…
+    </p>
+    <input type="text" id="entrada-juramento" placeholder="Escribe el juramento aquí" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="btn-juramento">Pronunciar el hechizo</button>
+    <div class="reaccion" id="reaccion-juramento"></div>
+    <p class="nota" id="pista-juramento"></p>
+  </section>
+
+  <!-- ============ 2. LAS PREGUNTAS ============ -->
+  <section id="pantalla-preguntas" class="oculto">
+    <h1 style="font-size:19px">El Mapa te pone a prueba</h1>
+    <div class="huellas" id="huellas"></div>
+    <div class="filete"></div>
+    <div class="contador" id="contador"></div>
+    <p class="pregunta" id="texto-pregunta"></p>
+    <div id="opciones"></div>
+    <div class="reaccion" id="reaccion"></div>
+  </section>
+
+  <!-- ============ 3. LA REVELACIÓN ============ -->
+  <section id="pantalla-final" class="oculto">
+    <h1 style="font-size:20px">El mapa revela<br>tu próximo destino</h1>
+    <div class="filete"></div>
+
+    <div class="boleto">
+      <div class="sello">★ Andén 9¾ · Boleto de Dos ★</div>
+      <h2 id="titulo-pelicula"></h2>
+      <div class="sub">25 años de magia</div>
+      <div class="perforado"></div>
+      <div class="datos">
+        <div><div class="campo">Fecha</div><div class="valor" id="v-fecha"></div></div>
+        <div><div class="campo">Hora</div><div class="valor" id="v-hora"></div></div>
+        <div class="ancho"><div class="campo">Cine</div><div class="valor" id="v-cine"></div></div>
+        <div><div class="campo">Sala</div><div class="valor" id="v-sala"></div></div>
+        <div><div class="campo">Asientos</div><div class="valor" id="v-asientos"></div></div>
+        <div class="ancho"><div class="campo">Acompañante</div><div class="valor" id="v-acompanante"></div></div>
+      </div>
+      <div class="perforado"></div>
+      <div class="sello" style="margin-bottom:6px">Menú Temático · Edición Casera</div>
+      <ul class="menu" id="menu"></ul>
+    </div>
+
+    <p class="final" id="dedicatoria"></p>
+    <button id="btn-travesura">Travesura realizada</button>
+    <p class="nota" id="despedida"></p>
+  </section>
+</main>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONFIGURACIÓN — edita SOLO esta parte si algo cambia
+   ═══════════════════════════════════════════════════════════ */
+const CONFIG = {
+  ella:        "Itzel",
+  el:          "Tu mago de cabecera",       // cámbialo por tu nombre
+  pelicula:    "Harry Potter y la Piedra Filosofal",
+  fecha:       "Martes 1 de Septiembre",    // <-- tu boleto dice 01 de septiembre
+  hora:        "7:55 PM",
+  cine:        "Cinépolis Sendero Ciudad Juárez",
+  sala:        "2",
+  asientos:    "F-16 y F-17",
+  acompanante: "Itzel + su Merodeador",
+  juramento:   "juro solemnemente que mis intenciones no son buenas",
+  dedicatoria: "Después de todo este tiempo…\n— Siempre.",
+  despedida:   "Nos vemos en el andén, Itzel. ✦"
+};
+
+/* El menú que vamos a recrear en casa */
+const MENU = [
+  { n:"Poción Multijugos",       d:"Matcha latte — verde, turbia y burbujeante" },
+  { n:"Elixir de Felix Felicis", d:"Café dorado con caramelo y espuma de oro" },
+  { n:"Emparedado de la Madriguera", d:"Sándwich de brisket con queso derretido" },
+  { n:"Palomitas de Todos los Sabores", d:"Mantequilla + grageas de colores" },
+  { n:"Rana de Chocolate",       d:"Con su carta de mago coleccionable" }
+];
+
+/* ═══════════════════════════════════════════════════════════
+   PREGUNTAS — agrega o cambia las que quieras.
+   "r" es el índice de la respuesta correcta (0 = A, 1 = B, 2 = C)
+   ═══════════════════════════════════════════════════════════ */
+const PREGUNTAS = [
+  { q:"¿Qué artículo de ropa hace que Dobby sea libre?",
+    o:["Un calzón","Una calceta","Una camisa"], r:1,
+    bien:"¡Dobby es un elfo libre!", mal:"Casi. Fue algo que se pone en el pie…" },
+
+  { q:"¿Qué forma tiene el Patronus de Harry?",
+    o:["Un ciervo","Una nutria","Una liebre"], r:0,
+    bien:"Cornamenta estaría orgulloso.", mal:"Esa nutria es de Hermione…" },
+
+  { q:"¿Desde qué andén sale el Expreso de Hogwarts?",
+    o:["El 7½","El 9¾","El 10⅓"], r:1,
+    bien:"Corre hacia el muro sin dudar.", mal:"Te estrellaste contra el muro. Otra vez." },
+
+  { q:"¿Cómo se llama la lechuza de Harry?",
+    o:["Errol","Hedwig","Crookshanks"], r:1,
+    bien:"Hedwig ya lleva la carta.", mal:"Ese ni siquiera es una lechuza sana." },
+
+  { q:"¿Qué cuida Fluffy, el perro de tres cabezas?",
+    o:["La trampilla de la Piedra Filosofal","La entrada a Gryffindor","La Cámara Secreta"], r:0,
+    bien:"Y se duerme con música.", mal:"Fluffy se ofendió." },
+
+  { q:"¿Cuál es el hechizo para desarmar a un enemigo?",
+    o:["Expelliarmus","Wingardium Leviosa","Alohomora"], r:0,
+    bien:"¡Expelliarmus! Clásico de Harry.", mal:"Es levi-O-sa, no levio-SÁ… pero no era esa." },
+
+  { q:"¿A qué le tiene pánico Ron Weasley?",
+    o:["A las alturas","A las arañas","A los perros"], r:1,
+    bien:"Pobre Ron y sus arañas.", mal:"Ron respira aliviado, pero no." },
+
+  { q:"¿Qué ingrediente necesita la Poción Multijugos para funcionar?",
+    o:["Un cabello de la persona","Una lágrima de fénix","Polvos Flu"], r:0,
+    bien:"Un cabello… ojalá no de gato.", mal:"Hermione ya se convirtió en gato por eso." },
+
+  { q:"En el cine, ¿de qué lado me toca sentarme?",
+    o:["Del lado de las palomitas","Del lado de la ventana","Del lado que tú quieras"], r:2,
+    bien:"Respuesta correcta siempre.", mal:"Truco: contigo cualquier lado está bien." },
+
+  { q:"¿Qué se dice para cerrar el Mapa del Merodeador?",
+    o:["Travesura realizada","Nox","Finite Incantatem"], r:0,
+    bien:"Guárdalo bien, no vaya a caer en manos de Filch.", mal:"El mapa sigue abierto… inténtalo de nuevo." }
+];
+
+/* ═══════════ Motor (no hace falta tocar nada de aquí abajo) ═══════════ */
+const $ = id => document.getElementById(id);
+const normaliza = t => t.toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+
+/* --- 1. Juramento --- */
+let intentos = 0;
+const PISTAS = [
+  "",
+  "Pista: empieza con «Juro solemnemente…»",
+  "Pista: «Juro solemnemente que mis intenciones… no son buenas»",
+  "Pista: escribe «Juro solemnemente que mis intenciones no son buenas»"
+];
+function jurar(){
+  const dicho = normaliza($("entrada-juramento").value);
+  const clave = normaliza(CONFIG.juramento);
+  if(dicho === clave || (dicho.includes("juro solemnemente") && dicho.includes("no son buenas"))){
+    $("reaccion-juramento").textContent = "La tinta empieza a correr sobre el pergamino…";
+    setTimeout(()=>{
+      $("pantalla-juramento").classList.add("oculto");
+      $("pantalla-preguntas").classList.remove("oculto");
+      $("pantalla-preguntas").classList.add("aparece");
+      dibujarHuellas(); pintarPregunta();
+    }, 1400);
+  } else {
+    intentos++;
+    $("reaccion-juramento").textContent = intentos < 2
+      ? "El pergamino no responde. Nada ocurre."
+      : "«El Sr. Canuto opina que quien escribió eso es un asno.»";
+    $("pista-juramento").textContent = PISTAS[Math.min(intentos, PISTAS.length-1)];
+  }
+}
+$("btn-juramento").addEventListener("click", jurar);
+$("entrada-juramento").addEventListener("keydown", e => { if(e.key === "Enter") jurar(); });
+
+/* --- 2. Preguntas --- */
+let actual = 0, aciertos = 0, bloqueado = false;
+function dibujarHuellas(){
+  $("huellas").innerHTML = PREGUNTAS
+    .map(()=>'<div class="huella"></div>').join("");
+}
+function pintarPregunta(){
+  bloqueado = false;
+  const p = PREGUNTAS[actual];
+  $("contador").textContent = "Prueba " + (actual+1) + " de " + PREGUNTAS.length;
+  $("texto-pregunta").textContent = p.q;
+  $("reaccion").textContent = "";
+  $("opciones").innerHTML = "";
+  p.o.forEach((texto, i) => {
+    const b = document.createElement("button");
+    b.className = "opcion";
+    b.innerHTML = '<span class="letra">' + "ABC"[i] + '</span>' + texto;
+    b.addEventListener("click", () => responder(i, b));
+    $("opciones").appendChild(b);
+  });
+}
+function responder(i, boton){
+  if(bloqueado) return;
+  const p = PREGUNTAS[actual];
+  if(i === p.r){
+    bloqueado = true;
+    boton.classList.add("bien");
+    $("reaccion").textContent = p.bien;
+    $("huellas").children[actual].classList.add("pisada");
+    aciertos++;
+    setTimeout(()=>{
+      actual++;
+      if(actual < PREGUNTAS.length){ pintarPregunta(); }
+      else { revelar(); }
+    }, 1250);
+  } else {
+    boton.classList.add("mal");
+    boton.disabled = true;
+    $("reaccion").textContent = p.mal;
+  }
+}
+
+/* --- 3. Revelación --- */
+function revelar(){
+  $("pantalla-preguntas").classList.add("oculto");
+  const f = $("pantalla-final");
+  f.classList.remove("oculto");
+  f.classList.add("aparece");
+  $("titulo-pelicula").textContent = CONFIG.pelicula;
+  $("v-fecha").textContent      = CONFIG.fecha;
+  $("v-hora").textContent       = CONFIG.hora;
+  $("v-cine").textContent       = CONFIG.cine;
+  $("v-sala").textContent       = CONFIG.sala;
+  $("v-asientos").textContent   = CONFIG.asientos;
+  $("v-acompanante").textContent= CONFIG.acompanante;
+  $("menu").innerHTML = MENU
+    .map(m => "<li><b>" + m.n + "</b><span>" + m.d + "</span></li>").join("");
+  $("dedicatoria").textContent = CONFIG.dedicatoria;
+  $("polvo").style.opacity = "1";
+}
+
+/* --- Travesura realizada --- */
+$("btn-travesura").addEventListener("click", () => {
+  $("despedida").textContent = CONFIG.despedida;
+  $("pergamino").classList.add("apagado");
+  setTimeout(()=>{
+    document.body.innerHTML =
+      '<p style="font-family:Caveat,cursive;color:#c9a227;font-size:26px;text-align:center;' +
+      'padding:40px;line-height:1.6">Travesura realizada.<br><br>' + CONFIG.despedida + '</p>';
+  }, 2300);
+});
+</script>
