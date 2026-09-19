@@ -90,6 +90,16 @@ interface Vacante {
   notas: string | null
 }
 
+interface Materia {
+  numero: number
+  nombre: string
+  creditos: number
+  cuatrimestre_plan: number | null
+  seriacion: number | null
+  estado: string            // aprobada | cursando | pendiente
+  ciclo_sugerido: string | null
+}
+
 interface Cert {
   id: number
   nombre: string
@@ -278,6 +288,7 @@ export default function Empleo() {
   const [perfil, setPerfil]     = useState<Perfil | null>(null)
   const [vacantes, setVacantes] = useState<Vacante[]>([])
   const [certs, setCerts]       = useState<Cert[]>([])
+  const [materias, setMaterias] = useState<Materia[]>([])
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
@@ -295,10 +306,11 @@ export default function Empleo() {
   async function load() {
     setErrorCarga(null)
     try {
-      const [p, v, c] = await Promise.all([
+      const [p, v, c, m] = await Promise.all([
         supabase.from('empleo_perfil').select('*').eq('id', 1).maybeSingle(),
         supabase.from('empleo_vacantes').select('*').eq('activo', true).order('created_at', { ascending: false }),
         supabase.from('empleo_certificaciones').select('*').eq('activo', true).order('created_at', { ascending: false }),
+        supabase.from('empleo_materias').select('*').order('numero'),
       ])
       // "tabla no existe" es el estado normal antes de la migración, no un error
       // que valga la pena mostrar como falla. Cualquier otra cosa sí.
@@ -315,6 +327,7 @@ export default function Empleo() {
       if (p.data) { setPerfil(p.data as Perfil); setBorrador(p.data as Perfil) }
       setVacantes((v.data ?? []) as Vacante[])
       setCerts((c.data ?? []) as Cert[])
+      setMaterias((m.data ?? []) as Materia[])
     } catch (e) {
       setErrorCarga(e instanceof Error ? e.message : String(e))
     } finally {
@@ -810,6 +823,8 @@ export default function Empleo() {
             </div>
           </div>
 
+          {materias.length > 0 && <RutaMasRapida materias={materias} />}
+
           <div className="card">
             <p className="text-xs text-muted uppercase tracking-wider mb-1">Requisitos de titulación</p>
             <p className="text-xs text-dim mb-3">
@@ -1038,6 +1053,76 @@ export default function Empleo() {
 }
 
 /* ═══ Subcomponentes ═══════════════════════════════════════════ */
+
+/**
+ * Ruta mas rapida para egresar.
+ *
+ * El orden no es cosmetico: las materias con seriacion solo se pueden
+ * inscribir si su prerrequisito ya esta aprobado. Meter un eslabon antes
+ * que su cabeza de cadena cuesta un cuatrimestre completo.
+ */
+function RutaMasRapida({ materias }: { materias: Materia[] }) {
+  const porNumero = new Map(materias.map(m => [m.numero, m]))
+  const pendientes = materias.filter(m => m.estado === 'pendiente')
+  const ciclos = [...new Set(pendientes.map(m => m.ciclo_sugerido).filter(Boolean))].sort() as string[]
+
+  const aprobadas = materias.filter(m => m.estado === 'aprobada')
+  const cursando  = materias.filter(m => m.estado === 'cursando')
+  const credTotal = materias.reduce((s, m) => s + num(m.creditos), 0)
+  const credHechos = aprobadas.reduce((s, m) => s + num(m.creditos), 0)
+
+  return (
+    <div className="card">
+      <p className="text-xs text-muted uppercase tracking-wider mb-1">Ruta más rápida para egresar</p>
+      <p className="text-xs text-dim mb-4 max-w-2xl">
+        {pendientes.length} materias pendientes en {ciclos.length} cuatrimestres. El orden importa:
+        las marcadas con cadena solo se inscriben si su prerrequisito ya está aprobado.
+      </p>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <Dato k="Aprobadas"  v={`${aprobadas.length}/${materias.length}`} sub={`${credHechos.toFixed(1)} de ${credTotal.toFixed(1)} cr`} />
+        <Dato k="Cursando"   v={String(cursando.length)} sub="este ciclo" />
+        <Dato k="Pendientes" v={String(pendientes.length)} sub={`${ciclos.length} cuatrimestres`} />
+        <Dato k="Inglés"     v="fuera" sub="optativa no curricular" />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {ciclos.map(ciclo => {
+          const delCiclo = pendientes.filter(m => m.ciclo_sugerido === ciclo)
+          const cr = delCiclo.reduce((s, m) => s + num(m.creditos), 0)
+          return (
+            <div key={ciclo} className="rounded-xl p-4" style={{ background: 'var(--surface-2)' }}>
+              <div className="flex items-baseline justify-between mb-3">
+                <span className="text-strong font-semibold">Cuatrimestre {ciclo}</span>
+                <span className="text-xs text-dim font-mono">{delCiclo.length} materias · {cr.toFixed(1)} cr</span>
+              </div>
+              <div className="space-y-2">
+                {delCiclo.map(m => {
+                  const req = m.seriacion ? porNumero.get(m.seriacion) : null
+                  return (
+                    <div key={m.numero} className="flex items-start gap-2 text-sm">
+                      <span className="text-dim font-mono text-xs mt-0.5 w-6 flex-shrink-0">{m.numero}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-body">{m.nombre}</span>
+                        {req && (
+                          <span className="block text-xs text-dim mt-0.5">
+                            🔗 requiere {req.numero} · {req.nombre}
+                            {req.estado !== 'aprobada' && ` (${req.estado})`}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-dim font-mono flex-shrink-0">{num(m.creditos).toFixed(1)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function Dato({ k, v, sub }: { k: string; v: string; sub?: string }) {
   return (
