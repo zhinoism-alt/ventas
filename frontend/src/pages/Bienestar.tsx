@@ -67,19 +67,26 @@ export default function Bienestar() {
   const [remForm, setRemForm] = useState({ titulo: '', descripcion: '', tipo: 'general' as Recordatorio['tipo'], fecha_hora: '', repetir: 'nunca' as Recordatorio['repetir'], importante: false, color: '#6366f1' })
 
   const load = async () => {
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30)
-    const since = sevenDaysAgo.toISOString().split('T')[0]
+    // El finally es obligatorio: si una consulta rechaza (base pausada,
+    // red caída), sin él el spinner se queda girando para siempre.
+    try {
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30)
+      const since = sevenDaysAgo.toISOString().split('T')[0]
 
-    const [{ data: h }, { data: r }, { data: rec }] = await Promise.all([
-      supabase.from('habitos').select('*').eq('activo', true).order('orden'),
-      supabase.from('habitos_registros').select('*').gte('fecha', since).order('fecha', { ascending: false }),
-      supabase.from('recordatorios').select('*').eq('completado', false).order('fecha_hora')
-    ])
-    setHabitos(h ?? [])
-    setRegistros(r ?? [])
-    setRecordatorios(rec ?? [])
-    setLoading(false)
+      const [{ data: h }, { data: r }, { data: rec }] = await Promise.all([
+        supabase.from('habitos').select('*').eq('activo', true).order('orden'),
+        supabase.from('habitos_registros').select('*').gte('fecha', since).order('fecha', { ascending: false }),
+        supabase.from('recordatorios').select('*').eq('completado', false).order('fecha_hora')
+      ])
+      setHabitos(h ?? [])
+      setRegistros(r ?? [])
+      setRecordatorios(rec ?? [])
+    } catch (e) {
+      console.error('[Bienestar] no se pudieron cargar los datos', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])

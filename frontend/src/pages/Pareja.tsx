@@ -44,13 +44,20 @@ export default function Pareja() {
   const [metaForm, setMetaForm] = useState({ nombre: '', descripcion: '', tipo: 'relacion' as 'financiera' | 'relacion' | 'bienestar' | 'otro', fecha_meta: '' })
 
   const load = async () => {
-    const [{ data: g }, { data: m }] = await Promise.all([
-      supabase.from('pareja_gastos').select('*').eq('mes', mes).order('fecha', { ascending: false }),
-      supabase.from('pareja_metas').select('*').order('completado').order('created_at', { ascending: false })
-    ])
-    setGastos(g ?? [])
-    setMetas(m ?? [])
-    setLoading(false)
+    // El finally es obligatorio: si una consulta rechaza (base pausada,
+    // red caída), sin él el spinner se queda girando para siempre.
+    try {
+      const [{ data: g }, { data: m }] = await Promise.all([
+        supabase.from('pareja_gastos').select('*').eq('mes', mes).order('fecha', { ascending: false }),
+        supabase.from('pareja_metas').select('*').order('completado').order('created_at', { ascending: false })
+      ])
+      setGastos(g ?? [])
+      setMetas(m ?? [])
+    } catch (e) {
+      console.error('[Pareja] no se pudieron cargar los datos', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [mes])

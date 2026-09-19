@@ -43,13 +43,20 @@ export default function Mudanza() {
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
-    const [{ data: t }, { data: p }] = await Promise.all([
-      supabase.from('mudanza_tareas').select('*').order('orden').order('prioridad'),
-      supabase.from('mudanza_presupuesto').select('*').order('categoria')
-    ])
-    setTareas(t ?? [])
-    setPresupuesto(p ?? [])
-    setLoading(false)
+    // El finally es obligatorio: si una consulta rechaza (base pausada,
+    // red caída), sin él el spinner se queda girando para siempre.
+    try {
+      const [{ data: t }, { data: p }] = await Promise.all([
+        supabase.from('mudanza_tareas').select('*').order('orden').order('prioridad'),
+        supabase.from('mudanza_presupuesto').select('*').order('categoria')
+      ])
+      setTareas(t ?? [])
+      setPresupuesto(p ?? [])
+    } catch (e) {
+      console.error('[Mudanza] no se pudieron cargar los datos', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])

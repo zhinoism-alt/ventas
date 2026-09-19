@@ -84,15 +84,22 @@ export default function Ahorros() {
   // ── Carga de datos ──────────────────────────────────────────────────────────
 
   const load = async () => {
-    const [{ data: a }, { data: m }, { data: f }] = await Promise.all([
-      supabase.from('ahorros').select('*').eq('activo', true).order('created_at', { ascending: false }),
-      supabase.from('ahorros_movimientos').select('*').order('fecha', { ascending: false }),
-      supabase.from('fondos_ahorro').select('*').eq('activo', true).order('created_at', { ascending: false }),
-    ])
-    setAhorros(a ?? [])
-    setMovimientos(m ?? [])
-    setFondos(f ?? [])
-    setLoading(false)
+    // El finally es obligatorio: si una consulta rechaza (base pausada,
+    // red caída), sin él el spinner se queda girando para siempre.
+    try {
+      const [{ data: a }, { data: m }, { data: f }] = await Promise.all([
+        supabase.from('ahorros').select('*').eq('activo', true).order('created_at', { ascending: false }),
+        supabase.from('ahorros_movimientos').select('*').order('fecha', { ascending: false }),
+        supabase.from('fondos_ahorro').select('*').eq('activo', true).order('created_at', { ascending: false }),
+      ])
+      setAhorros(a ?? [])
+      setMovimientos(m ?? [])
+      setFondos(f ?? [])
+    } catch (e) {
+      console.error('[Ahorros] no se pudieron cargar los datos', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
