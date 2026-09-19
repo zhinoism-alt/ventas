@@ -295,11 +295,12 @@ export default function Empleo() {
   const [diagnostico, setDiagnostico] = useState<'falta-tabla' | 'sin-fila' | null>(null)
   const [tab, setTab]           = useState<'vacantes' | 'certs' | 'escuela' | 'base'>('vacantes')
   const [expandida, setExpandida] = useState<number | null>(null)
-  const [filtro, setFiltro]     = useState('vivas')
+  const [filtro, setFiltro]     = useState('todas')
 
   const [formVac, setFormVac]   = useState<(Omit<Vacante, 'id'> & { id?: number }) | null>(null)
   const [formCert, setFormCert] = useState<(Omit<Cert, 'id'> & { id?: number }) | null>(null)
   const [borrador, setBorrador] = useState<Perfil | null>(null)
+  const [avisoForm, setAvisoForm] = useState<string | null>(null)
 
   // El finally es obligatorio: sin él, una consulta que rechaza (red caída,
   // Supabase sin responder) deja el spinner girando para siempre.
@@ -352,7 +353,13 @@ export default function Empleo() {
   }
 
   async function guardarVacante() {
-    if (!formVac || !formVac.puesto.trim()) return
+    if (!formVac) return
+    // Antes hacia `return` en silencio y el boton parecia roto.
+    if (!formVac.puesto.trim()) {
+      setAvisoForm('Ponle un puesto a la vacante: es lo unico obligatorio.')
+      return
+    }
+    setAvisoForm(null)
     setSaving(true)
     const { id, ...campos } = formVac
     if (id) {
@@ -371,7 +378,12 @@ export default function Empleo() {
   }
 
   async function guardarCert() {
-    if (!formCert || !formCert.nombre.trim()) return
+    if (!formCert) return
+    if (!formCert.nombre.trim()) {
+      setAvisoForm('Ponle un nombre a la certificacion.')
+      return
+    }
+    setAvisoForm(null)
     setSaving(true)
     const { id, ...campos } = formCert
     if (id) {
@@ -484,14 +496,14 @@ export default function Empleo() {
           </p>
         </div>
         {tab === 'vacantes' && (
-          <button onClick={() => setFormVac({ ...VACANTE_NUEVA })}
+          <button onClick={() => { setAvisoForm(null); setFormVac({ ...VACANTE_NUEVA }) }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
             style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}>
             <Plus size={16} /> Nueva vacante
           </button>
         )}
         {tab === 'certs' && (
-          <button onClick={() => setFormCert({ ...CERT_NUEVA })}
+          <button onClick={() => { setAvisoForm(null); setFormCert({ ...CERT_NUEVA }) }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
             style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}>
             <Plus size={16} /> Nueva certificación
@@ -666,7 +678,7 @@ export default function Empleo() {
                   <button className="btn-secondary text-xs" onClick={() => setExpandida(abierta ? null : v.id)}>
                     {abierta ? 'Ocultar números' : 'Ver números'}
                   </button>
-                  <button className="btn-secondary text-xs" onClick={() => setFormVac({ ...v })}>Editar</button>
+                  <button className="btn-secondary text-xs" onClick={() => { setAvisoForm(null); setFormVac({ ...v }) }}>Editar</button>
                   {v.link && (
                     <a href={v.link} target="_blank" rel="noopener noreferrer"
                       className="btn-secondary text-xs flex items-center gap-1">
@@ -780,7 +792,7 @@ export default function Empleo() {
                 {diasVence != null && diasVence < 365 && (
                   <span className="badge badge-yellow">vence en {diasVence}d</span>
                 )}
-                <button className="btn-secondary text-xs" onClick={() => setFormCert({ ...c })}>Editar</button>
+                <button className="btn-secondary text-xs" onClick={() => { setAvisoForm(null); setFormCert({ ...c }) }}>Editar</button>
               </div>
             )
           })}
@@ -942,7 +954,7 @@ export default function Empleo() {
       {formVac && (
         <Modal titulo={formVac.id ? 'Editar vacante' : 'Nueva vacante'}
           onClose={() => setFormVac(null)}
-          onGuardar={guardarVacante} saving={saving}
+          onGuardar={guardarVacante} saving={saving} aviso={avisoForm}
           onBorrar={formVac.id ? () => borrarVacante(formVac.id!) : undefined}>
 
           <Seccion titulo="La vacante">
@@ -1026,7 +1038,7 @@ export default function Empleo() {
       {formCert && (
         <Modal titulo={formCert.id ? 'Editar certificación' : 'Nueva certificación'}
           onClose={() => setFormCert(null)}
-          onGuardar={guardarCert} saving={saving}
+          onGuardar={guardarCert} saving={saving} aviso={avisoForm}
           onBorrar={formCert.id ? () => borrarCert(formCert.id!) : undefined}>
           <Seccion titulo="Certificación">
             <Campo label="Nombre" value={formCert.nombre} onChange={v => setFormCert({ ...formCert, nombre: v })}
@@ -1218,23 +1230,29 @@ function Desglose({ titulo, filas, total, extra, nota }: {
   )
 }
 
-function Modal({ titulo, children, onClose, onGuardar, onBorrar, saving }: {
+function Modal({ titulo, children, onClose, onGuardar, onBorrar, saving, aviso }: {
   titulo: string; children: React.ReactNode
-  onClose: () => void; onGuardar: () => void; onBorrar?: () => void; saving: boolean
+  onClose: () => void; onGuardar: () => void; onBorrar?: () => void
+  saving: boolean; aviso?: string | null
 }) {
+  // Sin cierre al hacer clic en el fondo, a proposito: el formulario es largo,
+  // el fondo queda expuesto alrededor, y un clic en el margen -- o un arrastre
+  // al seleccionar texto que termine fuera -- borraba todo lo capturado sin
+  // avisar. Para salir estan la X y Cancelar, que son gestos deliberados.
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto bg-black/70"
-      onClick={onClose}>
-      <div className="rounded-xl w-full max-w-3xl my-8" onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
+      style={{ background: 'rgba(20,22,26,.55)' }}>
+      <div className="rounded-xl w-full max-w-3xl my-8"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: 'var(--sh-lg)' }}>
         <div className="flex items-center justify-between p-4 sticky top-0 rounded-t-xl"
-          style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+          style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-strong font-semibold">{titulo}</h2>
           <button onClick={onClose} className="text-muted hover:text-strong"><X size={18} /></button>
         </div>
         <div className="p-5">{children}</div>
-        <div className="flex items-center gap-2 p-4 sticky bottom-0 rounded-b-xl"
-          style={{ background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 p-4 sticky bottom-0 rounded-b-xl flex-wrap"
+          style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
+          {aviso && <p className="w-full text-sm" style={{ color: 'var(--red)' }}>{aviso}</p>}
           {onBorrar && (
             <button className="btn-danger text-sm flex items-center gap-1.5" onClick={onBorrar}>
               <Trash2 size={14} /> Eliminar
