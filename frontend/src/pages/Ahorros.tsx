@@ -5,6 +5,7 @@ import {
   Wallet, Percent, Edit2, Check, X,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { AvisoError } from '../components/AvisoError'
 import { fmt } from '../lib/utils'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ interface Fondo {
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   return (
-    <div className="w-full h-2 rounded-full" style={{ background: '#1e293b' }}>
+    <div className="w-full h-2 rounded-full" style={{ background: 'var(--surface-2)' }}>
       <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
     </div>
   )
@@ -67,23 +68,25 @@ export default function Ahorros() {
   const [movForm, setMovForm]       = useState<{ id: number | null; tipo: 'deposito' | 'retiro'; monto: string; nota: string }>({
     id: null, tipo: 'deposito', monto: '', nota: '',
   })
-  const [metaForm, setMetaForm]     = useState({ nombre: '', meta: '', descripcion: '', fecha_meta: '', color: '#6366f1', icono: '🎯' })
+  const [metaForm, setMetaForm]     = useState({ nombre: '', meta: '', descripcion: '', fecha_meta: '', color: 'var(--accent)', icono: '🎯' })
 
   // — Fondos —
   const [fondos, setFondos]         = useState<Fondo[]>([])
   const [showFondoForm, setShowFondoForm] = useState(false)
-  const [fondoForm, setFondoForm]   = useState({ nombre: '', saldo: '', rendimiento: '', descripcion: '', color: '#22c55e', icono: '💰' })
+  const [fondoForm, setFondoForm]   = useState({ nombre: '', saldo: '', rendimiento: '', descripcion: '', color: 'var(--green)', icono: '💰' })
   const [editFondo, setEditFondo]   = useState<Fondo | null>(null)
   const [editSaldo, setEditSaldo]   = useState('')
 
   // — General —
   const [loading, setLoading]       = useState(true)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [saving, setSaving]         = useState(false)
   const [tab, setTab]               = useState<'fondos' | 'metas'>('fondos')
 
   // ── Carga de datos ──────────────────────────────────────────────────────────
 
   const load = async () => {
+    setErrorCarga(null)
     // El finally es obligatorio: si una consulta rechaza (base pausada,
     // red caída), sin él el spinner se queda girando para siempre.
     try {
@@ -97,6 +100,7 @@ export default function Ahorros() {
       setFondos(f ?? [])
     } catch (e) {
       console.error('[Ahorros] no se pudieron cargar los datos', e)
+      setErrorCarga(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
@@ -117,7 +121,7 @@ export default function Ahorros() {
       color:       fondoForm.color,
       icono:       fondoForm.icono,
     })
-    setFondoForm({ nombre: '', saldo: '', rendimiento: '', descripcion: '', color: '#22c55e', icono: '💰' })
+    setFondoForm({ nombre: '', saldo: '', rendimiento: '', descripcion: '', color: 'var(--green)', icono: '💰' })
     setShowFondoForm(false)
     setSaving(false)
     load()
@@ -153,7 +157,7 @@ export default function Ahorros() {
       color:      metaForm.color,
       icono:      metaForm.icono,
     })
-    setMetaForm({ nombre: '', meta: '', descripcion: '', fecha_meta: '', color: '#6366f1', icono: '🎯' })
+    setMetaForm({ nombre: '', meta: '', descripcion: '', fecha_meta: '', color: 'var(--accent)', icono: '🎯' })
     setShowMetaForm(false)
     setSaving(false)
     load()
@@ -200,19 +204,20 @@ export default function Ahorros() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      <AvisoError mensaje={errorCarga} onReintentar={() => { setLoading(true); load() }} />
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-strong flex items-center gap-2">
             <PiggyBank className="text-indigo-400" size={24} /> Ahorros
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Fondos y metas de ahorro</p>
+          <p className="text-muted text-sm mt-1">Fondos y metas de ahorro</p>
         </div>
         <button
           onClick={() => tab === 'fondos' ? setShowFondoForm(true) : setShowMetaForm(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+          style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}>
           <Plus size={16} /> {tab === 'fondos' ? 'Nuevo Fondo' : 'Nueva Meta'}
         </button>
       </div>
@@ -220,37 +225,37 @@ export default function Ahorros() {
       {/* ── Resumen general ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card col-span-2 lg:col-span-1">
-          <p className="text-xs text-slate-400 mb-1">Total Ahorrado</p>
-          <p className="text-xl font-bold text-white">{fmt(totalGeneral)}</p>
-          <p className="text-xs text-slate-400 mt-1">fondos + metas</p>
+          <p className="text-xs text-muted mb-1">Total Ahorrado</p>
+          <p className="text-xl font-bold text-strong">{fmt(totalGeneral)}</p>
+          <p className="text-xs text-muted mt-1">fondos + metas</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">En Fondos</p>
+          <p className="text-xs text-muted mb-1">En Fondos</p>
           <p className="text-xl font-bold text-green-400">{fmt(totalFondos)}</p>
-          <p className="text-xs text-slate-400 mt-1">{fondos.length} apartado{fondos.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-muted mt-1">{fondos.length} apartado{fondos.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Rend. Anual Est.</p>
+          <p className="text-xs text-muted mb-1">Rend. Anual Est.</p>
           <p className="text-xl font-bold text-yellow-400">{fmt(gananciasAnualesEstimadas)}</p>
-          <p className="text-xs text-slate-400 mt-1">suma de fondos</p>
+          <p className="text-xs text-muted mt-1">suma de fondos</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Metas — Progreso</p>
-          <p className="text-xl font-bold text-white">
+          <p className="text-xs text-muted mb-1">Metas — Progreso</p>
+          <p className="text-xl font-bold text-strong">
             {totalMeta > 0 ? ((totalAcumulado / totalMeta) * 100).toFixed(1) : '0'}%
           </p>
-          <p className="text-xs text-slate-400 mt-1">{fmt(totalAcumulado)} de {fmt(totalMeta)}</p>
+          <p className="text-xs text-muted mt-1">{fmt(totalAcumulado)} de {fmt(totalMeta)}</p>
         </div>
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 p-1 rounded-xl" style={{ background: '#1e293b' }}>
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--surface-2)' }}>
         {(['fondos', 'metas'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
             style={tab === t
-              ? { background: '#6366f1', color: '#fff' }
-              : { color: '#94a3b8' }}>
+              ? { background: 'var(--accent)', color: '#fff' }
+              : { color: 'var(--text-muted)' }}>
             {t === 'fondos' ? `💰 Fondos (${fondos.length})` : `🎯 Metas (${ahorros.length})`}
           </button>
         ))}
@@ -263,47 +268,47 @@ export default function Ahorros() {
           {/* Form nuevo fondo */}
           {showFondoForm && (
             <div className="card">
-              <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-strong mb-4 flex items-center gap-2">
                 <Wallet size={14} className="text-green-400" /> Nuevo Fondo / Apartado
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Nombre *</label>
+                  <label className="text-xs text-muted mb-1 block">Nombre *</label>
                   <input className="input w-full" placeholder="Ej: Fondo de Emergencia…"
                     value={fondoForm.nombre}
                     onChange={e => setFondoForm(f => ({ ...f, nombre: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Saldo actual (MXN) *</label>
+                  <label className="text-xs text-muted mb-1 block">Saldo actual (MXN) *</label>
                   <input className="input w-full" type="number" placeholder="0.00"
                     value={fondoForm.saldo}
                     onChange={e => setFondoForm(f => ({ ...f, saldo: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Rendimiento anual (%)</label>
+                  <label className="text-xs text-muted mb-1 block">Rendimiento anual (%)</label>
                   <input className="input w-full" type="number" step="0.1" placeholder="Ej: 8.5"
                     value={fondoForm.rendimiento}
                     onChange={e => setFondoForm(f => ({ ...f, rendimiento: e.target.value }))} />
-                  <p className="text-xs text-slate-500 mt-1">Deja en 0 si no genera intereses</p>
+                  <p className="text-xs text-dim mt-1">Deja en 0 si no genera intereses</p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Descripción</label>
+                  <label className="text-xs text-muted mb-1 block">Descripción</label>
                   <input className="input w-full" placeholder="Ej: CETES, cuenta BBVA…"
                     value={fondoForm.descripcion}
                     onChange={e => setFondoForm(f => ({ ...f, descripcion: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Ícono</label>
+                  <label className="text-xs text-muted mb-1 block">Ícono</label>
                   <div className="flex gap-2 flex-wrap">
                     {ICONOS.map(ic => (
                       <button key={ic} onClick={() => setFondoForm(f => ({ ...f, icono: ic }))}
                         className={`text-xl p-1.5 rounded-lg transition-all ${fondoForm.icono === ic ? 'ring-2 ring-green-500' : ''}`}
-                        style={{ background: '#1e293b' }}>{ic}</button>
+                        style={{ background: 'var(--surface-2)' }}>{ic}</button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Color</label>
+                  <label className="text-xs text-muted mb-1 block">Color</label>
                   <input type="color" className="w-full h-9 rounded-lg cursor-pointer"
                     value={fondoForm.color}
                     onChange={e => setFondoForm(f => ({ ...f, color: e.target.value }))} />
@@ -311,12 +316,12 @@ export default function Ahorros() {
               </div>
               <div className="flex gap-3 mt-4">
                 <button onClick={createFondo} disabled={saving}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                  style={{ background: '#22c55e' }}>
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-strong"
+                  style={{ background: 'var(--green)' }}>
                   {saving ? 'Guardando…' : 'Crear Fondo'}
                 </button>
                 <button onClick={() => setShowFondoForm(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">
+                  className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong">
                   Cancelar
                 </button>
               </div>
@@ -326,12 +331,12 @@ export default function Ahorros() {
           {/* Lista de fondos */}
           {fondos.length === 0 ? (
             <div className="card text-center py-12">
-              <Wallet size={40} className="mx-auto text-slate-600 mb-3" />
-              <p className="text-white font-medium">Sin fondos aún</p>
-              <p className="text-slate-400 text-sm mt-1">Agrega tus cuentas, CETES, fondos de emergencia…</p>
+              <Wallet size={40} className="mx-auto text-faint mb-3" />
+              <p className="text-strong font-medium">Sin fondos aún</p>
+              <p className="text-muted text-sm mt-1">Agrega tus cuentas, CETES, fondos de emergencia…</p>
               <button onClick={() => setShowFondoForm(true)}
-                className="mt-4 px-4 py-2 rounded-lg text-sm font-medium text-white inline-flex items-center gap-2"
-                style={{ background: '#22c55e' }}>
+                className="mt-4 px-4 py-2 rounded-lg text-sm font-medium text-strong inline-flex items-center gap-2"
+                style={{ background: 'var(--green)' }}>
                 <Plus size={14} /> Crear primer fondo
               </button>
             </div>
@@ -353,18 +358,18 @@ export default function Ahorros() {
                           <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                             style={{ background: f.color + '22' }}>{f.icono}</div>
                           <div>
-                            <p className="font-semibold text-white">{f.nombre}</p>
-                            {f.descripcion && <p className="text-xs text-slate-400">{f.descripcion}</p>}
+                            <p className="font-semibold text-strong">{f.nombre}</p>
+                            {f.descripcion && <p className="text-xs text-muted">{f.descripcion}</p>}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <button onClick={() => { setEditFondo(f); setEditSaldo(String(f.saldo)) }}
-                            className="text-slate-500 hover:text-blue-400 p-1.5 rounded-lg transition-colors"
+                            className="text-dim hover:text-blue-400 p-1.5 rounded-lg transition-colors"
                             title="Actualizar saldo">
                             <Edit2 size={13} />
                           </button>
                           <button onClick={() => deleteFondo(f.id)}
-                            className="text-slate-500 hover:text-red-400 p-1.5 rounded-lg transition-colors">
+                            className="text-dim hover:text-red-400 p-1.5 rounded-lg transition-colors">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -380,34 +385,34 @@ export default function Ahorros() {
                               autoFocus
                               onKeyDown={e => e.key === 'Enter' && actualizarSaldoFondo(f)} />
                             <button onClick={() => actualizarSaldoFondo(f)}
-                              className="p-2 rounded-lg bg-green-500 hover:bg-green-400 text-white">
+                              className="p-2 rounded-lg bg-green-500 hover:bg-green-400 text-strong">
                               <Check size={14} />
                             </button>
                             <button onClick={() => setEditFondo(null)}
-                              className="p-2 rounded-lg text-slate-400 hover:text-white"
-                              style={{ background: '#1e293b' }}>
+                              className="p-2 rounded-lg text-muted hover:text-strong"
+                              style={{ background: 'var(--surface-2)' }}>
                               <X size={14} />
                             </button>
                           </div>
                         ) : (
-                          <p className="text-2xl font-bold text-white">{fmt(f.saldo)}</p>
+                          <p className="text-2xl font-bold text-strong">{fmt(f.saldo)}</p>
                         )}
-                        <p className="text-xs text-slate-500 mt-0.5">saldo actual</p>
+                        <p className="text-xs text-dim mt-0.5">saldo actual</p>
                       </div>
 
                       {/* Rendimiento */}
-                      <div className="mt-4 pt-3 grid grid-cols-2 gap-3" style={{ borderTop: '1px solid #1e293b' }}>
-                        <div className="rounded-lg p-2.5" style={{ background: '#0f172a' }}>
+                      <div className="mt-4 pt-3 grid grid-cols-2 gap-3" style={{ borderTop: '1px solid var(--border)' }}>
+                        <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <Percent size={11} className="text-yellow-400" />
-                            <p className="text-xs text-slate-400">Rendimiento anual</p>
+                            <p className="text-xs text-muted">Rendimiento anual</p>
                           </div>
                           <p className="text-base font-bold text-yellow-400">{f.rendimiento}%</p>
                         </div>
-                        <div className="rounded-lg p-2.5" style={{ background: '#0f172a' }}>
+                        <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <TrendingUp size={11} className="text-green-400" />
-                            <p className="text-xs text-slate-400">Ganancia anual est.</p>
+                            <p className="text-xs text-muted">Ganancia anual est.</p>
                           </div>
                           <p className="text-base font-bold text-green-400">+{fmt(gananciasAnual)}</p>
                         </div>
@@ -416,7 +421,7 @@ export default function Ahorros() {
                       {f.rendimiento > 0 && (
                         <div className="mt-2 rounded-lg px-3 py-2 flex items-center justify-between"
                           style={{ background: f.color + '15', border: `1px solid ${f.color}30` }}>
-                          <span className="text-xs text-slate-400">Total en 1 año</span>
+                          <span className="text-xs text-muted">Total en 1 año</span>
                           <span className="text-sm font-bold" style={{ color: f.color }}>{fmt(totalAnio)}</span>
                         </div>
                       )}
@@ -429,16 +434,16 @@ export default function Ahorros() {
 
           {/* Resumen total de fondos */}
           {fondos.length > 1 && (
-            <div className="card" style={{ background: 'linear-gradient(135deg, #0f2a1a, #0f172a)', border: '1px solid #22c55e30' }}>
+            <div className="card" style={{ background: 'var(--green-soft)', border: '1px solid var(--green)' }}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: '#22c55e22' }}>📊</div>
+                  style={{ background: 'var(--green-soft)' }}>📊</div>
                 <div>
-                  <p className="text-xs text-slate-400">Proyección total en 12 meses</p>
+                  <p className="text-xs text-muted">Proyección total en 12 meses</p>
                   <p className="text-xl font-bold text-green-400">
                     {fmt(fondos.reduce((s, f) => s + f.saldo + f.saldo * (f.rendimiento / 100), 0))}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-dim">
                     +{fmt(gananciasAnualesEstimadas)} de rendimientos sobre {fmt(totalFondos)}
                   </p>
                 </div>
@@ -455,46 +460,46 @@ export default function Ahorros() {
           {/* Form nueva meta */}
           {showMetaForm && (
             <div className="card">
-              <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-strong mb-4 flex items-center gap-2">
                 <Target size={14} className="text-indigo-400" /> Nueva Meta de Ahorro
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Nombre *</label>
+                  <label className="text-xs text-muted mb-1 block">Nombre *</label>
                   <input className="input w-full" placeholder="Ej: Departamento, Viaje…"
                     value={metaForm.nombre}
                     onChange={e => setMetaForm(f => ({ ...f, nombre: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Meta (MXN) *</label>
+                  <label className="text-xs text-muted mb-1 block">Meta (MXN) *</label>
                   <input className="input w-full" type="number" placeholder="0.00"
                     value={metaForm.meta}
                     onChange={e => setMetaForm(f => ({ ...f, meta: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Descripción</label>
+                  <label className="text-xs text-muted mb-1 block">Descripción</label>
                   <input className="input w-full" placeholder="Opcional…"
                     value={metaForm.descripcion}
                     onChange={e => setMetaForm(f => ({ ...f, descripcion: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Fecha límite</label>
+                  <label className="text-xs text-muted mb-1 block">Fecha límite</label>
                   <input className="input w-full" type="date"
                     value={metaForm.fecha_meta}
                     onChange={e => setMetaForm(f => ({ ...f, fecha_meta: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Ícono</label>
+                  <label className="text-xs text-muted mb-1 block">Ícono</label>
                   <div className="flex gap-2 flex-wrap">
                     {ICONOS.map(ic => (
                       <button key={ic} onClick={() => setMetaForm(f => ({ ...f, icono: ic }))}
                         className={`text-xl p-1.5 rounded-lg transition-all ${metaForm.icono === ic ? 'ring-2 ring-indigo-500' : ''}`}
-                        style={{ background: '#1e293b' }}>{ic}</button>
+                        style={{ background: 'var(--surface-2)' }}>{ic}</button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Color</label>
+                  <label className="text-xs text-muted mb-1 block">Color</label>
                   <input type="color" className="w-full h-9 rounded-lg cursor-pointer"
                     value={metaForm.color}
                     onChange={e => setMetaForm(f => ({ ...f, color: e.target.value }))} />
@@ -503,11 +508,11 @@ export default function Ahorros() {
               <div className="flex gap-3 mt-4">
                 <button onClick={createAhorro} disabled={saving}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                  style={{ background: '#6366f1' }}>
+                  style={{ background: 'var(--accent)' }}>
                   {saving ? 'Guardando…' : 'Crear Meta'}
                 </button>
                 <button onClick={() => setShowMetaForm(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">
+                  className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong">
                   Cancelar
                 </button>
               </div>
@@ -517,12 +522,12 @@ export default function Ahorros() {
           {/* Lista de metas */}
           {ahorros.length === 0 ? (
             <div className="card text-center py-12">
-              <PiggyBank size={40} className="mx-auto text-slate-600 mb-3" />
-              <p className="text-white font-medium">Sin metas de ahorro</p>
-              <p className="text-slate-400 text-sm mt-1">Crea tu primera meta para empezar a ahorrar</p>
+              <PiggyBank size={40} className="mx-auto text-faint mb-3" />
+              <p className="text-strong font-medium">Sin metas de ahorro</p>
+              <p className="text-muted text-sm mt-1">Crea tu primera meta para empezar a ahorrar</p>
               <button onClick={() => setShowMetaForm(true)}
                 className="mt-4 px-4 py-2 rounded-lg text-sm font-medium text-white inline-flex items-center gap-2"
-                style={{ background: '#6366f1' }}>
+                style={{ background: 'var(--accent)' }}>
                 <Plus size={14} /> Crear primera meta
               </button>
             </div>
@@ -539,10 +544,10 @@ export default function Ahorros() {
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
                           style={{ background: a.color + '22' }}>{a.icono}</div>
                         <div>
-                          <p className="font-semibold text-white">{a.nombre}</p>
-                          {a.descripcion && <p className="text-xs text-slate-400">{a.descripcion}</p>}
+                          <p className="font-semibold text-strong">{a.nombre}</p>
+                          {a.descripcion && <p className="text-xs text-muted">{a.descripcion}</p>}
                           {a.fecha_meta && (
-                            <p className="text-xs text-slate-500 mt-0.5">
+                            <p className="text-xs text-dim mt-0.5">
                               Meta: {new Date(a.fecha_meta + 'T00:00:00').toLocaleDateString('es-MX', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </p>
                           )}
@@ -550,22 +555,22 @@ export default function Ahorros() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <p className="text-white font-bold">{fmt(a.acumulado)}</p>
-                          <p className="text-xs text-slate-400">de {fmt(a.meta)}</p>
+                          <p className="text-strong font-bold">{fmt(a.acumulado)}</p>
+                          <p className="text-xs text-muted">de {fmt(a.meta)}</p>
                         </div>
                         <button onClick={() => setExpanded(isExpanded ? null : a.id)}
-                          className="text-slate-400 hover:text-white p-1">
+                          className="text-muted hover:text-strong p-1">
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
                         <button onClick={() => deleteAhorro(a.id)}
-                          className="text-slate-600 hover:text-red-400 p-1">
+                          className="text-faint hover:text-red-400 p-1">
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
 
                     <div className="mt-3">
-                      <div className="flex justify-between text-xs text-slate-400 mb-1">
+                      <div className="flex justify-between text-xs text-muted mb-1">
                         <span>{pct.toFixed(1)}% completado</span>
                         <span>Faltan {fmt(Math.max(0, a.meta - a.acumulado))}</span>
                       </div>
@@ -573,7 +578,7 @@ export default function Ahorros() {
                     </div>
 
                     {isExpanded && (
-                      <div className="mt-4 pt-4" style={{ borderTop: '1px solid #1e293b' }}>
+                      <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                         <div className="flex gap-2 mb-4">
                           <select className="input flex-shrink-0"
                             value={movForm.id === a.id ? movForm.tipo : 'deposito'}
@@ -590,23 +595,23 @@ export default function Ahorros() {
                           <button onClick={agregarMovimiento}
                             disabled={movForm.id !== a.id || saving}
                             className="px-3 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-                            style={{ background: '#6366f1' }}>+</button>
+                            style={{ background: 'var(--accent)' }}>+</button>
                         </div>
 
-                        <p className="text-xs text-slate-400 mb-2">Movimientos recientes</p>
+                        <p className="text-xs text-muted mb-2">Movimientos recientes</p>
                         {movs.length === 0 ? (
-                          <p className="text-xs text-slate-500 text-center py-2">Sin movimientos aún</p>
+                          <p className="text-xs text-dim text-center py-2">Sin movimientos aún</p>
                         ) : (
                           <div className="space-y-1.5">
                             {movs.slice(0, 10).map(m => (
                               <div key={m.id}
                                 className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg"
-                                style={{ background: '#0f172a' }}>
+                                style={{ background: 'var(--bg)' }}>
                                 <div className="flex items-center gap-2">
                                   {m.tipo === 'deposito'
                                     ? <ArrowUpCircle size={14} className="text-green-400" />
                                     : <ArrowDownCircle size={14} className="text-red-400" />}
-                                  <span className="text-slate-300">
+                                  <span className="text-body">
                                     {m.nota || (m.tipo === 'deposito' ? 'Depósito' : 'Retiro')}
                                   </span>
                                 </div>
@@ -614,7 +619,7 @@ export default function Ahorros() {
                                   <span className={m.tipo === 'deposito' ? 'text-green-400' : 'text-red-400'}>
                                     {m.tipo === 'deposito' ? '+' : '-'}{fmt(m.monto)}
                                   </span>
-                                  <span className="text-slate-600">{m.fecha}</span>
+                                  <span className="text-faint">{m.fecha}</span>
                                 </div>
                               </div>
                             ))}

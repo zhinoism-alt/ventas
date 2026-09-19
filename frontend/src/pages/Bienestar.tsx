@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Leaf, Plus, CheckCircle2, Circle, Trash2, Flame, Bell, BellOff, Star } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { AvisoError } from '../components/AvisoError'
 
 interface Habito {
   id: number
@@ -35,7 +36,7 @@ interface Recordatorio {
 }
 
 const CAT_COLORS: Record<string, string> = {
-  salud: '#22c55e', ejercicio: '#f59e0b', nutricion: '#06b6d4', mental: '#8b5cf6', otro: '#94a3b8'
+  salud: 'var(--green)', ejercicio: 'var(--yellow)', nutricion: 'var(--cyan)', mental: 'var(--accent-2)', otro: 'var(--text-muted)'
 }
 const ICON_OPT = ['💪', '🏃', '🥗', '💧', '🧘', '📚', '😴', '🚴', '🏋️', '🧠', '❤️', '🌟']
 
@@ -59,14 +60,16 @@ export default function Bienestar() {
   const [registros, setRegistros] = useState<Registro[]>([])
   const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([])
   const [loading, setLoading] = useState(true)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [tab, setTab] = useState<'habitos' | 'recordatorios'>('habitos')
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [today] = useState(new Date().toISOString().split('T')[0])
-  const [form, setForm] = useState({ nombre: '', descripcion: '', categoria: 'salud' as Habito['categoria'], frecuencia: 'diario' as Habito['frecuencia'], icono: '💪', color: '#22c55e' })
-  const [remForm, setRemForm] = useState({ titulo: '', descripcion: '', tipo: 'general' as Recordatorio['tipo'], fecha_hora: '', repetir: 'nunca' as Recordatorio['repetir'], importante: false, color: '#6366f1' })
+  const [form, setForm] = useState({ nombre: '', descripcion: '', categoria: 'salud' as Habito['categoria'], frecuencia: 'diario' as Habito['frecuencia'], icono: '💪', color: 'var(--green)' })
+  const [remForm, setRemForm] = useState({ titulo: '', descripcion: '', tipo: 'general' as Recordatorio['tipo'], fecha_hora: '', repetir: 'nunca' as Recordatorio['repetir'], importante: false, color: 'var(--accent)' })
 
   const load = async () => {
+    setErrorCarga(null)
     // El finally es obligatorio: si una consulta rechaza (base pausada,
     // red caída), sin él el spinner se queda girando para siempre.
     try {
@@ -84,6 +87,7 @@ export default function Bienestar() {
       setRecordatorios(rec ?? [])
     } catch (e) {
       console.error('[Bienestar] no se pudieron cargar los datos', e)
+      setErrorCarga(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
@@ -106,7 +110,7 @@ export default function Bienestar() {
     if (!form.nombre) return
     setSaving(true)
     await supabase.from('habitos').insert(form)
-    setForm({ nombre: '', descripcion: '', categoria: 'salud', frecuencia: 'diario', icono: '💪', color: '#22c55e' })
+    setForm({ nombre: '', descripcion: '', categoria: 'salud', frecuencia: 'diario', icono: '💪', color: 'var(--green)' })
     setShowForm(false)
     setSaving(false)
     load()
@@ -121,7 +125,7 @@ export default function Bienestar() {
     if (!remForm.titulo || !remForm.fecha_hora) return
     setSaving(true)
     await supabase.from('recordatorios').insert(remForm)
-    setRemForm({ titulo: '', descripcion: '', tipo: 'general', fecha_hora: '', repetir: 'nunca', importante: false, color: '#6366f1' })
+    setRemForm({ titulo: '', descripcion: '', tipo: 'general', fecha_hora: '', repetir: 'nunca', importante: false, color: 'var(--accent)' })
     setShowForm(false)
     setSaving(false)
     load()
@@ -148,16 +152,17 @@ export default function Bienestar() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      <AvisoError mensaje={errorCarga} onReintentar={() => { setLoading(true); load() }} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-strong flex items-center gap-2">
             <Leaf className="text-green-400" size={24} /> Bienestar
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Hábitos diarios y recordatorios</p>
+          <p className="text-muted text-sm mt-1">Hábitos diarios y recordatorios</p>
         </div>
         <button onClick={() => setShowForm(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
-          style={{ background: 'linear-gradient(135deg, #22c55e, #06b6d4)' }}>
+          style={{ background: 'linear-gradient(135deg, var(--green), var(--cyan))' }}>
           <Plus size={16} /> Agregar
         </button>
       </div>
@@ -165,21 +170,21 @@ export default function Bienestar() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Hoy</p>
-          <p className="text-xl font-bold text-white">{completadosHoy}/{habitos.length}</p>
-          <p className="text-xs text-slate-400 mt-1">hábitos completados</p>
-          <div className="w-full h-1.5 rounded-full mt-2" style={{ background: '#1e293b' }}>
+          <p className="text-xs text-muted mb-1">Hoy</p>
+          <p className="text-xl font-bold text-strong">{completadosHoy}/{habitos.length}</p>
+          <p className="text-xs text-muted mt-1">hábitos completados</p>
+          <div className="w-full h-1.5 rounded-full mt-2" style={{ background: 'var(--surface-2)' }}>
             <div className="h-1.5 rounded-full bg-green-400 transition-all"
               style={{ width: `${habitos.length > 0 ? (completadosHoy / habitos.length) * 100 : 0}%` }} />
           </div>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Recordatorios Pendientes</p>
+          <p className="text-xs text-muted mb-1">Recordatorios Pendientes</p>
           <p className="text-xl font-bold text-yellow-400">{proxRecordatorios.length}</p>
-          <p className="text-xs text-slate-400 mt-1">próximos 7 días</p>
+          <p className="text-xs text-muted mt-1">próximos 7 días</p>
         </div>
         <div className="stat-card col-span-2 lg:col-span-1">
-          <p className="text-xs text-slate-400 mb-1">Mejor Racha</p>
+          <p className="text-xs text-muted mb-1">Mejor Racha</p>
           <p className="text-xl font-bold text-orange-400 flex items-center gap-1">
             <Flame size={18} />
             {Math.max(0, ...habitos.map(h => getStreak(registros, h.id)))} días
@@ -188,10 +193,10 @@ export default function Bienestar() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-lg" style={{ background: '#1e293b' }}>
+      <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface-2)' }}>
         {[{ id: 'habitos', label: 'Hábitos' }, { id: 'recordatorios', label: 'Recordatorios' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as 'habitos' | 'recordatorios')}
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${tab === t.id ? 'bg-green-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${tab === t.id ? 'bg-green-600 text-strong' : 'text-muted hover:text-strong'}`}>
             {t.label}
           </button>
         ))}
@@ -200,14 +205,14 @@ export default function Bienestar() {
       {/* Form */}
       {showForm && tab === 'habitos' && (
         <div className="card">
-          <h2 className="text-sm font-semibold text-white mb-4">Nuevo Hábito</h2>
+          <h2 className="text-sm font-semibold text-strong mb-4">Nuevo Hábito</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Nombre *</label>
+              <label className="text-xs text-muted mb-1 block">Nombre *</label>
               <input className="input w-full" placeholder="Ej: Beber 2L de agua..." value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Categoría</label>
+              <label className="text-xs text-muted mb-1 block">Categoría</label>
               <select className="input w-full" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value as Habito['categoria'] }))}>
                 <option value="salud">Salud</option>
                 <option value="ejercicio">Ejercicio</option>
@@ -217,7 +222,7 @@ export default function Bienestar() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Frecuencia</label>
+              <label className="text-xs text-muted mb-1 block">Frecuencia</label>
               <select className="input w-full" value={form.frecuencia} onChange={e => setForm(f => ({ ...f, frecuencia: e.target.value as Habito['frecuencia'] }))}>
                 <option value="diario">Diario</option>
                 <option value="semanal">Semanal</option>
@@ -225,36 +230,36 @@ export default function Bienestar() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Ícono</label>
+              <label className="text-xs text-muted mb-1 block">Ícono</label>
               <div className="flex gap-1.5 flex-wrap">
                 {ICON_OPT.map(ic => (
                   <button key={ic} onClick={() => setForm(f => ({ ...f, icono: ic }))}
                     className={`text-lg p-1.5 rounded-lg transition-all ${form.icono === ic ? 'ring-2 ring-green-500' : ''}`}
-                    style={{ background: '#1e293b' }}>{ic}</button>
+                    style={{ background: 'var(--surface-2)' }}>{ic}</button>
                 ))}
               </div>
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={createHabito} disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#22c55e' }}>
+              className="px-4 py-2 rounded-lg text-sm font-medium text-strong" style={{ background: 'var(--green)' }}>
               {saving ? 'Guardando...' : 'Crear Hábito'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">Cancelar</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong">Cancelar</button>
           </div>
         </div>
       )}
 
       {showForm && tab === 'recordatorios' && (
         <div className="card">
-          <h2 className="text-sm font-semibold text-white mb-4">Nuevo Recordatorio</h2>
+          <h2 className="text-sm font-semibold text-strong mb-4">Nuevo Recordatorio</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Título *</label>
+              <label className="text-xs text-muted mb-1 block">Título *</label>
               <input className="input w-full" placeholder="Ej: Pagar renta..." value={remForm.titulo} onChange={e => setRemForm(f => ({ ...f, titulo: e.target.value }))} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Tipo</label>
+              <label className="text-xs text-muted mb-1 block">Tipo</label>
               <select className="input w-full" value={remForm.tipo} onChange={e => setRemForm(f => ({ ...f, tipo: e.target.value as Recordatorio['tipo'] }))}>
                 <option value="general">General</option>
                 <option value="pago">Pago</option>
@@ -264,11 +269,11 @@ export default function Bienestar() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Fecha y Hora *</label>
+              <label className="text-xs text-muted mb-1 block">Fecha y Hora *</label>
               <input className="input w-full" type="datetime-local" value={remForm.fecha_hora} onChange={e => setRemForm(f => ({ ...f, fecha_hora: e.target.value }))} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Repetir</label>
+              <label className="text-xs text-muted mb-1 block">Repetir</label>
               <select className="input w-full" value={remForm.repetir} onChange={e => setRemForm(f => ({ ...f, repetir: e.target.value as Recordatorio['repetir'] }))}>
                 <option value="nunca">No repetir</option>
                 <option value="diario">Diario</option>
@@ -279,15 +284,15 @@ export default function Bienestar() {
             </div>
             <div className="flex items-center gap-2">
               <input type="checkbox" id="imp" checked={remForm.importante} onChange={e => setRemForm(f => ({ ...f, importante: e.target.checked }))} className="rounded" />
-              <label htmlFor="imp" className="text-sm text-slate-300">Marcar como importante</label>
+              <label htmlFor="imp" className="text-sm text-body">Marcar como importante</label>
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={createRecordatorio} disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#6366f1' }}>
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: 'var(--accent)' }}>
               {saving ? 'Guardando...' : 'Crear Recordatorio'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">Cancelar</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong">Cancelar</button>
           </div>
         </div>
       )}
@@ -296,9 +301,9 @@ export default function Bienestar() {
       {tab === 'habitos' && (
         habitos.length === 0 ? (
           <div className="card text-center py-12">
-            <Leaf size={40} className="mx-auto text-slate-600 mb-3" />
-            <p className="text-white font-medium">Sin hábitos aún</p>
-            <p className="text-slate-400 text-sm mt-1">Empieza creando tu primer hábito</p>
+            <Leaf size={40} className="mx-auto text-faint mb-3" />
+            <p className="text-strong font-medium">Sin hábitos aún</p>
+            <p className="text-muted text-sm mt-1">Empieza creando tu primer hábito</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -317,14 +322,14 @@ export default function Bienestar() {
                   <button onClick={() => toggleHoy(h)} className="flex-shrink-0">
                     {completadoHoy
                       ? <CheckCircle2 size={24} style={{ color: h.color }} />
-                      : <Circle size={24} className="text-slate-500 hover:text-slate-300 transition-colors" />}
+                      : <Circle size={24} className="text-dim hover:text-body transition-colors" />}
                   </button>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-2xl">{h.icono}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className={`font-medium text-sm ${completadoHoy ? 'line-through text-slate-400' : 'text-white'}`}>{h.nombre}</p>
+                      <p className={`font-medium text-sm ${completadoHoy ? 'line-through text-muted' : 'text-strong'}`}>{h.nombre}</p>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: CAT_COLORS[h.categoria] + '22', color: CAT_COLORS[h.categoria] }}>
                         {h.categoria}
                       </span>
@@ -335,7 +340,7 @@ export default function Bienestar() {
                         const done = registros.some(r => r.habito_id === h.id && r.fecha === d && r.completado)
                         return (
                           <div key={d} className="w-4 h-4 rounded-full border"
-                            style={{ background: done ? h.color : 'transparent', borderColor: done ? h.color : '#2d3f58' }}
+                            style={{ background: done ? h.color : 'transparent', borderColor: done ? h.color : 'var(--border-hi)' }}
                             title={d} />
                         )
                       })}
@@ -347,7 +352,7 @@ export default function Bienestar() {
                       <span className="text-xs text-orange-400 font-bold">{streak}</span>
                     </div>
                   )}
-                  <button onClick={() => deleteHabito(h.id)} className="text-slate-600 hover:text-red-400 flex-shrink-0">
+                  <button onClick={() => deleteHabito(h.id)} className="text-faint hover:text-red-400 flex-shrink-0">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -361,9 +366,9 @@ export default function Bienestar() {
       {tab === 'recordatorios' && (
         recordatorios.length === 0 ? (
           <div className="card text-center py-12">
-            <BellOff size={40} className="mx-auto text-slate-600 mb-3" />
-            <p className="text-white font-medium">Sin recordatorios</p>
-            <p className="text-slate-400 text-sm mt-1">Agrega recordatorios para pagos, citas o tareas</p>
+            <BellOff size={40} className="mx-auto text-faint mb-3" />
+            <p className="text-strong font-medium">Sin recordatorios</p>
+            <p className="text-muted text-sm mt-1">Agrega recordatorios para pagos, citas o tareas</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -376,17 +381,17 @@ export default function Bienestar() {
               const isSoon = diffDays >= 0 && diffDays <= 1
               return (
                 <div key={r.id} className="card flex items-start gap-3"
-                  style={isOverdue ? { borderColor: '#ef4444' + '44' } : isSoon ? { borderColor: '#f59e0b' + '44' } : {}}>
+                  style={isOverdue ? { borderColor: 'var(--red)' + '44' } : isSoon ? { borderColor: 'var(--yellow)' + '44' } : {}}>
                   {r.importante && <Star size={14} className="text-yellow-400 mt-1 flex-shrink-0" />}
                   <Bell size={16} className="mt-0.5 flex-shrink-0" style={{ color: r.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium text-sm">{r.titulo}</p>
-                    {r.descripcion && <p className="text-xs text-slate-400">{r.descripcion}</p>}
+                    <p className="text-strong font-medium text-sm">{r.titulo}</p>
+                    {r.descripcion && <p className="text-xs text-muted">{r.descripcion}</p>}
                     <div className="flex items-center gap-3 mt-1">
-                      <span className={`text-xs ${isOverdue ? 'text-red-400' : isSoon ? 'text-yellow-400' : 'text-slate-400'}`}>
+                      <span className={`text-xs ${isOverdue ? 'text-red-400' : isSoon ? 'text-yellow-400' : 'text-muted'}`}>
                         {fecha.toLocaleDateString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
-                      {r.repetir !== 'nunca' && <span className="text-xs text-slate-500">↻ {r.repetir}</span>}
+                      {r.repetir !== 'nunca' && <span className="text-xs text-dim">↻ {r.repetir}</span>}
                     </div>
                   </div>
                   <button onClick={() => completeRecordatorio(r.id)}

@@ -189,13 +189,13 @@ export default function IPTV() {
     <div className="space-y-5 max-w-7xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">IPTV - Elite TV Plus</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Control de créditos, clientes y suscripciones</p>
+          <h1 className="text-2xl font-bold text-strong">IPTV - Elite TV Plus</h1>
+          <p className="text-muted text-sm mt-0.5">Control de créditos, clientes y suscripciones</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 flex-wrap p-1 rounded-lg" style={{ background: '#0f172a' }}>
+      <div className="flex gap-2 flex-wrap p-1 rounded-lg" style={{ background: 'var(--bg)' }}>
         {[
           { id: 'overview', label: 'Resumen', icon: <TrendingUp size={14} /> },
           { id: 'credits', label: 'Créditos', icon: <CreditCard size={14} /> },
@@ -220,12 +220,12 @@ export default function IPTV() {
       {tab === 'overview' && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="card"><p className="text-xs text-slate-400">Clientes activos</p><p className="text-2xl font-bold text-indigo-400 mt-1">{stats?.subscriptions?.activas || 0}</p></div>
-            <div className="card"><p className="text-xs text-slate-400">Créditos 1-conn</p><p className="text-2xl font-bold text-green-400 mt-1">{balance1?.disponibles || 0}</p><p className="text-xs text-slate-500">de {balance1?.total_comprados || 0}</p></div>
-            <div className="card"><p className="text-xs text-slate-400">Créditos 2-conn</p><p className="text-2xl font-bold text-cyan-400 mt-1">{balance2?.disponibles || 0}</p><p className="text-xs text-slate-500">de {balance2?.total_comprados || 0}</p></div>
+            <div className="card"><p className="text-xs text-muted">Clientes activos</p><p className="text-2xl font-bold text-indigo-400 mt-1">{stats?.subscriptions?.activas || 0}</p></div>
+            <div className="card"><p className="text-xs text-muted">Créditos 1-conn</p><p className="text-2xl font-bold text-green-400 mt-1">{balance1?.disponibles || 0}</p><p className="text-xs text-dim">de {balance1?.total_comprados || 0}</p></div>
+            <div className="card"><p className="text-xs text-muted">Créditos 2-conn</p><p className="text-2xl font-bold text-cyan-400 mt-1">{balance2?.disponibles || 0}</p><p className="text-xs text-dim">de {balance2?.total_comprados || 0}</p></div>
             <div className="card">
-              <p className="text-xs text-slate-400">Por vencer (7d)</p>
-              <p className={`text-2xl font-bold mt-1 ${stats?.expiring_soon > 0 ? 'text-yellow-400' : 'text-slate-400'}`}>
+              <p className="text-xs text-muted">Por vencer (7d)</p>
+              <p className={`text-2xl font-bold mt-1 ${stats?.expiring_soon > 0 ? 'text-yellow-400' : 'text-muted'}`}>
                 {stats?.expiring_soon || 0}
               </p>
             </div>
@@ -234,29 +234,29 @@ export default function IPTV() {
           {/* Ingresos totales */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="card">
-              <p className="text-xs text-slate-400 mb-1">Ingresos totales IPTV</p>
+              <p className="text-xs text-muted mb-1">Ingresos totales IPTV</p>
               <p className="text-2xl font-bold text-green-400">{formatMXN(stats?.subscriptions?.ingresos_activos_mxn || 0)}</p>
-              <p className="text-xs text-slate-500 mt-1">Solo suscripciones activas</p>
+              <p className="text-xs text-dim mt-1">Solo suscripciones activas</p>
             </div>
             <div className="card">
-              <p className="text-xs text-slate-400 mb-1">Suscripciones vencidas</p>
-              <p className="text-2xl font-bold text-slate-400">{stats?.subscriptions?.vencidas || 0}</p>
-              <p className="text-xs text-slate-500 mt-1">de {stats?.subscriptions?.total || 0} totales</p>
+              <p className="text-xs text-muted mb-1">Suscripciones vencidas</p>
+              <p className="text-2xl font-bold text-muted">{stats?.subscriptions?.vencidas || 0}</p>
+              <p className="text-xs text-dim mt-1">de {stats?.subscriptions?.total || 0} totales</p>
             </div>
           </div>
 
           {chartData.length > 0 && (
             <div className="card">
-              <h3 className="text-sm font-semibold text-white mb-4">Ingresos vs Costos (últimos 12 meses)</h3>
+              <h3 className="text-sm font-semibold text-strong mb-4">Ingresos vs Costos (últimos 12 meses)</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2d3f58" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatMXN(v)} />
-                  <Bar dataKey="Ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Costo" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Ganancia" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Ingresos" fill="var(--green)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Costo" fill="var(--red)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Ganancia" fill="var(--accent)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -268,7 +268,7 @@ export default function IPTV() {
       {tab === 'credits' && (
         <div className="space-y-5">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-white">Paquetes de créditos</h2>
+            <h2 className="text-lg font-semibold text-strong">Paquetes de créditos</h2>
             <button onClick={() => { setPkgForm({ connections: '1', credits: '', price_paid: '', price_currency: 'MXN', purchase_date: new Date().toISOString().split('T')[0], notes: '' }); setShowPkgModal(true) }} className="btn-primary">
               <Plus size={14} />Comprar paquete
             </button>
@@ -279,16 +279,16 @@ export default function IPTV() {
             {[{ conn: 1, data: balance1 }, { conn: 2, data: balance2 }].map(({ conn, data }) => (
               <div key={conn} className="card">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-white">{conn} conexión{conn > 1 ? 'es' : ''}</p>
+                  <p className="text-sm font-medium text-strong">{conn} conexión{conn > 1 ? 'es' : ''}</p>
                   <span className="badge badge-blue">{data?.disponibles || 0} disponibles</span>
                 </div>
-                <div className="w-full rounded-full h-2" style={{ background: '#0f172a' }}>
+                <div className="w-full rounded-full h-2" style={{ background: 'var(--bg)' }}>
                   <div className="h-2 rounded-full" style={{
-                    background: 'linear-gradient(90deg, #6366f1, #22c55e)',
+                    background: 'linear-gradient(90deg, var(--accent), var(--green))',
                     width: `${Math.min(100, safeDiv(data?.disponibles || 0, data?.total_comprados || 0) * 100).toFixed(1)}%`
                   }} />
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-muted mt-2">
                   {data?.usados || 0} usados de {data?.total_comprados || 0} comprados
                 </p>
               </div>
@@ -297,20 +297,20 @@ export default function IPTV() {
 
           {/* Panel prices reference */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-white mb-4">Precios del panel Elite TV Plus (referencia)</h3>
+            <h3 className="text-sm font-semibold text-strong mb-4">Precios del panel Elite TV Plus (referencia)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(PANEL_PRICES).map(([conn, prices]) => (
                 <div key={conn}>
-                  <p className="text-xs text-slate-400 mb-2">{conn} conexión{parseInt(conn) > 1 ? 'es' : ''}</p>
+                  <p className="text-xs text-muted mb-2">{conn} conexión{parseInt(conn) > 1 ? 'es' : ''}</p>
                   <div className="space-y-1.5">
                     {prices.map(p => (
-                      <div key={p.credits} className="flex items-center justify-between text-sm py-1.5 px-3 rounded-lg" style={{ background: '#0f172a' }}>
-                        <span className="text-slate-300">{p.credits} créditos</span>
+                      <div key={p.credits} className="flex items-center justify-between text-sm py-1.5 px-3 rounded-lg" style={{ background: 'var(--bg)' }}>
+                        <span className="text-body">{p.credits} créditos</span>
                         <div className="text-right">
-                          <span className="text-white font-medium">{formatMXN(p.price_mxn)}</span>
-                          <span className="text-slate-500 text-xs ml-2">/ ${p.price_usd} USD</span>
+                          <span className="text-strong font-medium">{formatMXN(p.price_mxn)}</span>
+                          <span className="text-dim text-xs ml-2">/ ${p.price_usd} USD</span>
                         </div>
-                        <span className="text-xs text-slate-500">${(p.price_mxn / p.credits).toFixed(0)}/créd</span>
+                        <span className="text-xs text-dim">${(p.price_mxn / p.credits).toFixed(0)}/créd</span>
                       </div>
                     ))}
                   </div>
@@ -327,16 +327,16 @@ export default function IPTV() {
                 <div key={pkg.id} className="card flex items-center gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white font-medium">{pkg.credits} créditos</span>
+                      <span className="text-strong font-medium">{pkg.credits} créditos</span>
                       <span className="badge badge-blue">{pkg.connections} conn</span>
                       <span className={`badge ${pkg.credits_remaining > 0 ? 'badge-green' : 'badge-gray'}`}>
                         {pkg.credits_remaining} restantes
                       </span>
                     </div>
-                    <div className="w-full rounded-full h-1.5" style={{ background: '#0f172a' }}>
+                    <div className="w-full rounded-full h-1.5" style={{ background: 'var(--bg)' }}>
                       <div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-dim mt-1">
                       {formatMXN(pkg.price_paid)} {pkg.price_currency !== 'MXN' ? pkg.price_currency : ''} · {pkg.purchase_date}
                       {pkg.notes && ` · ${pkg.notes}`}
                     </p>
@@ -348,7 +348,7 @@ export default function IPTV() {
               )
             })}
             {packages.length === 0 && (
-              <div className="card text-center py-10 text-slate-500">
+              <div className="card text-center py-10 text-dim">
                 <CreditCard size={32} className="mx-auto mb-2 opacity-30" />
                 <p>Sin paquetes. Compra tu primer paquete de créditos.</p>
               </div>
@@ -361,7 +361,7 @@ export default function IPTV() {
       {tab === 'clients' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-white">Clientes ({clients.length})</h2>
+            <h2 className="text-lg font-semibold text-strong">Clientes ({clients.length})</h2>
             <button onClick={() => { setEditingClient(null); setClientForm({ name: '', phone: '', country: 'MX', email: '', notes: '' }); setShowClientModal(true) }} className="btn-primary">
               <Plus size={14} />Agregar cliente
             </button>
@@ -371,8 +371,8 @@ export default function IPTV() {
               <div key={c.id} className="card">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold text-white">{c.name}</p>
-                    {c.phone && <p className="text-sm text-slate-400 mt-0.5">{c.phone}</p>}
+                    <p className="font-semibold text-strong">{c.name}</p>
+                    {c.phone && <p className="text-sm text-muted mt-0.5">{c.phone}</p>}
                     <div className="flex gap-2 mt-2">
                       <span className="badge badge-blue">{c.country}</span>
                       {c.active_subs > 0
@@ -391,15 +391,15 @@ export default function IPTV() {
                   </div>
                 </div>
                 {c.next_expiry && (
-                  <p className="text-xs text-slate-500 mt-2 pt-2 border-t" style={{ borderColor: '#2d3f58' }}>
-                    Vence: <span className="text-slate-300">{c.next_expiry}</span>
+                  <p className="text-xs text-dim mt-2 pt-2 border-t" style={{ borderColor: 'var(--border-hi)' }}>
+                    Vence: <span className="text-body">{c.next_expiry}</span>
                   </p>
                 )}
-                {c.notes && <p className="text-xs text-slate-500 mt-1 italic">{c.notes}</p>}
+                {c.notes && <p className="text-xs text-dim mt-1 italic">{c.notes}</p>}
               </div>
             ))}
             {clients.length === 0 && (
-              <div className="col-span-3 card text-center py-10 text-slate-500">
+              <div className="col-span-3 card text-center py-10 text-dim">
                 <Users size={32} className="mx-auto mb-2 opacity-30" />
                 <p>Sin clientes registrados aún.</p>
               </div>
@@ -412,7 +412,7 @@ export default function IPTV() {
       {tab === 'subscriptions' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <h2 className="text-lg font-semibold text-white">Suscripciones ({subs.length})</h2>
+            <h2 className="text-lg font-semibold text-strong">Suscripciones ({subs.length})</h2>
             <div className="flex gap-2">
               <select className="input w-auto" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                 <option value="todos">Todas</option>
@@ -439,12 +439,12 @@ export default function IPTV() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       {/* Cliente principal */}
-                      <span className="font-semibold text-white">{sub.client_name}</span>
+                      <span className="font-semibold text-strong">{sub.client_name}</span>
                       {/* Segundo cliente */}
                       {sub.segundo_cliente_nombre && (
                         <>
-                          <span className="text-slate-500 text-xs">+</span>
-                          <span className="font-semibold text-slate-300">{sub.segundo_cliente_nombre}</span>
+                          <span className="text-dim text-xs">+</span>
+                          <span className="font-semibold text-body">{sub.segundo_cliente_nombre}</span>
                           {sub.segundo_es_propio && <span className="badge badge-gray">uso propio</span>}
                         </>
                       )}
@@ -459,12 +459,12 @@ export default function IPTV() {
                         <span className="badge badge-yellow">Vence en {daysLeft}d</span>
                       )}
                     </div>
-                    <div className="flex gap-3 text-xs text-slate-400 flex-wrap items-center">
+                    <div className="flex gap-3 text-xs text-muted flex-wrap items-center">
                       <span>{sub.months} mes{sub.months > 1 ? 'es' : ''}</span>
                       <span>{sub.start_date} → {sub.end_date}</span>
-                      <span className="text-white font-medium">
+                      <span className="text-strong font-medium">
                         {formatMXN(ingreso1)}{ingreso2 > 0 ? ` + ${formatMXN(ingreso2)}` : ''}
-                        {ingreso2 > 0 && <span className="text-slate-500"> = {formatMXN(ingresoTotal)}</span>}
+                        {ingreso2 > 0 && <span className="text-dim"> = {formatMXN(ingresoTotal)}</span>}
                       </span>
                       {costoToken > 0 && <span className="text-red-400">−{fmt(costoToken)} token</span>}
                       <span className={sinCosto ? 'text-yellow-400' : profitClass(gainMXN)}>
@@ -489,7 +489,7 @@ export default function IPTV() {
               )
             })}
             {filteredSubs.length === 0 && (
-              <div className="card text-center py-10 text-slate-500">
+              <div className="card text-center py-10 text-dim">
                 <Tv size={32} className="mx-auto mb-2 opacity-30" />
                 <p>Sin suscripciones. ¡Agrega la primera!</p>
               </div>
@@ -501,29 +501,29 @@ export default function IPTV() {
       {/* ── PRICING OPTIMIZER ── */}
       {tab === 'pricing' && pricing && (
         <div className="space-y-5">
-          <h2 className="text-lg font-semibold text-white">Optimizador de precios</h2>
+          <h2 className="text-lg font-semibold text-strong">Optimizador de precios</h2>
 
           {/* Quick comparison */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-white mb-1">¿Cuánto ganas por cliente al mes?</h3>
-            <p className="text-xs text-slate-400 mb-4">Basado en paquete de 30 créditos 1-conn (${(2100/30).toFixed(0)}/crédito)</p>
+            <h3 className="text-sm font-semibold text-strong mb-1">¿Cuánto ganas por cliente al mes?</h3>
+            <p className="text-xs text-muted mb-4">Basado en paquete de 30 créditos 1-conn (${(2100/30).toFixed(0)}/crédito)</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {pricing.custom_comparison.map((p: any) => (
                 <div key={p.price_mxn} className="rounded-lg p-3 text-center" style={{
-                  background: '#0f172a',
-                  border: p.price_mxn === 200 ? '2px solid #6366f1' : '1px solid #2d3f58'
+                  background: 'var(--bg)',
+                  border: p.price_mxn === 200 ? '2px solid var(--accent)' : '1px solid var(--border-hi)'
                 }}>
                   {p.price_mxn === 200 && <p className="text-xs text-indigo-400 mb-1">▲ Recomendado</p>}
-                  <p className="text-xl font-bold text-white">{formatMXN(p.price_mxn)}</p>
-                  <p className="text-xs text-slate-400">por mes</p>
-                  <div className="mt-2 pt-2" style={{ borderTop: '1px solid #2d3f58' }}>
+                  <p className="text-xl font-bold text-strong">{formatMXN(p.price_mxn)}</p>
+                  <p className="text-xs text-muted">por mes</p>
+                  <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-hi)' }}>
                     <p className="text-green-400 font-semibold">{formatMXN(parseFloat(p.profit_per_client))}</p>
-                    <p className="text-xs text-slate-500">ganancia</p>
+                    <p className="text-xs text-dim">ganancia</p>
                     <p className="text-xs text-indigo-300 mt-1">{p.margin}% margen</p>
                   </div>
-                  <div className="mt-2 pt-2" style={{ borderTop: '1px solid #2d3f58' }}>
+                  <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-hi)' }}>
                     <p className="text-yellow-400 font-semibold text-sm">{formatMXN(parseFloat(p.monthly_18_clients))}</p>
-                    <p className="text-xs text-slate-500">con 18 clientes/mes</p>
+                    <p className="text-xs text-dim">con 18 clientes/mes</p>
                   </div>
                 </div>
               ))}
@@ -532,18 +532,18 @@ export default function IPTV() {
 
           {/* Sell prices reference */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-white mb-4">Tus precios de venta (Elite TV Plus)</h3>
+            <h3 className="text-sm font-semibold text-strong mb-4">Tus precios de venta (Elite TV Plus)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(SELL_PRICES).map(([conn, prices]) => (
                 <div key={conn}>
-                  <p className="text-xs text-slate-400 mb-2 font-medium">{conn} conexión{parseInt(conn) > 1 ? 'es' : ''}</p>
+                  <p className="text-xs text-muted mb-2 font-medium">{conn} conexión{parseInt(conn) > 1 ? 'es' : ''}</p>
                   <div className="space-y-1.5">
                     {prices.map(p => (
-                      <div key={p.months} className="flex items-center justify-between text-sm py-1.5 px-3 rounded" style={{ background: '#0f172a' }}>
-                        <span className="text-slate-300">{p.months} mes{p.months > 1 ? 'es' : ''}</span>
+                      <div key={p.months} className="flex items-center justify-between text-sm py-1.5 px-3 rounded" style={{ background: 'var(--bg)' }}>
+                        <span className="text-body">{p.months} mes{p.months > 1 ? 'es' : ''}</span>
                         <div className="flex gap-3">
-                          <span className="text-white font-medium">{formatMXN(p.price_mxn)}</span>
-                          <span className="text-slate-500">${p.price_usd} USD</span>
+                          <span className="text-strong font-medium">{formatMXN(p.price_mxn)}</span>
+                          <span className="text-dim">${p.price_usd} USD</span>
                         </div>
                       </div>
                     ))}
@@ -555,23 +555,23 @@ export default function IPTV() {
 
           {/* Analysis table */}
           <div className="card overflow-x-auto">
-            <h3 className="text-sm font-semibold text-white mb-4">Análisis completo de rentabilidad</h3>
+            <h3 className="text-sm font-semibold text-strong mb-4">Análisis completo de rentabilidad</h3>
             <table className="w-full text-xs">
               <thead>
-                <tr style={{ borderBottom: '1px solid #2d3f58' }}>
+                <tr style={{ borderBottom: '1px solid var(--border-hi)' }}>
                   {['Conn', 'Paquete', 'Costo/créd', 'Meses venta', 'Precio venta', 'Ganancia', 'Margen'].map(h => (
-                    <th key={h} className="text-left py-2 px-2 text-slate-400 font-medium whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left py-2 px-2 text-muted font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {pricing.analysis.map((a: any, i: number) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #1e293b' }}>
-                    <td className="py-1.5 px-2 text-slate-300">{a.connections}</td>
-                    <td className="py-1.5 px-2 text-slate-300">{a.package_credits} créd</td>
-                    <td className="py-1.5 px-2 text-slate-400">{formatMXN(parseFloat(a.cost_per_credit_mxn))}</td>
-                    <td className="py-1.5 px-2 text-slate-300">{a.sell_months}m</td>
-                    <td className="py-1.5 px-2 text-white">{formatMXN(a.sell_price_mxn)}</td>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td className="py-1.5 px-2 text-body">{a.connections}</td>
+                    <td className="py-1.5 px-2 text-body">{a.package_credits} créd</td>
+                    <td className="py-1.5 px-2 text-muted">{formatMXN(parseFloat(a.cost_per_credit_mxn))}</td>
+                    <td className="py-1.5 px-2 text-body">{a.sell_months}m</td>
+                    <td className="py-1.5 px-2 text-strong">{formatMXN(a.sell_price_mxn)}</td>
                     <td className={`py-1.5 px-2 font-semibold ${parseFloat(a.profit_per_credit_mxn) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatMXN(parseFloat(a.profit_per_credit_mxn))}
                     </td>
@@ -592,7 +592,7 @@ export default function IPTV() {
       {tab === 'whatsapp' && (
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Mensajes de renovación</h2>
+            <h2 className="text-lg font-semibold text-strong">Mensajes de renovación</h2>
             <button onClick={handleSendRenewals} disabled={sendingRenewals || renewals.length === 0} className="btn-primary">
               {sendingRenewals ? <RefreshCw size={14} className="animate-spin" /> : <MessageCircle size={14} />}
               Enviar recordatorios ({renewals.length})
@@ -600,9 +600,9 @@ export default function IPTV() {
           </div>
 
           {renewals.length === 0 ? (
-            <div className="card text-center py-12 text-slate-500">
+            <div className="card text-center py-12 text-dim">
               <MessageCircle size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="font-medium text-slate-400">Sin vencimientos en los próximos 7 días</p>
+              <p className="font-medium text-muted">Sin vencimientos en los próximos 7 días</p>
               <p className="text-sm mt-1">Todos tus clientes están al día</p>
             </div>
           ) : (
@@ -613,7 +613,7 @@ export default function IPTV() {
                   <div key={r.id} className="card space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white">{r.client}</span>
+                        <span className="font-semibold text-strong">{r.client}</span>
                         <span className="badge badge-blue">{r.connections} conn</span>
                         <span className={`badge ${daysLeft <= 2 ? 'badge-red' : 'badge-yellow'}`}>
                           Vence en {daysLeft}d
@@ -621,13 +621,13 @@ export default function IPTV() {
                         {r.renewal_sent ? <span className="badge badge-green">Enviado</span> : null}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400">{r.phone}</span>
+                        <span className="text-xs text-muted">{r.phone}</span>
                         <button onClick={() => handleCopyMsg(r.message, idx)} className="btn-secondary px-2 py-1.5 text-xs">
                           {copied === idx ? <><Check size={12} />Copiado</> : <><Copy size={12} />Copiar</>}
                         </button>
                       </div>
                     </div>
-                    <pre className="text-xs text-slate-300 whitespace-pre-wrap rounded-lg p-3" style={{ background: '#0f172a', fontFamily: 'inherit' }}>
+                    <pre className="text-xs text-body whitespace-pre-wrap rounded-lg p-3" style={{ background: 'var(--bg)', fontFamily: 'inherit' }}>
                       {r.message}
                     </pre>
                   </div>
@@ -641,9 +641,9 @@ export default function IPTV() {
       {/* ── MODALS ── */}
       {showPkgModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPkgModal(false)}>
-          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-white mb-5">Registrar compra de créditos</h2>
+              <h2 className="text-lg font-bold text-strong mb-5">Registrar compra de créditos</h2>
               <div className="space-y-3">
                 <div>
                   <label>Conexiones por crédito</label>
@@ -657,7 +657,7 @@ export default function IPTV() {
                   <div className="flex gap-2 flex-wrap mb-2">
                     {PANEL_PRICES[pkgForm.connections as '1' | '2'].map(p => (
                       <button key={p.credits} onClick={() => setPkgForm(f => ({ ...f, credits: String(p.credits), price_paid: String(p.price_mxn), price_currency: 'MXN' }))}
-                        className={`px-3 py-1.5 rounded text-xs border transition-all ${pkgForm.credits === String(p.credits) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-600 text-slate-400 hover:border-indigo-500'}`}>
+                        className={`px-3 py-1.5 rounded text-xs border transition-all ${pkgForm.credits === String(p.credits) ? 'bg-indigo-600 border-indigo-600 text-strong' : 'bd-hi text-muted hover:border-indigo-500'}`}>
                         {p.credits} ({formatMXN(p.price_mxn)})
                       </button>
                     ))}
@@ -693,9 +693,9 @@ export default function IPTV() {
 
       {showClientModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClientModal(false)}>
-          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-white mb-5">{editingClient ? 'Editar cliente' : 'Nuevo cliente'}</h2>
+              <h2 className="text-lg font-bold text-strong mb-5">{editingClient ? 'Editar cliente' : 'Nuevo cliente'}</h2>
               <div className="space-y-3">
                 <div><label>Nombre *</label><input className="input" value={clientForm.name} onChange={e => setClientForm(f => ({ ...f, name: e.target.value }))} /></div>
                 <div><label>Teléfono (WhatsApp)</label><input className="input" type="tel" value={clientForm.phone} onChange={e => setClientForm(f => ({ ...f, phone: e.target.value }))} placeholder="+52 xxx xxx xxxx" /></div>
@@ -721,9 +721,9 @@ export default function IPTV() {
 
       {showSubModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSubModal(false)}>
-          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-white mb-5">Nueva suscripción</h2>
+              <h2 className="text-lg font-bold text-strong mb-5">Nueva suscripción</h2>
               <div className="space-y-3">
                 <div>
                   <label>Cliente *</label>
@@ -767,7 +767,7 @@ export default function IPTV() {
                       const sp = SELL_PRICES[subForm.connections as '1' | '2']?.find(p => p.months === m)
                       return (
                         <button key={m} onClick={() => setSubForm(f => ({ ...f, months: String(m), price_charged: sp ? String(sp.price_mxn) : f.price_charged }))}
-                          className={`px-3 py-1.5 rounded text-xs border transition-all ${subForm.months === String(m) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-600 text-slate-400 hover:border-indigo-500'}`}>
+                          className={`px-3 py-1.5 rounded text-xs border transition-all ${subForm.months === String(m) ? 'bg-indigo-600 border-indigo-600 text-strong' : 'bd-hi text-muted hover:border-indigo-500'}`}>
                           {m}m {sp ? `· ${formatMXN(sp.price_mxn)}` : ''}
                         </button>
                       )
@@ -794,15 +794,15 @@ export default function IPTV() {
                   <input className="input" placeholder="Ej: BSCB, MARIO1..."
                     value={subForm.cuenta_codigo}
                     onChange={e => setSubForm(f => ({ ...f, cuenta_codigo: e.target.value.toUpperCase() }))} />
-                  <p className="text-xs text-slate-500 mt-1">Identificador de la cuenta en el panel IPTV</p>
+                  <p className="text-xs text-dim mt-1">Identificador de la cuenta en el panel IPTV</p>
                 </div>
 
                 {/* Segundo cliente (solo en cuentas dobles) */}
                 {subForm.connections === '2' && (
-                  <div className="rounded-lg p-3 space-y-2" style={{ background: '#0f172a', border: '1px solid #2d3f58' }}>
-                    <p className="text-xs font-medium text-slate-300">Segundo dispositivo (cuenta doble)</p>
+                  <div className="rounded-lg p-3 space-y-2" style={{ background: 'var(--bg)', border: '1px solid var(--border-hi)' }}>
+                    <p className="text-xs font-medium text-body">Segundo dispositivo (cuenta doble)</p>
                     <div>
-                      <label className="text-xs text-slate-400">Cliente del 2do dispositivo</label>
+                      <label className="text-xs text-muted">Cliente del 2do dispositivo</label>
                       <select className="input mt-1" value={subForm.segundo_cliente_id}
                         onChange={e => setSubForm(f => ({ ...f, segundo_cliente_id: e.target.value, segundo_es_propio: false }))}>
                         <option value="">Sin asignar</option>
@@ -814,7 +814,7 @@ export default function IPTV() {
                     </div>
                     {subForm.segundo_cliente_id && subForm.segundo_cliente_id !== 'propio' && (
                       <div>
-                        <label className="text-xs text-slate-400">Precio cobrado al 2do cliente (MXN)</label>
+                        <label className="text-xs text-muted">Precio cobrado al 2do cliente (MXN)</label>
                         <input className="input mt-1" type="number" step="0.01" placeholder="0.00"
                           value={subForm.segundo_precio}
                           onChange={e => setSubForm(f => ({ ...f, segundo_precio: e.target.value }))} />
@@ -833,7 +833,7 @@ export default function IPTV() {
                   {subForm.price_charged && subForm.costo_token && (
                     <p className="text-xs mt-1" style={{
                       color: (parseFloat(subForm.price_charged) + parseFloat(subForm.segundo_precio || '0') - parseFloat(subForm.costo_token)) >= 0
-                        ? '#22c55e' : '#ef4444'
+                        ? 'var(--green)' : 'var(--red)'
                     }}>
                       Ganancia = {fmt(
                         parseFloat(subForm.price_charged) +
@@ -856,15 +856,15 @@ export default function IPTV() {
       {/* ── MODAL: EDITAR SUSCRIPCIÓN ── */}
       {editingSub && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditingSub(null)}>
-          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+          <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-white mb-1">Editar suscripción</h2>
-              <p className="text-sm text-slate-400 mb-5">
+              <h2 className="text-lg font-bold text-strong mb-1">Editar suscripción</h2>
+              <p className="text-sm text-muted mb-5">
                 {editingSub.client_name} · {editingSub.connections} equipo{editingSub.connections > 1 ? 's' : ''}
               </p>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Precio cobrado *</label>
+                  <label className="text-xs text-muted mb-1 block">Precio cobrado *</label>
                   <div className="flex gap-2">
                     <input className="input flex-1" type="number" step="0.01"
                       value={editSubForm.price_charged}
@@ -877,30 +877,30 @@ export default function IPTV() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Costo del token (MXN)</label>
+                  <label className="text-xs text-muted mb-1 block">Costo del token (MXN)</label>
                   <input className="input w-full" type="number" step="0.01"
                     placeholder="Ej: 90 para 1 doble (2700÷30)"
                     value={editSubForm.costo_token}
                     onChange={e => setEditSubForm(f => ({ ...f, costo_token: e.target.value }))} />
-                  <p className="text-xs text-slate-500 mt-1">
-                    2700 ÷ 30 dobles = <span className="text-white">$90/token</span>
+                  <p className="text-xs text-dim mt-1">
+                    2700 ÷ 30 dobles = <span className="text-strong">$90/token</span>
                   </p>
                 </div>
                 {/* Vista previa de ganancia */}
                 {editSubForm.price_charged && (
-                  <div className="rounded-lg p-3" style={{ background: '#0f172a' }}>
-                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                  <div className="rounded-lg p-3" style={{ background: 'var(--bg)' }}>
+                    <div className="flex justify-between text-xs text-muted mb-1">
                       <span>Cobrado</span>
-                      <span className="text-white">{fmt(parseFloat(editSubForm.price_charged) || 0)}</span>
+                      <span className="text-strong">{fmt(parseFloat(editSubForm.price_charged) || 0)}</span>
                     </div>
                     {editSubForm.costo_token && (
-                      <div className="flex justify-between text-xs text-slate-400 mb-1">
+                      <div className="flex justify-between text-xs text-muted mb-1">
                         <span>Costo token</span>
                         <span className="text-red-400">−{fmt(parseFloat(editSubForm.costo_token) || 0)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm font-bold pt-1" style={{ borderTop: '1px solid #2d3f58' }}>
-                      <span className="text-slate-300">Ganancia</span>
+                    <div className="flex justify-between text-sm font-bold pt-1" style={{ borderTop: '1px solid var(--border-hi)' }}>
+                      <span className="text-body">Ganancia</span>
                       <span className={
                         (parseFloat(editSubForm.price_charged) - (parseFloat(editSubForm.costo_token) || 0)) >= 0
                           ? 'text-green-400' : 'text-red-400'
@@ -912,20 +912,20 @@ export default function IPTV() {
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-slate-400 mb-1 block">Fecha inicio</label>
+                    <label className="text-xs text-muted mb-1 block">Fecha inicio</label>
                     <input className="input w-full" type="date"
                       value={editSubForm.start_date}
                       onChange={e => setEditSubForm(f => ({ ...f, start_date: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 mb-1 block">Fecha fin</label>
+                    <label className="text-xs text-muted mb-1 block">Fecha fin</label>
                     <input className="input w-full" type="date"
                       value={editSubForm.end_date}
                       onChange={e => setEditSubForm(f => ({ ...f, end_date: e.target.value }))} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Estado</label>
+                  <label className="text-xs text-muted mb-1 block">Estado</label>
                   <select className="input w-full"
                     value={editSubForm.status}
                     onChange={e => setEditSubForm(f => ({ ...f, status: e.target.value }))}>
@@ -935,7 +935,7 @@ export default function IPTV() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Notas</label>
+                  <label className="text-xs text-muted mb-1 block">Notas</label>
                   <input className="input w-full"
                     value={editSubForm.notes}
                     onChange={e => setEditSubForm(f => ({ ...f, notes: e.target.value }))}

@@ -86,7 +86,7 @@ function Badge({ children, color = 'slate' }: { children: React.ReactNode; color
   const palette: Record<string, string> = {
     green:  'bg-green-900/40 text-green-400 border-green-800',
     red:    'bg-red-900/40 text-red-400 border-red-800',
-    slate:  'bg-slate-800 text-slate-400 border-slate-700',
+    slate:  'surface-2 text-muted bd',
     indigo: 'bg-indigo-900/40 text-indigo-400 border-indigo-800',
   }
   return (
@@ -137,7 +137,7 @@ function AddSheetForm({ onAdded }: { onAdded: () => void }) {
       <button
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors hover:opacity-90"
-        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+        style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
       >
         <Plus size={15} /> Agregar hoja
       </button>
@@ -145,16 +145,16 @@ function AddSheetForm({ onAdded }: { onAdded: () => void }) {
   }
 
   return (
-    <div className="rounded-xl p-4 space-y-3" style={{ background: '#1e293b', border: '1px solid #334155' }}>
-      <p className="text-sm font-semibold text-white">Nueva hoja de Google Sheets</p>
+    <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
+      <p className="text-sm font-semibold text-strong">Nueva hoja de Google Sheets</p>
 
       <input
         type="text"
         value={nombre}
         onChange={e => setNombre(e.target.value)}
         placeholder="Nombre (ej. Presupuesto Mayo)"
-        className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-indigo-500"
-        style={{ background: '#0f172a', border: '1px solid #334155' }}
+        className="w-full rounded-lg px-3 py-2 text-sm text-strong placeholder-slate-500 outline-none focus:ring-2 focus:ring-indigo-500"
+        style={{ background: 'var(--bg)', border: '1px solid var(--border-hi)' }}
       />
 
       <input
@@ -162,11 +162,11 @@ function AddSheetForm({ onAdded }: { onAdded: () => void }) {
         value={url}
         onChange={e => setUrl(e.target.value)}
         placeholder="URL CSV publicado de Google Sheets"
-        className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-indigo-500"
-        style={{ background: '#0f172a', border: '1px solid #334155' }}
+        className="w-full rounded-lg px-3 py-2 text-sm text-strong placeholder-slate-500 outline-none focus:ring-2 focus:ring-indigo-500"
+        style={{ background: 'var(--bg)', border: '1px solid var(--border-hi)' }}
       />
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-dim">
         En Google Sheets → Archivo → Compartir → Publicar en la web → CSV → copia el enlace
       </p>
 
@@ -181,15 +181,15 @@ function AddSheetForm({ onAdded }: { onAdded: () => void }) {
           onClick={handleAdd}
           disabled={saving}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 transition-colors"
-          style={{ background: '#6366f1' }}
+          style={{ background: 'var(--accent)' }}
         >
           {saving ? <RefreshCw size={13} className="animate-spin" /> : <Plus size={13} />}
           {saving ? 'Guardando…' : 'Guardar'}
         </button>
         <button
           onClick={() => { setOpen(false); setErr(''); setNombre(''); setUrl('') }}
-          className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white transition-colors"
-          style={{ background: '#0f172a', border: '1px solid #334155' }}
+          className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong transition-colors"
+          style={{ background: 'var(--bg)', border: '1px solid var(--border-hi)' }}
         >
           Cancelar
         </button>
@@ -215,24 +215,24 @@ function DataPreview({ configId }: { configId: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+      <div className="flex items-center gap-2 text-sm text-dim py-4">
         <RefreshCw size={14} className="animate-spin" /> Cargando datos…
       </div>
     )
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-500 py-4">Sin datos sincronizados aún. Haz clic en "Sincronizar".</p>
+    return <p className="text-sm text-dim py-4">Sin datos sincronizados aún. Haz clic en "Sincronizar".</p>
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid #1e293b' }}>
+    <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--border)' }}>
       <table className="min-w-full text-xs">
-        <thead style={{ background: '#0f172a' }}>
+        <thead style={{ background: 'var(--bg)' }}>
           <tr>
-            <th className="px-3 py-2 text-left text-slate-500 font-medium">#</th>
+            <th className="px-3 py-2 text-left text-dim font-medium">#</th>
             {headers.map(h => (
-              <th key={h} className="px-3 py-2 text-left text-slate-400 font-medium whitespace-nowrap">
+              <th key={h} className="px-3 py-2 text-left text-muted font-medium whitespace-nowrap">
                 {h}
               </th>
             ))}
@@ -242,11 +242,11 @@ function DataPreview({ configId }: { configId: number }) {
           {rows.map((row, i) => (
             <tr
               key={row.fila}
-              style={{ background: i % 2 === 0 ? '#0a0f1e' : '#0d1526', borderTop: '1px solid #1e293b' }}
+              style={{ background: i % 2 === 0 ? 'var(--bg-card)' : 'var(--surface-2)', borderTop: '1px solid var(--border)' }}
             >
-              <td className="px-3 py-2 text-slate-600">{row.fila}</td>
+              <td className="px-3 py-2 text-faint">{row.fila}</td>
               {headers.map(h => (
-                <td key={h} className="px-3 py-2 text-slate-300 whitespace-nowrap max-w-xs truncate">
+                <td key={h} className="px-3 py-2 text-body whitespace-nowrap max-w-xs truncate">
                   {row.datos[h] ?? ''}
                 </td>
               ))}
@@ -254,7 +254,7 @@ function DataPreview({ configId }: { configId: number }) {
           ))}
         </tbody>
       </table>
-      <p className="text-xs text-slate-600 px-3 py-2">Mostrando {rows.length} filas</p>
+      <p className="text-xs text-faint px-3 py-2">Mostrando {rows.length} filas</p>
     </div>
   )
 }
@@ -301,7 +301,7 @@ function ConfigCard({
   }
 
   return (
-    <div className="rounded-xl overflow-hidden transition-all" style={{ background: '#1e293b', border: '1px solid #334155' }}>
+    <div className="rounded-xl overflow-hidden transition-all" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
       {/* Header row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -311,13 +311,13 @@ function ConfigCard({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-white truncate">{cfg.nombre}</span>
+            <span className="text-sm font-semibold text-strong truncate">{cfg.nombre}</span>
             <Badge color={cfg.is_active ? 'green' : 'slate'}>
               {cfg.is_active ? 'Activa' : 'Inactiva'}
             </Badge>
             <Badge color="slate">{cfg.row_count} filas</Badge>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-dim mt-0.5 flex-wrap">
             <Clock size={11} />
             <span>Última sync: {timeAgo(cfg.last_synced_at)}</span>
             <a
@@ -345,7 +345,7 @@ function ConfigCard({
             onClick={handleSync}
             disabled={syncing}
             title="Sincronizar ahora"
-            className="p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-900/30 transition-colors disabled:opacity-40"
+            className="p-2 rounded-lg text-muted hover:text-indigo-400 hover:bg-indigo-900/30 transition-colors disabled:opacity-40"
           >
             <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
           </button>
@@ -353,7 +353,7 @@ function ConfigCard({
           <button
             onClick={() => setExpanded(e => !e)}
             title="Ver datos"
-            className="p-2 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="p-2 rounded-lg text-muted hover:text-strong transition-colors"
           >
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
@@ -369,7 +369,7 @@ function ConfigCard({
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="text-xs text-slate-500 hover:text-white px-2 py-1 rounded bg-slate-800 transition-colors"
+                className="text-xs text-dim hover:text-strong px-2 py-1 rounded surface-2 transition-colors"
               >
                 No
               </button>
@@ -378,7 +378,7 @@ function ConfigCard({
             <button
               onClick={() => setConfirmDelete(true)}
               title="Eliminar"
-              className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+              className="p-2 rounded-lg text-dim hover:text-red-400 hover:bg-red-900/20 transition-colors"
             >
               <Trash2 size={14} />
             </button>
@@ -389,7 +389,7 @@ function ConfigCard({
       {/* Expanded data preview */}
       {expanded && (
         <div className="px-4 pb-4 pt-0">
-          <div style={{ borderTop: '1px solid #334155', paddingTop: '12px' }}>
+          <div style={{ borderTop: '1px solid var(--border-hi)', paddingTop: '12px' }}>
             <DataPreview configId={cfg.id} key={cfg.last_synced_at ?? cfg.id} />
           </div>
         </div>
@@ -450,11 +450,11 @@ export default function SheetsSync() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-strong flex items-center gap-2">
             <FileSpreadsheet size={24} className="text-green-400" />
             Google Sheets Sync
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-muted mt-1">
             Importa datos de hojas publicadas de Google Sheets y consúltalos desde la app.
           </p>
         </div>
@@ -464,8 +464,8 @@ export default function SheetsSync() {
             <button
               onClick={handleSyncAll}
               disabled={syncingAll}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 transition-colors"
-              style={{ background: '#334155' }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-strong disabled:opacity-50 transition-colors"
+              style={{ background: 'var(--surface-3)' }}
             >
               <RefreshCw size={14} className={syncingAll ? 'animate-spin' : ''} />
               {syncingAll ? 'Sincronizando…' : 'Sync todo'}
@@ -491,7 +491,7 @@ export default function SheetsSync() {
 
       {/* Loading */}
       {loading && (
-        <div className="flex items-center gap-3 text-slate-400 py-8">
+        <div className="flex items-center gap-3 text-muted py-8">
           <RefreshCw size={18} className="animate-spin" />
           <span>Cargando hojas configuradas…</span>
         </div>
@@ -504,8 +504,8 @@ export default function SheetsSync() {
             style={{ background: '#16a34a22' }}>
             <FileSpreadsheet size={32} className="text-green-400 opacity-60" />
           </div>
-          <p className="text-slate-300 font-medium">No hay hojas configuradas</p>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto">
+          <p className="text-body font-medium">No hay hojas configuradas</p>
+          <p className="text-dim text-sm max-w-sm mx-auto">
             Agrega una hoja de Google Sheets publicada como CSV para importar y visualizar sus datos aquí.
           </p>
         </div>
@@ -524,13 +524,13 @@ export default function SheetsSync() {
 
       {/* How-to */}
       {configs.length === 0 && !loading && (
-        <div className="rounded-xl p-5 space-y-3" style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
-          <p className="text-sm font-semibold text-slate-300">¿Cómo publicar tu hoja como CSV?</p>
-          <ol className="space-y-2 text-sm text-slate-400">
+        <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+          <p className="text-sm font-semibold text-body">¿Cómo publicar tu hoja como CSV?</p>
+          <ol className="space-y-2 text-sm text-muted">
             <li>1. Abre tu hoja de Google Sheets.</li>
-            <li>2. Ve a <strong className="text-slate-300">Archivo → Compartir → Publicar en la web</strong>.</li>
-            <li>3. En el primer desplegable elige la hoja que quieres; en el segundo elige <strong className="text-slate-300">Valores separados por comas (.csv)</strong>.</li>
-            <li>4. Haz clic en <strong className="text-slate-300">Publicar</strong> y copia el enlace generado.</li>
+            <li>2. Ve a <strong className="text-body">Archivo → Compartir → Publicar en la web</strong>.</li>
+            <li>3. En el primer desplegable elige la hoja que quieres; en el segundo elige <strong className="text-body">Valores separados por comas (.csv)</strong>.</li>
+            <li>4. Haz clic en <strong className="text-body">Publicar</strong> y copia el enlace generado.</li>
             <li>5. Pega ese enlace en el campo "URL CSV publicado" al agregar la hoja aquí.</li>
           </ol>
         </div>

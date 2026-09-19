@@ -101,9 +101,9 @@ function StatCard({
     <div className="stat-card" style={accent ? { borderTop: `2px solid ${accent}` } : {}}>
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-slate-400 mb-1.5 uppercase tracking-wide font-medium">{title}</p>
-          <p className="text-2xl font-bold text-white truncate leading-tight">{value}</p>
-          {sub && <p className="text-xs text-slate-400 mt-1.5">{sub}</p>}
+          <p className="text-xs text-muted mb-1.5 uppercase tracking-wide font-medium">{title}</p>
+          <p className="text-2xl font-bold text-strong truncate leading-tight">{value}</p>
+          {sub && <p className="text-xs text-muted mt-1.5">{sub}</p>}
         </div>
         <div
           className="p-2.5 rounded-xl flex-shrink-0 ml-3"
@@ -113,7 +113,7 @@ function StatCard({
         </div>
       </div>
       {trend && (
-        <div className={`flex items-center gap-1 text-xs mt-0.5 font-medium ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-slate-500'}`}>
+        <div className={`flex items-center gap-1 text-xs mt-0.5 font-medium ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-dim'}`}>
           {trend === 'up' && <TrendingUp size={11} />}
           {trend === 'down' && <TrendingDown size={11} />}
           {trend === 'up' ? 'En positivo' : trend === 'down' ? 'En pérdida' : 'Sin variación'}
@@ -126,7 +126,7 @@ function StatCard({
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   return (
-    <div className="w-full h-2 rounded-full" style={{ background: '#0f172a' }}>
+    <div className="w-full h-2 rounded-full" style={{ background: 'var(--bg)' }}>
       <div
         className="h-2 rounded-full transition-all duration-700"
         style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}cc, ${color})` }}
@@ -181,7 +181,7 @@ export default function Dashboard() {
     <div className="flex items-center justify-center h-64">
       <div className="flex flex-col items-center gap-3">
         <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
-        <p className="text-slate-500 text-sm">Cargando datos...</p>
+        <p className="text-dim text-sm">Cargando datos...</p>
       </div>
     </div>
   )
@@ -190,8 +190,8 @@ export default function Dashboard() {
     <div className="flex items-center justify-center h-64">
       <div className="card text-center max-w-md">
         <AlertTriangle size={32} className="mx-auto text-yellow-400 mb-3" />
-        <p className="text-white font-medium mb-1">Error de conexión</p>
-        <p className="text-slate-400 text-sm">{error}</p>
+        <p className="text-strong font-medium mb-1">Error de conexión</p>
+        <p className="text-muted text-sm">{error}</p>
       </div>
     </div>
   )
@@ -229,19 +229,19 @@ export default function Dashboard() {
       {/* ── Greeting ── */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-white">{greet()}, Brandon 👋</h1>
-          <p className="text-slate-400 text-sm mt-0.5 capitalize">{todayLabel()}</p>
+          <h1 className="text-2xl font-bold text-strong">{greet()}, Brandon 👋</h1>
+          <p className="text-muted text-sm mt-0.5 capitalize">{todayLabel()}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {summary.usd_to_mxn > 0 && (
             <div
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-              style={{ background: '#1e293b', border: '1px solid #2d3f58' }}
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}
             >
-              <RefreshCw size={11} className="text-slate-500" />
-              <span className="text-slate-400">USD</span>
-              <span className="text-white font-semibold">${summary.usd_to_mxn.toFixed(2)}</span>
-              <span className="text-slate-500">MXN</span>
+              <RefreshCw size={11} className="text-dim" />
+              <span className="text-muted">USD</span>
+              <span className="text-strong font-semibold">${summary.usd_to_mxn.toFixed(2)}</span>
+              <span className="text-dim">MXN</span>
             </div>
           )}
           <a
@@ -258,14 +258,14 @@ export default function Dashboard() {
       {expiring.length > 0 && (
         <div
           className="flex items-start gap-3 p-4 rounded-xl border"
-          style={{ background: '#713f1215', borderColor: '#92400e55' }}
+          style={{ background: 'var(--yellow-soft)', borderColor: 'var(--yellow)' }}
         >
           <AlertTriangle size={18} className="text-yellow-400 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-yellow-300 font-medium text-sm">
               {expiring.length} suscripción{expiring.length > 1 ? 'es' : ''} por vencer esta semana
             </p>
-            <p className="text-slate-400 text-xs mt-0.5">
+            <p className="text-muted text-xs mt-0.5">
               {expiring.slice(0, 3).map((e: ExpiringSub) => e.client_name).join(', ')}
               {expiring.length > 3 ? ` y ${expiring.length - 3} más` : ''}
             </p>
@@ -283,8 +283,8 @@ export default function Dashboard() {
           value={fmt(summary.total_ingresos_mxn)}
           sub={`Prod. ${fmt(summary.ingresos_productos)} · IPTV ${fmt(summary.ingresos_iptv)}`}
           icon={<DollarSign size={20} />}
-          color="#22c55e"
-          accent="#22c55e"
+          color="var(--green)"
+          accent="var(--green)"
           trend="up"
         />
         <StatCard
@@ -292,8 +292,8 @@ export default function Dashboard() {
           value={fmt(Math.abs(ganancia))}
           sub={`Margen: ${profitMargin}% · ${isProfit ? 'Después de gastos' : 'Estás en pérdida'}`}
           icon={isProfit ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-          color={isProfit ? '#6366f1' : '#ef4444'}
-          accent={isProfit ? '#6366f1' : '#ef4444'}
+          color={isProfit ? 'var(--accent)' : 'var(--red)'}
+          accent={isProfit ? 'var(--accent)' : 'var(--red)'}
           trend={isProfit ? 'up' : 'down'}
         />
         <StatCard
@@ -301,8 +301,8 @@ export default function Dashboard() {
           value={String(summary.clientes_activos_iptv || 0)}
           sub={expiring.length > 0 ? `${expiring.length} vencen esta semana` : 'Al día, sin vencimientos'}
           icon={<Users size={20} />}
-          color="#06b6d4"
-          accent="#06b6d4"
+          color="var(--cyan)"
+          accent="var(--cyan)"
         />
         <StatCard
           title="Ahorros"
@@ -315,8 +315,8 @@ export default function Dashboard() {
                 : `${ahorros.length} cuentas activas`
           }
           icon={<PiggyBank size={20} />}
-          color="#f59e0b"
-          accent="#f59e0b"
+          color="var(--yellow)"
+          accent="var(--yellow)"
           trend={totalAhorradoGeneral > 0 ? 'up' : 'neutral'}
         />
       </div>
@@ -328,16 +328,16 @@ export default function Dashboard() {
         <div className="card lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-white">Ingresos Mensuales</h2>
-              <p className="text-xs text-slate-500 mt-0.5">En MXN — últimos meses</p>
+              <h2 className="text-sm font-semibold text-strong">Ingresos Mensuales</h2>
+              <p className="text-xs text-dim mt-0.5">En MXN — últimos meses</p>
             </div>
-            <div className="flex items-center gap-4 text-xs text-slate-400">
+            <div className="flex items-center gap-4 text-xs text-muted">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#6366f1', display: 'inline-block' }} />
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--accent)', display: 'inline-block' }} />
                 Productos
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#22c55e', display: 'inline-block' }} />
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--green)', display: 'inline-block' }} />
                 IPTV
               </span>
             </div>
@@ -345,25 +345,25 @@ export default function Dashboard() {
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e3050" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false}
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
                   formatter={(v: number) => formatMXN(v)}
                   cursor={{ fill: 'rgba(99, 102, 241, 0.06)' }}
                 />
-                <Bar dataKey="Productos" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="IPTV" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Productos" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="IPTV" fill="var(--green)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-[220px] flex items-center justify-center text-center">
               <div>
-                <Package size={40} className="mx-auto mb-2 text-slate-700" />
-                <p className="text-slate-500 text-sm">Sin datos aún</p>
-                <p className="text-slate-600 text-xs mt-1">Agrega ventas para ver la gráfica</p>
+                <Package size={40} className="mx-auto mb-2 text-faint" />
+                <p className="text-dim text-sm">Sin datos aún</p>
+                <p className="text-faint text-xs mt-1">Agrega ventas para ver la gráfica</p>
               </div>
             </div>
           )}
@@ -372,7 +372,7 @@ export default function Dashboard() {
         {/* Ahorros + Fondos Panel */}
         <div className="card flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-strong flex items-center gap-2">
               <PiggyBank size={14} className="text-yellow-400" />
               Ahorros
             </h2>
@@ -382,9 +382,9 @@ export default function Dashboard() {
           </div>
 
           {fondos.length === 0 && ahorros.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-center text-slate-500 text-sm">
+            <div className="flex-1 flex items-center justify-center text-center text-dim text-sm">
               <div>
-                <PiggyBank size={32} className="mx-auto mb-2 text-slate-700" />
+                <PiggyBank size={32} className="mx-auto mb-2 text-faint" />
                 <p>Sin ahorros registrados</p>
                 <a href="/ahorros" className="text-indigo-400 text-xs mt-2 block hover:text-indigo-300">
                   Crear primer fondo →
@@ -398,17 +398,17 @@ export default function Dashboard() {
               {fondos.slice(0, 3).map(f => {
                 const gananciaAnual = f.saldo * (f.rendimiento / 100)
                 return (
-                  <div key={f.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: '#0f172a' }}>
+                  <div key={f.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: 'var(--bg)' }}>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-base flex-shrink-0">{f.icono}</span>
                       <div className="min-w-0">
-                        <p className="text-xs text-slate-300 truncate">{f.nombre}</p>
+                        <p className="text-xs text-body truncate">{f.nombre}</p>
                         {f.rendimiento > 0 && (
                           <p className="text-[10px] text-green-400">+{fmt(gananciaAnual)}/año</p>
                         )}
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-white flex-shrink-0" style={{ color: f.color }}>{fmt(f.saldo)}</span>
+                    <span className="text-xs font-bold text-strong flex-shrink-0" style={{ color: f.color }}>{fmt(f.saldo)}</span>
                   </div>
                 )
               })}
@@ -416,9 +416,9 @@ export default function Dashboard() {
               {/* Separator if both exist */}
               {fondos.length > 0 && ahorros.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-px" style={{ background: '#1e3050' }} />
-                  <span className="text-[10px] text-slate-600">METAS</span>
-                  <div className="flex-1 h-px" style={{ background: '#1e3050' }} />
+                  <div className="flex-1 h-px" style={{ background: 'var(--surface-2)' }} />
+                  <span className="text-[10px] text-faint">METAS</span>
+                  <div className="flex-1 h-px" style={{ background: 'var(--surface-2)' }} />
                 </div>
               )}
 
@@ -428,38 +428,38 @@ export default function Dashboard() {
                 return (
                   <div key={a.id}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-slate-300 flex items-center gap-1.5">
+                      <span className="text-xs text-body flex items-center gap-1.5">
                         <span>{a.icono}</span>
                         <span className="truncate max-w-[100px]">{a.nombre}</span>
                       </span>
-                      <span className="text-xs font-semibold" style={{ color: a.color || '#6366f1' }}>{pct}%</span>
+                      <span className="text-xs font-semibold" style={{ color: a.color || 'var(--accent)' }}>{pct}%</span>
                     </div>
-                    <ProgressBar value={a.acumulado} max={a.meta} color={a.color || '#6366f1'} />
+                    <ProgressBar value={a.acumulado} max={a.meta} color={a.color || 'var(--accent)'} />
                   </div>
                 )
               })}
 
               {/* Total summary */}
-              <div className="pt-2 mt-1 border-t space-y-1" style={{ borderColor: '#1e3050' }}>
+              <div className="pt-2 mt-1 border-t space-y-1" style={{ borderColor: 'var(--border)' }}>
                 {totalFondos > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Fondos</span>
-                    <span className="text-white font-medium">{fmt(totalFondos)}</span>
+                    <span className="text-dim">Fondos</span>
+                    <span className="text-strong font-medium">{fmt(totalFondos)}</span>
                   </div>
                 )}
                 {totalAcumulado > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Metas</span>
-                    <span className="text-white font-medium">{fmt(totalAcumulado)}</span>
+                    <span className="text-dim">Metas</span>
+                    <span className="text-strong font-medium">{fmt(totalAcumulado)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-400">Total</span>
+                  <span className="text-muted">Total</span>
                   <span className="text-yellow-400">{fmt(totalAhorradoGeneral)}</span>
                 </div>
                 {rendimientoAnual > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-600">Rendimiento est./año</span>
+                    <span className="text-faint">Rendimiento est./año</span>
                     <span className="text-green-400">+{fmt(rendimientoAnual)}</span>
                   </div>
                 )}
@@ -475,7 +475,7 @@ export default function Dashboard() {
         {/* Upcoming Reminders */}
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-strong flex items-center gap-2">
               <Bell size={14} className="text-indigo-400" />
               Próximos Recordatorios
             </h2>
@@ -486,27 +486,27 @@ export default function Dashboard() {
 
           {upcomingRecs.length === 0 ? (
             <div className="py-6 text-center">
-              <Bell size={28} className="mx-auto mb-2 text-slate-700" />
-              <p className="text-slate-500 text-sm">Sin recordatorios próximos</p>
+              <Bell size={28} className="mx-auto mb-2 text-faint" />
+              <p className="text-dim text-sm">Sin recordatorios próximos</p>
             </div>
           ) : (
             <div className="space-y-2">
               {upcomingRecs.map(r => {
                 const urgent = r.daysLeft <= 1
                 const soon = r.daysLeft <= 3
-                const accentColor = urgent ? '#ef4444' : soon ? '#f59e0b' : (r.color || '#6366f1')
+                const accentColor = urgent ? 'var(--red)' : soon ? 'var(--yellow)' : (r.color || 'var(--accent)')
                 return (
                   <div
                     key={r.id}
                     className="flex items-center gap-3 p-2.5 rounded-lg"
-                    style={{ background: '#0f172a', borderLeft: `3px solid ${accentColor}` }}
+                    style={{ background: 'var(--bg)', borderLeft: `3px solid ${accentColor}` }}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         {r.importante && <Star size={11} className="text-yellow-400 flex-shrink-0" />}
-                        <p className="text-sm text-white truncate">{r.titulo}</p>
+                        <p className="text-sm text-strong truncate">{r.titulo}</p>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{formatDateTime(r.fecha_hora)}</p>
+                      <p className="text-xs text-dim mt-0.5">{formatDateTime(r.fecha_hora)}</p>
                     </div>
                     <span
                       className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
@@ -524,7 +524,7 @@ export default function Dashboard() {
         {/* IPTV Expiring */}
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-strong flex items-center gap-2">
               <Tv size={14} className="text-cyan-400" />
               Vencimientos IPTV (7 días)
             </h2>
@@ -535,8 +535,8 @@ export default function Dashboard() {
 
           {expiring.length === 0 ? (
             <div className="py-6 text-center">
-              <Tv size={28} className="mx-auto mb-2 text-slate-700" />
-              <p className="text-slate-500 text-sm">Sin vencimientos próximos 🎉</p>
+              <Tv size={28} className="mx-auto mb-2 text-faint" />
+              <p className="text-dim text-sm">Sin vencimientos próximos 🎉</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -546,11 +546,11 @@ export default function Dashboard() {
                   <div
                     key={sub.id}
                     className="flex items-center justify-between p-2.5 rounded-lg"
-                    style={{ background: '#0f172a' }}
+                    style={{ background: 'var(--bg)' }}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{sub.client_name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-sm text-strong truncate">{sub.client_name}</p>
+                      <p className="text-xs text-dim mt-0.5">
                         {sub.connections} equipo{sub.connections > 1 ? 's' : ''} · vence {sub.end_date}
                       </p>
                     </div>
@@ -566,28 +566,28 @@ export default function Dashboard() {
       </div>
 
       {/* ── Business Totals Footer ── */}
-      <div className="card" style={{ background: 'linear-gradient(135deg, #1e293b, #1a2540)' }}>
+      <div className="card" style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent)' }}>
         <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <Package size={14} className="text-slate-400" />
+          <Package size={14} className="text-muted" />
           Resumen del Negocio
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Ingresos Productos', value: fmt(summary.ingresos_productos), color: '#6366f1', icon: <Package size={14} /> },
-            { label: 'Ingresos IPTV', value: fmt(summary.ingresos_iptv), color: '#22c55e', icon: <Tv size={14} /> },
-            { label: 'Total Gastos', value: fmt(summary.total_gastos_mxn), color: '#ef4444', icon: <TrendingDown size={14} /> },
-            { label: 'Margen Neto', value: `${profitMargin}%`, color: isProfit ? '#a78bfa' : '#ef4444', icon: <Percent size={14} /> },
+            { label: 'Ingresos Productos', value: fmt(summary.ingresos_productos), color: 'var(--accent)', icon: <Package size={14} /> },
+            { label: 'Ingresos IPTV', value: fmt(summary.ingresos_iptv), color: 'var(--green)', icon: <Tv size={14} /> },
+            { label: 'Total Gastos', value: fmt(summary.total_gastos_mxn), color: 'var(--red)', icon: <TrendingDown size={14} /> },
+            { label: 'Margen Neto', value: `${profitMargin}%`, color: isProfit ? '#a78bfa' : 'var(--red)', icon: <Percent size={14} /> },
           ].map(item => (
             <div
               key={item.label}
               className="rounded-xl p-3 text-center"
-              style={{ background: '#0f172a', border: `1px solid ${item.color}22` }}
+              style={{ background: 'var(--bg)', border: `1px solid ${item.color}22` }}
             >
               <div className="flex items-center justify-center gap-1.5 mb-1.5" style={{ color: item.color }}>
                 {item.icon}
               </div>
               <p className="text-lg font-bold" style={{ color: item.color }}>{item.value}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{item.label}</p>
+              <p className="text-xs text-dim mt-0.5">{item.label}</p>
             </div>
           ))}
         </div>

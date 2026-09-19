@@ -387,17 +387,17 @@ export default function Empleo() {
       <AlertTriangle className={`mx-auto mb-3 ${errorCarga ? 'text-red-400' : 'text-yellow-400'}`} size={32} />
       {errorCarga ? (
         <>
-          <p className="text-white font-semibold mb-1">No se pudo conectar con Supabase</p>
-          <p className="text-slate-400 text-sm mb-1">
+          <p className="text-strong font-semibold mb-1">No se pudo conectar con Supabase</p>
+          <p className="text-muted text-sm mb-1">
             No es la migración — la base respondió con un error.
           </p>
           <p className="text-xs text-red-300 font-mono mb-4 break-words px-4">{errorCarga}</p>
         </>
       ) : diagnostico === 'sin-fila' ? (
         <>
-          <p className="text-white font-semibold mb-1">Las tablas existen, pero no llega tu perfil</p>
-          <p className="text-slate-400 text-sm mb-4 max-w-md mx-auto">
-            Casi siempre es <strong className="text-slate-200">RLS activado sin políticas</strong>: la base
+          <p className="text-strong font-semibold mb-1">Las tablas existen, pero no llega tu perfil</p>
+          <p className="text-muted text-sm mb-4 max-w-md mx-auto">
+            Casi siempre es <strong className="text-strong">RLS activado sin políticas</strong>: la base
             responde bien pero devuelve cero filas. Corre en el SQL Editor{' '}
             <code className="text-indigo-300 block mt-2 text-xs">
               ALTER TABLE empleo_perfil DISABLE ROW LEVEL SECURITY;
@@ -406,8 +406,8 @@ export default function Empleo() {
         </>
       ) : (
         <>
-          <p className="text-white font-semibold mb-1">Falta correr la migración</p>
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-strong font-semibold mb-1">Falta correr la migración</p>
+          <p className="text-muted text-sm mb-4">
             Aplica <code className="text-indigo-300">supabase/migrations/20260919000000_empleo.sql</code> en
             el SQL Editor de Supabase y vuelve a cargar.
           </p>
@@ -463,24 +463,24 @@ export default function Empleo() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-strong flex items-center gap-2">
             <Briefcase className="text-indigo-400" size={24} /> Empleo
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-muted text-sm mt-1">
             Vacantes, certificaciones y escuela — comparadas contra lo que ganas hoy
           </p>
         </div>
         {tab === 'vacantes' && (
           <button onClick={() => setFormVac({ ...VACANTE_NUEVA })}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}>
             <Plus size={16} /> Nueva vacante
           </button>
         )}
         {tab === 'certs' && (
           <button onClick={() => setFormCert({ ...CERT_NUEVA })}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}>
             <Plus size={16} /> Nueva certificación
           </button>
         )}
@@ -489,43 +489,43 @@ export default function Empleo() {
       {/* ── Resumen ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Disponible hoy</p>
-          <p className="text-xl font-bold text-white">{fmtK(base.disponible)}</p>
-          <p className="text-xs text-slate-400 mt-1">de {fmtK(base.paquete)} de paquete</p>
+          <p className="text-xs text-muted mb-1">Disponible hoy</p>
+          <p className="text-xl font-bold text-strong">{fmtK(base.disponible)}</p>
+          <p className="text-xs text-muted mt-1">de {fmtK(base.paquete)} de paquete</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Vacantes vivas</p>
-          <p className="text-xl font-bold text-white">{vivas.length}</p>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-muted mb-1">Vacantes vivas</p>
+          <p className="text-xl font-bold text-strong">{vivas.length}</p>
+          <p className="text-xs text-muted mt-1">
             {vivas.filter(x => ['screening', 'tecnica', 'final', 'oferta'].includes(x.v.estado)).length} en proceso
           </p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Mejor opción</p>
+          <p className="text-xs text-muted mb-1">Mejor opción</p>
           {mejor ? (
             <>
               <p className={`text-xl font-bold ${mejor.e.deltaMensual > 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {mejor.e.deltaMensual > 0 ? '+' : '−'}{fmt(Math.abs(mejor.e.deltaMensual))}
               </p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-muted mt-1">
                 {mejor.v.empresa} · {pctTxt(mejor.e.deltaPaquetePct)} paquete
               </p>
             </>
           ) : (
             <>
-              <p className="text-xl font-bold text-slate-500">—</p>
-              <p className="text-xs text-slate-400 mt-1">captura sueldos</p>
+              <p className="text-xl font-bold text-dim">—</p>
+              <p className="text-xs text-muted mt-1">captura sueldos</p>
             </>
           )}
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Egreso estimado</p>
-          <p className="text-xl font-bold text-white">
+          <p className="text-xs text-muted mb-1">Egreso estimado</p>
+          <p className="text-xl font-bold text-strong">
             {egreso.fecha
               ? egreso.fecha.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' })
               : '—'}
           </p>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-muted mt-1">
             {egreso.restantes != null ? `faltan ${egreso.restantes} cuatri` : 'captura tu avance'}
           </p>
         </div>
@@ -534,16 +534,16 @@ export default function Empleo() {
       {/* ── Próximos pasos ── */}
       {pasos.length > 0 && (
         <div className="card">
-          <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Lo que sigue</p>
+          <p className="text-xs text-muted uppercase tracking-wider mb-3">Lo que sigue</p>
           <div className="space-y-2">
             {pasos.map(({ v, d }) => (
               <div key={v.id} className="flex items-baseline gap-3 text-sm">
-                <span className={`font-mono text-xs w-20 flex-shrink-0 ${d != null && d < 0 ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
+                <span className={`font-mono text-xs w-20 flex-shrink-0 ${d != null && d < 0 ? 'text-red-400 font-semibold' : 'text-dim'}`}>
                   {d == null ? '—' : d < 0 ? `hace ${-d}d` : d === 0 ? 'hoy' : `en ${d}d`}
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="text-white">{v.proximo_paso || 'Dar seguimiento'}</span>
-                  <span className="text-slate-500 block text-xs">
+                  <span className="text-strong">{v.proximo_paso || 'Dar seguimiento'}</span>
+                  <span className="text-dim block text-xs">
                     {v.empresa} · {v.puesto} · {dFmt(v.proxima_fecha)}
                   </span>
                 </span>
@@ -555,7 +555,7 @@ export default function Empleo() {
       )}
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{ background: '#1e293b' }}>
+      <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{ background: 'var(--surface-2)' }}>
         {([
           ['vacantes', `💼 Vacantes (${vivas.length})`],
           ['certs',    `🎓 Certificaciones (${certs.length})`],
@@ -564,7 +564,7 @@ export default function Empleo() {
         ] as const).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
-            style={tab === t ? { background: '#6366f1', color: '#fff' } : { color: '#94a3b8' }}>
+            style={tab === t ? { background: 'var(--accent)', color: '#fff' } : { color: 'var(--text-muted)' }}>
             {label}
           </button>
         ))}
@@ -579,16 +579,16 @@ export default function Empleo() {
               <option value="todas">Todas</option>
               {ETAPAS.map(e => <option key={e.k} value={e.k}>{e.n}</option>)}
             </select>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-dim">
               Ordenadas por lo que te quedaría libre, no por sueldo nominal ·
-              umbral mínimo <span className="text-slate-300">+{num(perfil.umbral_pct)}%</span> de paquete
+              umbral mínimo <span className="text-body">+{num(perfil.umbral_pct)}%</span> de paquete
             </p>
           </div>
 
           {lista.length === 0 && (
             <div className="card text-center py-10">
-              <Briefcase className="mx-auto text-slate-600 mb-3" size={32} />
-              <p className="text-slate-400 text-sm">Sin vacantes con ese filtro.</p>
+              <Briefcase className="mx-auto text-faint mb-3" size={32} />
+              <p className="text-muted text-sm">Sin vacantes con ese filtro.</p>
             </div>
           )}
 
@@ -601,8 +601,8 @@ export default function Empleo() {
               <div key={v.id} className="card">
                 <div className="flex justify-between items-start gap-4 flex-wrap">
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-white font-semibold">{v.puesto}</h3>
-                    <p className="text-sm text-slate-400">
+                    <h3 className="text-strong font-semibold">{v.puesto}</h3>
+                    <p className="text-sm text-muted">
                       {v.empresa}{v.ciudad ? ` · ${v.ciudad}` : ''}{v.fuente ? ` · vía ${v.fuente}` : ''}
                     </p>
                     <div className="flex gap-2 flex-wrap mt-2">
@@ -623,8 +623,8 @@ export default function Empleo() {
                         ? `${e.deltaMensual > 0 ? '+' : '−'}${fmt(Math.abs(e.deltaMensual))}`
                         : '—'}
                     </p>
-                    <p className="text-xs text-slate-500">al mes libres</p>
-                    <p className="text-xs font-mono text-slate-400 mt-1">
+                    <p className="text-xs text-dim">al mes libres</p>
+                    <p className="text-xs font-mono text-muted mt-1">
                       {e.mensual ? `${pctTxt(e.deltaPaquetePct)} paquete` : 'sin sueldo'}
                     </p>
                   </div>
@@ -643,7 +643,7 @@ export default function Empleo() {
                   </p>
                 )}
                 {v.modalidad === 'remoto' && (
-                  <p className="text-xs text-slate-500 mt-2 flex gap-2">
+                  <p className="text-xs text-dim mt-2 flex gap-2">
                     <Info size={13} className="flex-shrink-0 mt-0.5" />
                     <span>Remoto: sin traslado y compatible con cualquier horario de clases.</span>
                   </p>
@@ -662,14 +662,14 @@ export default function Empleo() {
                   )}
                   <span className="flex-1" />
                   {v.proxima_fecha && (
-                    <span className="text-xs text-slate-500 font-mono">
+                    <span className="text-xs text-dim font-mono">
                       {v.proximo_paso || 'siguiente'} · {dFmt(v.proxima_fecha)}
                     </span>
                   )}
                 </div>
 
                 {abierta && (
-                  <div className="grid md:grid-cols-3 gap-5 mt-4 pt-4" style={{ borderTop: '1px solid #1e293b' }}>
+                  <div className="grid md:grid-cols-3 gap-5 mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                     <Desglose titulo="Ingreso anual" filas={[
                       [`Sueldo (${v.moneda} ${v.periodo})`, fmt(e.mensual * 12)],
                       [`Aguinaldo ${num(v.aguinaldo_dias)} días`, fmt(e.mensual * num(v.aguinaldo_dias) / 30)],
@@ -712,18 +712,18 @@ export default function Empleo() {
         <div className="space-y-4">
           {demanda.length > 0 && (
             <div className="card">
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Qué te están pidiendo</p>
-              <p className="text-xs text-slate-500 mb-3">
+              <p className="text-xs text-muted uppercase tracking-wider mb-1">Qué te están pidiendo</p>
+              <p className="text-xs text-dim mb-3">
                 Contado sobre tus vacantes vivas. Lo que más se repite y no tienes es tu siguiente certificación.
               </p>
               <div className="space-y-2">
                 {demanda.map(d => (
                   <div key={d.n} className="flex items-center gap-3 text-sm">
-                    <span className="flex-1 text-slate-300">{d.n}</span>
+                    <span className="flex-1 text-body">{d.n}</span>
                     <span className={`badge ${d.tengo ? 'badge-green' : 'badge-yellow'}`}>
                       {d.tengo ? 'la tienes' : 'te falta'}
                     </span>
-                    <span className="text-xs text-slate-500 font-mono w-20 text-right">
+                    <span className="text-xs text-dim font-mono w-20 text-right">
                       {d.c} vacante{d.c === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -734,8 +734,8 @@ export default function Empleo() {
 
           {certs.length === 0 && (
             <div className="card text-center py-10">
-              <Award className="mx-auto text-slate-600 mb-3" size={32} />
-              <p className="text-slate-400 text-sm">Sin certificaciones registradas.</p>
+              <Award className="mx-auto text-faint mb-3" size={32} />
+              <p className="text-muted text-sm">Sin certificaciones registradas.</p>
             </div>
           )}
 
@@ -748,20 +748,20 @@ export default function Empleo() {
             return (
               <div key={c.id} className="card flex items-center gap-4 flex-wrap">
                 <div className="min-w-0 flex-1">
-                  <p className="text-white font-medium">{c.nombre}</p>
-                  <p className="text-xs text-slate-500">{c.proveedor}</p>
+                  <p className="text-strong font-medium">{c.nombre}</p>
+                  <p className="text-xs text-dim">{c.proveedor}</p>
                 </div>
                 <span className={`badge ${est.badge}`}>{est.n}</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: '#1e293b' }}>
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, num(c.avance))}%`, background: '#6366f1' }} />
+                  <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, num(c.avance))}%`, background: 'var(--accent)' }} />
                   </div>
-                  <span className="text-xs text-slate-500 font-mono w-9">{num(c.avance)}%</span>
+                  <span className="text-xs text-dim font-mono w-9">{num(c.avance)}%</span>
                 </div>
-                <span className="text-xs text-slate-400 font-mono w-24 text-right">
+                <span className="text-xs text-muted font-mono w-24 text-right">
                   {c.fecha_examen ? `exam ${dFmt(c.fecha_examen)}` : dFmt(c.fecha_objetivo)}
                 </span>
-                <span className="text-xs font-mono w-20 text-right text-slate-400">
+                <span className="text-xs font-mono w-20 text-right text-muted">
                   {num(c.costo) ? fmt(c.costo) : '—'}
                 </span>
                 {diasVence != null && diasVence < 365 && (
@@ -780,12 +780,12 @@ export default function Empleo() {
           <div className="card">
             <div className="flex items-center gap-2 mb-4">
               <GraduationCap className="text-indigo-400" size={18} />
-              <h2 className="text-white font-semibold">
+              <h2 className="text-strong font-semibold">
                 {perfil.escuela || 'Escuela'} — avance
               </h2>
             </div>
-            <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ background: '#1e293b' }}>
-              <div className="h-full rounded-full" style={{ width: `${egreso.avance}%`, background: '#6366f1' }} />
+            <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ background: 'var(--surface-2)' }}>
+              <div className="h-full rounded-full" style={{ width: `${egreso.avance}%`, background: 'var(--accent)' }} />
             </div>
             <div className="flex gap-1 flex-wrap">
               {Array.from({ length: Math.min(num(perfil.cuatri_total), 16) }, (_, i) => {
@@ -793,9 +793,9 @@ export default function Empleo() {
                 return (
                   <span key={n}
                     className="flex-1 min-w-[30px] h-8 rounded flex items-center justify-center text-xs font-mono"
-                    style={n < act ? { background: '#6366f1', color: '#fff' }
-                      : n === act ? { background: '#312e81', color: '#a5b4fc', fontWeight: 600 }
-                      : { background: '#1e293b', color: '#64748b' }}>
+                    style={n < act ? { background: 'var(--accent)', color: '#fff' }
+                      : n === act ? { background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 600 }
+                      : { background: 'var(--surface-2)', color: 'var(--text-dim)' }}>
                     {n}
                   </span>
                 )
@@ -811,8 +811,8 @@ export default function Empleo() {
           </div>
 
           <div className="card">
-            <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Requisitos de titulación</p>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-muted uppercase tracking-wider mb-1">Requisitos de titulación</p>
+            <p className="text-xs text-dim mb-3">
               Egresar no es titularte, y muchas vacantes piden título, no constancia.
             </p>
             <div className="space-y-1">
@@ -822,14 +822,14 @@ export default function Empleo() {
                 ['practicas', 'Prácticas profesionales'],
                 ['titulacion', 'Modalidad de titulación elegida'],
               ] as const).map(([k, label]) => (
-                <label key={k} className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-800/50">
+                <label key={k} className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:surface-2">
                   <input type="checkbox" checked={borrador[k] as boolean}
                     onChange={async e => {
                       const nuevo = { ...borrador, [k]: e.target.checked } as Perfil
                       setBorrador(nuevo); setPerfil(nuevo)
                       await supabase.from('empleo_perfil').update({ [k]: e.target.checked }).eq('id', 1)
                     }} />
-                  <span className={perfil[k] ? 'text-slate-500 line-through text-sm' : 'text-slate-300 text-sm'}>
+                  <span className={perfil[k] ? 'text-dim line-through text-sm' : 'text-body text-sm'}>
                     {label}
                   </span>
                 </label>
@@ -838,7 +838,7 @@ export default function Empleo() {
           </div>
 
           <div className="card">
-            <p className="text-xs text-slate-400 uppercase tracking-wider mb-4">Datos de la escuela</p>
+            <p className="text-xs text-muted uppercase tracking-wider mb-4">Datos de la escuela</p>
             <div className="grid md:grid-cols-2 gap-4">
               <Campo label="Escuela" value={borrador.escuela ?? ''} onChange={v => bp('escuela', v)} />
               <Campo label="Carrera" value={borrador.carrera ?? ''} onChange={v => bp('carrera', v)} />
@@ -866,10 +866,10 @@ export default function Empleo() {
         <div className="card">
           <div className="flex items-center gap-2 mb-1">
             <SlidersHorizontal className="text-indigo-400" size={18} />
-            <h2 className="text-white font-semibold">Tu situación actual</h2>
+            <h2 className="text-strong font-semibold">Tu situación actual</h2>
           </div>
-          <p className="text-sm text-slate-400 mb-5 max-w-2xl">
-            Todo lo demás se compara contra esto. Captura el <strong className="text-slate-200">bruto mensual</strong>,
+          <p className="text-sm text-muted mb-5 max-w-2xl">
+            Todo lo demás se compara contra esto. Captura el <strong className="text-strong">bruto mensual</strong>,
             como viene en tu recibo — el cálculo ya suma aguinaldo, prima vacacional, vales y fondo por separado.
           </p>
 
@@ -978,7 +978,7 @@ export default function Empleo() {
           </Seccion>
 
           <Seccion titulo="Si implica mudarte">
-            <label className="flex items-center gap-2 text-sm text-slate-300 md:col-span-2">
+            <label className="flex items-center gap-2 text-sm text-body md:col-span-2">
               <input type="checkbox" checked={formVac.reubicacion}
                 onChange={e => setFormVac({ ...formVac, reubicacion: e.target.checked })} />
               Tendría que reubicarme
@@ -998,7 +998,7 @@ export default function Empleo() {
                 hint="Separado por comas. Se cruza con tus certificaciones." />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs text-slate-400 block mb-1.5">Notas</label>
+              <label className="text-xs text-muted block mb-1.5">Notas</label>
               <textarea className="input min-h-[80px]" value={formVac.notas ?? ''}
                 onChange={e => setFormVac({ ...formVac, notas: e.target.value })}
                 placeholder="Nombre del reclutador, qué te dijeron, con qué te quedaste dudando…" />
@@ -1042,9 +1042,9 @@ export default function Empleo() {
 function Dato({ k, v, sub }: { k: string; v: string; sub?: string }) {
   return (
     <div className="stat-card">
-      <p className="text-xs text-slate-400 mb-1">{k}</p>
-      <p className="text-lg font-bold text-white font-mono">{v}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      <p className="text-xs text-muted mb-1">{k}</p>
+      <p className="text-lg font-bold text-strong font-mono">{v}</p>
+      {sub && <p className="text-xs text-muted mt-1">{sub}</p>}
     </div>
   )
 }
@@ -1064,10 +1064,10 @@ function Campo({ label, value, onChange, type = 'text', placeholder, hint }: {
 }) {
   return (
     <div>
-      <label className="text-xs text-slate-400 block mb-1.5">{label}</label>
+      <label className="text-xs text-muted block mb-1.5">{label}</label>
       <input className="input" type={type} value={value} placeholder={placeholder}
         onChange={e => onChange(e.target.value)} />
-      {hint && <p className="text-xs text-slate-600 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-faint mt-1">{hint}</p>}
     </div>
   )
 }
@@ -1077,10 +1077,10 @@ function CampoNum({ label, value, onChange, hint }: {
 }) {
   return (
     <div>
-      <label className="text-xs text-slate-400 block mb-1.5">{label}</label>
+      <label className="text-xs text-muted block mb-1.5">{label}</label>
       <input className="input font-mono" type="number" value={value}
         onChange={e => onChange(num(e.target.value))} />
-      {hint && <p className="text-xs text-slate-600 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-faint mt-1">{hint}</p>}
     </div>
   )
 }
@@ -1091,7 +1091,7 @@ function Select({ label, value, onChange, opciones }: {
 }) {
   return (
     <div>
-      <label className="text-xs text-slate-400 block mb-1.5">{label}</label>
+      <label className="text-xs text-muted block mb-1.5">{label}</label>
       <select className="input" value={value} onChange={e => onChange(e.target.value)}>
         {opciones.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
       </select>
@@ -1108,27 +1108,27 @@ function Desglose({ titulo, filas, total, extra, nota }: {
 }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">{titulo}</p>
+      <p className="text-xs uppercase tracking-wider text-dim mb-2">{titulo}</p>
       <dl className="space-y-1 text-sm">
         {filas.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-3">
-            <dt className="text-slate-400 min-w-0">{k}</dt>
-            <dd className="font-mono text-slate-300 flex-shrink-0">{v}</dd>
+            <dt className="text-muted min-w-0">{k}</dt>
+            <dd className="font-mono text-body flex-shrink-0">{v}</dd>
           </div>
         ))}
         <div className="flex justify-between gap-3 pt-1.5 mt-1.5 font-semibold"
-          style={{ borderTop: '1px solid #1e293b' }}>
-          <dt className="text-slate-300">{total[0]}</dt>
-          <dd className="font-mono text-white">{total[1]}</dd>
+          style={{ borderTop: '1px solid var(--border)' }}>
+          <dt className="text-body">{total[0]}</dt>
+          <dd className="font-mono text-strong">{total[1]}</dd>
         </div>
         {extra?.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-3">
-            <dt className="text-slate-400 min-w-0">{k}</dt>
+            <dt className="text-muted min-w-0">{k}</dt>
             <dd className="font-mono text-green-400 flex-shrink-0">{v}</dd>
           </div>
         ))}
       </dl>
-      {nota && <p className="text-xs text-slate-500 mt-3 leading-relaxed">{nota}</p>}
+      {nota && <p className="text-xs text-dim mt-3 leading-relaxed">{nota}</p>}
     </div>
   )
 }
@@ -1141,15 +1141,15 @@ function Modal({ titulo, children, onClose, onGuardar, onBorrar, saving }: {
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto bg-black/70"
       onClick={onClose}>
       <div className="rounded-xl w-full max-w-3xl my-8" onClick={e => e.stopPropagation()}
-        style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
+        style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between p-4 sticky top-0 rounded-t-xl"
-          style={{ background: '#0f172a', borderBottom: '1px solid #1e293b' }}>
-          <h2 className="text-white font-semibold">{titulo}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18} /></button>
+          style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+          <h2 className="text-strong font-semibold">{titulo}</h2>
+          <button onClick={onClose} className="text-muted hover:text-strong"><X size={18} /></button>
         </div>
         <div className="p-5">{children}</div>
         <div className="flex items-center gap-2 p-4 sticky bottom-0 rounded-b-xl"
-          style={{ background: '#0f172a', borderTop: '1px solid #1e293b' }}>
+          style={{ background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
           {onBorrar && (
             <button className="btn-danger text-sm flex items-center gap-1.5" onClick={onBorrar}>
               <Trash2 size={14} /> Eliminar

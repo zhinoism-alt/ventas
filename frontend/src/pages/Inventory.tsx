@@ -165,8 +165,8 @@ export default function Inventory() {
     <div className="space-y-5 max-w-7xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Inventario</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Gestión de artículos y ventas</p>
+          <h1 className="text-2xl font-bold text-strong">Inventario</h1>
+          <p className="text-muted text-sm mt-0.5">Gestión de artículos y ventas</p>
         </div>
         <button onClick={openAdd} className="btn-primary"><Plus size={16} />Agregar artículo</button>
       </div>
@@ -174,13 +174,13 @@ export default function Inventory() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total artículos', value: stats.total ?? 0, color: '#6366f1' },
-          { label: 'Disponibles', value: stats.disponibles ?? 0, color: '#22c55e' },
-          { label: 'Vendidos', value: stats.vendidos ?? 0, color: '#94a3b8' },
-          { label: 'Invertido', value: fmt(stats.total_invertido), color: '#f59e0b' },
+          { label: 'Total artículos', value: stats.total ?? 0, color: 'var(--accent)' },
+          { label: 'Disponibles', value: stats.disponibles ?? 0, color: 'var(--green)' },
+          { label: 'Vendidos', value: stats.vendidos ?? 0, color: 'var(--text-muted)' },
+          { label: 'Invertido', value: fmt(stats.total_invertido), color: 'var(--yellow)' },
         ].map(s => (
           <div key={s.label} className="card">
-            <p className="text-xs text-slate-400">{s.label}</p>
+            <p className="text-xs text-muted">{s.label}</p>
             <p className="text-lg font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
           </div>
         ))}
@@ -189,7 +189,7 @@ export default function Inventory() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim" />
           <input className="input pl-8" placeholder="Buscar por nombre, marca, notas..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -200,7 +200,7 @@ export default function Inventory() {
           <option value="reservado">Reservados</option>
         </select>
         <div className="relative">
-          <ArrowUpDown size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <ArrowUpDown size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
           <select className="input w-auto pl-8" value={sortBy} onChange={e => setSortBy(e.target.value)}>
             <option value="default">Ordenar por</option>
             <option value="profit_desc">Mayor ganancia</option>
@@ -216,9 +216,9 @@ export default function Inventory() {
       {/* Product grid */}
       {sortedProducts.length === 0 ? (
         <div className="card text-center py-16">
-          <Package size={48} className="mx-auto mb-3 text-slate-700" />
-          <p className="text-slate-400 font-medium">No hay artículos</p>
-          <p className="text-slate-600 text-sm mt-1">
+          <Package size={48} className="mx-auto mb-3 text-faint" />
+          <p className="text-muted font-medium">No hay artículos</p>
+          <p className="text-faint text-sm mt-1">
             {search || filterStatus !== 'todos' ? 'Intenta con otros filtros' : '¡Agrega el primero!'}
           </p>
         </div>
@@ -233,11 +233,11 @@ export default function Inventory() {
               <div key={p.id} className="card flex flex-col gap-3 hover:border-indigo-500/40 transition-colors">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-white truncate">{p.name}</h3>
+                    <h3 className="font-semibold text-strong truncate">{p.name}</h3>
                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      {p.brand && <span className="text-xs text-slate-400">{p.brand}</span>}
-                      {p.color && <span className="text-xs text-slate-500">· {p.color}</span>}
-                      {p.category && <span className="text-xs text-slate-600">· {p.category}</span>}
+                      {p.brand && <span className="text-xs text-muted">{p.brand}</span>}
+                      {p.color && <span className="text-xs text-dim">· {p.color}</span>}
+                      {p.category && <span className="text-xs text-faint">· {p.category}</span>}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -249,52 +249,52 @@ export default function Inventory() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-lg p-2.5" style={{ background: '#0f172a' }}>
-                    <p className="text-xs text-slate-500 mb-1">Compré</p>
-                    <p className="font-semibold text-slate-300">${p.purchase_price} {p.purchase_currency}</p>
+                  <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
+                    <p className="text-xs text-dim mb-1">Compré</p>
+                    <p className="font-semibold text-body">${p.purchase_price} {p.purchase_currency}</p>
                     {p.purchase_currency === 'USD' && (
-                      <p className="text-xs text-slate-600 mt-0.5">≈ {fmt(p.purchase_price * rate)}</p>
+                      <p className="text-xs text-faint mt-0.5">≈ {fmt(p.purchase_price * rate)}</p>
                     )}
                   </div>
-                  <div className="rounded-lg p-2.5" style={{ background: '#0f172a' }}>
-                    <p className="text-xs text-slate-500 mb-1">Vendo</p>
-                    <p className="font-semibold text-white">${p.sale_price} {p.sale_currency}</p>
+                  <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
+                    <p className="text-xs text-dim mb-1">Vendo</p>
+                    <p className="font-semibold text-strong">${p.sale_price} {p.sale_currency}</p>
                     {p.sale_currency === 'USD' && (
-                      <p className="text-xs text-slate-600 mt-0.5">≈ {fmt(p.sale_price * rate)}</p>
+                      <p className="text-xs text-faint mt-0.5">≈ {fmt(p.sale_price * rate)}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">
+                    <span className="text-muted">
                       Gan: <span className={`font-bold ${profitClass(gain)}`}>{fmt(gain)}</span>
                     </span>
                     {roi !== null && (
                       <span
                         className="px-1.5 py-0.5 rounded text-xs font-semibold"
                         style={{
-                          background: roi >= 30 ? '#14532d55' : roi >= 10 ? '#71380055' : '#7f1d1d55',
-                          color: roi >= 30 ? '#86efac' : roi >= 10 ? '#fcd34d' : '#fca5a5',
+                          background: roi >= 30 ? 'var(--green-soft)' : roi >= 10 ? 'var(--yellow-soft)' : 'var(--red-soft)',
+                          color: roi >= 30 ? 'var(--green)' : roi >= 10 ? 'var(--yellow)' : 'var(--red)',
                         }}
                       >
                         {roi >= 0 ? '+' : ''}{roi.toFixed(0)}% ROI
                       </span>
                     )}
                   </div>
-                  <span className="text-slate-400">
-                    Stock: <span className="text-white font-semibold">{p.quantity}</span>
-                    {p.quantity_sold > 0 && <span className="text-slate-500"> ({p.quantity_sold} vend.)</span>}
+                  <span className="text-muted">
+                    Stock: <span className="text-strong font-semibold">{p.quantity}</span>
+                    {p.quantity_sold > 0 && <span className="text-dim"> ({p.quantity_sold} vend.)</span>}
                   </span>
                 </div>
 
                 {p.notes && (
-                  <p className="text-xs text-slate-500 italic border-t pt-2" style={{ borderColor: '#1e3050' }}>
+                  <p className="text-xs text-dim italic border-t pt-2" style={{ borderColor: 'var(--border)' }}>
                     {p.notes}
                   </p>
                 )}
 
-                <div className="flex gap-2 pt-1 border-t" style={{ borderColor: '#1e3050' }}>
+                <div className="flex gap-2 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
                   {p.status !== 'vendido' && (
                     <button onClick={() => openSell(p)} className="btn-success flex-1 justify-center py-1.5 text-xs">
                       <ShoppingCart size={12} />Vender
@@ -319,12 +319,12 @@ export default function Inventory() {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="w-full max-w-lg rounded-xl" style={{ background: '#1e293b', border: '1px solid #2d3f58', maxHeight: '92vh', overflowY: 'auto' }}>
+          <div className="w-full max-w-lg rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)', maxHeight: '92vh', overflowY: 'auto' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-white mb-5">{editing ? 'Editar artículo' : 'Agregar artículo'}</h2>
+              <h2 className="text-lg font-bold text-strong mb-5">{editing ? 'Editar artículo' : 'Agregar artículo'}</h2>
 
               {formError && (
-                <div className="mb-4 p-3 rounded-lg text-red-400 text-sm" style={{ background: '#7f1d1d33' }}>
+                <div className="mb-4 p-3 rounded-lg text-red-400 text-sm" style={{ background: 'var(--red-soft)' }}>
                   {formError}
                 </div>
               )}
@@ -399,23 +399,23 @@ export default function Inventory() {
 
               {/* Profit preview — only shown when both prices are valid numbers */}
               {previewProfit !== null && (
-                <div className="mt-4 p-3 rounded-lg" style={{ background: '#0f172a', border: '1px solid #2d3f58' }}>
-                  <p className="text-xs text-slate-400 mb-1">Vista previa de ganancia:</p>
+                <div className="mt-4 p-3 rounded-lg" style={{ background: 'var(--bg)', border: '1px solid var(--border-hi)' }}>
+                  <p className="text-xs text-muted mb-1">Vista previa de ganancia:</p>
                   <div className="flex items-center gap-2 text-sm flex-wrap">
-                    <span className="text-slate-300">
-                      Compra: <span className="text-white">${form.purchase_price || 0} {form.purchase_currency}</span>
+                    <span className="text-body">
+                      Compra: <span className="text-strong">${form.purchase_price || 0} {form.purchase_currency}</span>
                       {form.purchase_currency === 'USD' && (
-                        <span className="text-slate-500 text-xs"> ≈ {fmt(safeFloat(form.purchase_price) * rate)}</span>
+                        <span className="text-dim text-xs"> ≈ {fmt(safeFloat(form.purchase_price) * rate)}</span>
                       )}
                     </span>
-                    <span className="text-slate-500">→</span>
-                    <span className="text-slate-300">
-                      Venta: <span className="text-white">${form.sale_price || 0} {form.sale_currency}</span>
+                    <span className="text-dim">→</span>
+                    <span className="text-body">
+                      Venta: <span className="text-strong">${form.sale_price || 0} {form.sale_currency}</span>
                       {form.sale_currency === 'USD' && (
-                        <span className="text-slate-500 text-xs"> ≈ {fmt(safeFloat(form.sale_price) * rate)}</span>
+                        <span className="text-dim text-xs"> ≈ {fmt(safeFloat(form.sale_price) * rate)}</span>
                       )}
                     </span>
-                    <span className="text-slate-500">=</span>
+                    <span className="text-dim">=</span>
                     <span className={`font-bold ${profitClass(previewProfit)}`}>{fmt(previewProfit)}</span>
                   </div>
                 </div>
@@ -435,10 +435,10 @@ export default function Inventory() {
       {/* FB Post Modal */}
       {showFBModal && selected && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowFBModal(false)}>
-          <div className="w-full max-w-md rounded-xl" style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+          <div className="w-full max-w-md rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-white mb-1">Post para Facebook Marketplace</h2>
-              <p className="text-xs text-slate-400 mb-4">{selected.name}</p>
+              <h2 className="text-lg font-bold text-strong mb-1">Post para Facebook Marketplace</h2>
+              <p className="text-xs text-muted mb-4">{selected.name}</p>
               <textarea className="input font-mono text-sm" rows={12} value={fbPost}
                 onChange={e => setFBPost(e.target.value)} />
               <div className="flex gap-3 mt-4">
@@ -455,10 +455,10 @@ export default function Inventory() {
       {/* Sell Modal */}
       {showSellModal && selected && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSellModal(false)}>
-          <div className="w-full max-w-sm rounded-xl" style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+          <div className="w-full max-w-sm rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-white mb-1">Registrar venta</h2>
-              <p className="text-sm text-slate-400 mb-5">{selected.name}</p>
+              <h2 className="text-lg font-bold text-strong mb-1">Registrar venta</h2>
+              <p className="text-sm text-muted mb-5">{selected.name}</p>
               <div className="space-y-3">
                 <div>
                   <label>Cantidad vendida</label>

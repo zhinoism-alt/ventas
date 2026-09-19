@@ -32,16 +32,16 @@ interface PdfReporte {
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-const COLORS = ['#6366f1','#22c55e','#f59e0b','#ef4444','#06b6d4']
+const COLORS = ['var(--accent)','var(--green)','var(--yellow)','var(--red)','var(--cyan)']
 
 // Waterfall chart data builder
 function buildWaterfall(ingreso: number, gastosNec: number, gastosDisc: number) {
   const ahorro = ingreso - gastosNec - gastosDisc
   return [
-    { name: 'Ingreso',     value: ingreso,     spacer: 0,                         fill: '#22c55e',  type: 'positive' },
-    { name: 'G. Fijos',    value: gastosNec,   spacer: ingreso - gastosNec,        fill: '#6366f1',  type: 'negative' },
-    { name: 'G. Discr.',   value: gastosDisc,  spacer: ingreso - gastosNec - gastosDisc, fill: '#f59e0b', type: 'negative' },
-    { name: 'Ahorro',      value: Math.max(0, ahorro), spacer: 0,                  fill: '#06b6d4',  type: 'result' },
+    { name: 'Ingreso',     value: ingreso,     spacer: 0,                         fill: 'var(--green)',  type: 'positive' },
+    { name: 'G. Fijos',    value: gastosNec,   spacer: ingreso - gastosNec,        fill: 'var(--accent)',  type: 'negative' },
+    { name: 'G. Discr.',   value: gastosDisc,  spacer: ingreso - gastosNec - gastosDisc, fill: 'var(--yellow)', type: 'negative' },
+    { name: 'Ahorro',      value: Math.max(0, ahorro), spacer: 0,                  fill: 'var(--cyan)',  type: 'result' },
   ]
 }
 
@@ -114,8 +114,8 @@ function PdfDropZone({ onUpload }: { onUpload: () => void }) {
         onClick={() => inputRef.current?.click()}
         className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors py-10"
         style={{
-          borderColor: dragging ? '#6366f1' : file ? '#22c55e33' : '#21262d',
-          background:  dragging ? 'rgba(99,102,241,0.06)' : file ? 'rgba(34,197,94,0.04)' : '#0a0e14',
+          borderColor: dragging ? 'var(--accent)' : file ? 'var(--green-soft)' : 'var(--border)',
+          background:  dragging ? 'rgba(99,102,241,0.06)' : file ? 'rgba(34,197,94,0.04)' : 'var(--bg-card)',
         }}
       >
         {success ? (
@@ -126,14 +126,14 @@ function PdfDropZone({ onUpload }: { onUpload: () => void }) {
         ) : file ? (
           <>
             <FileText size={36} className="text-green-400" />
-            <p className="text-slate-200 text-sm font-medium">{file.name}</p>
-            <p className="text-slate-500 text-xs">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+            <p className="text-strong text-sm font-medium">{file.name}</p>
+            <p className="text-dim text-xs">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
           </>
         ) : (
           <>
-            <Upload size={36} className="text-slate-600" />
-            <p className="text-slate-400 text-sm font-medium">Arrastra un PDF aquí o haz clic para seleccionar</p>
-            <p className="text-slate-600 text-xs">Máximo 25MB · Solo .pdf</p>
+            <Upload size={36} className="text-faint" />
+            <p className="text-muted text-sm font-medium">Arrastra un PDF aquí o haz clic para seleccionar</p>
+            <p className="text-faint text-xs">Máximo 25MB · Solo .pdf</p>
           </>
         )}
         <input ref={inputRef} type="file" accept=".pdf,application/pdf" className="hidden"
@@ -275,7 +275,7 @@ export default function Reports() {
     <div className="flex items-center justify-center h-64">
       <div className="flex flex-col items-center gap-3">
         <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
-        <p className="text-slate-500 text-sm">Cargando reportes...</p>
+        <p className="text-dim text-sm">Cargando reportes...</p>
       </div>
     </div>
   )
@@ -286,13 +286,13 @@ export default function Reports() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Reportes</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Análisis financiero · {year}</p>
+          <h1 className="text-2xl font-bold text-strong">Reportes</h1>
+          <p className="text-muted text-sm mt-0.5">Análisis financiero · {year}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1">
             <button onClick={() => setYear(y => y - 1)} className="btn-secondary p-2"><ChevronLeft size={14} /></button>
-            <span className="text-white font-semibold text-sm px-3">{year}</span>
+            <span className="text-strong font-semibold text-sm px-3">{year}</span>
             <button onClick={() => setYear(y => y + 1)} className="btn-secondary p-2"><ChevronRight size={14} /></button>
           </div>
           <button onClick={loadAll} className="btn-secondary"><RefreshCw size={14} /> Actualizar</button>
@@ -318,17 +318,17 @@ export default function Reports() {
           {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { title: 'Ingresos Totales', value: fmt(summary?.total_ingresos_mxn ?? 0), color: '#22c55e', icon: <DollarSign size={18} />, sub: `Prod. ${fmt(summary?.ingresos_productos ?? 0)}` },
-              { title: 'Ganancia Neta',    value: fmt(summary?.ganancia_neta_mxn    ?? 0), color: '#6366f1', icon: <TrendingUp size={18} />,   sub: `Margen ${summary?.total_ingresos_mxn > 0 ? Math.round((summary.ganancia_neta_mxn / summary.total_ingresos_mxn) * 100) : 0}%` },
-              { title: 'Clientes IPTV',   value: String(summary?.clientes_activos_iptv ?? 0), color: '#06b6d4', icon: <Tv size={18} />,  sub: 'Suscriptores activos' },
-              { title: 'Productos',        value: String(summary?.total_productos     ?? 0), color: '#f59e0b', icon: <Package size={18} />, sub: `${summary?.disponibles ?? 0} disponibles` },
+              { title: 'Ingresos Totales', value: fmt(summary?.total_ingresos_mxn ?? 0), color: 'var(--green)', icon: <DollarSign size={18} />, sub: `Prod. ${fmt(summary?.ingresos_productos ?? 0)}` },
+              { title: 'Ganancia Neta',    value: fmt(summary?.ganancia_neta_mxn    ?? 0), color: 'var(--accent)', icon: <TrendingUp size={18} />,   sub: `Margen ${summary?.total_ingresos_mxn > 0 ? Math.round((summary.ganancia_neta_mxn / summary.total_ingresos_mxn) * 100) : 0}%` },
+              { title: 'Clientes IPTV',   value: String(summary?.clientes_activos_iptv ?? 0), color: 'var(--cyan)', icon: <Tv size={18} />,  sub: 'Suscriptores activos' },
+              { title: 'Productos',        value: String(summary?.total_productos     ?? 0), color: 'var(--yellow)', icon: <Package size={18} />, sub: `${summary?.disponibles ?? 0} disponibles` },
             ].map(c => (
               <div key={c.title} className="stat-card" style={{ borderTop: `2px solid ${c.color}` }}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">{c.title}</p>
-                    <p className="text-xl font-bold text-white">{c.value}</p>
-                    <p className="text-xs text-slate-500 mt-1">{c.sub}</p>
+                    <p className="text-xs text-muted uppercase tracking-wide mb-1">{c.title}</p>
+                    <p className="text-xl font-bold text-strong">{c.value}</p>
+                    <p className="text-xs text-dim mt-1">{c.sub}</p>
                   </div>
                   <div className="p-2 rounded-lg" style={{ background: `${c.color}20` }}>
                     <span style={{ color: c.color }}>{c.icon}</span>
@@ -341,26 +341,26 @@ export default function Reports() {
           {/* Chart + Pie */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="card lg:col-span-2">
-              <h3 className="text-sm font-semibold text-white mb-4">Ingresos por Mes — {year}</h3>
+              <h3 className="text-sm font-semibold text-strong mb-4">Ingresos por Mes — {year}</h3>
               {monthlyCombined.some((m: any) => m.productos + m.iptv > 0) ? (
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={monthlyCombined} barGap={3}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e3050" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false}
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false}
                       tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatMXN(v)} />
-                    <Bar dataKey="productos" name="Productos" fill="#6366f1" radius={[3,3,0,0]} />
-                    <Bar dataKey="iptv"      name="IPTV"      fill="#22c55e" radius={[3,3,0,0]} />
+                    <Bar dataKey="productos" name="Productos" fill="var(--accent)" radius={[3,3,0,0]} />
+                    <Bar dataKey="iptv"      name="IPTV"      fill="var(--green)" radius={[3,3,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-60 flex items-center justify-center text-slate-600 text-sm">Sin datos de ventas aún</div>
+                <div className="h-60 flex items-center justify-center text-faint text-sm">Sin datos de ventas aún</div>
               )}
             </div>
 
             <div className="card">
-              <h3 className="text-sm font-semibold text-white mb-4">Distribución de Ingresos</h3>
+              <h3 className="text-sm font-semibold text-strong mb-4">Distribución de Ingresos</h3>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
@@ -373,31 +373,31 @@ export default function Reports() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-48 flex items-center justify-center text-slate-600 text-sm">Sin datos</div>
+                <div className="h-48 flex items-center justify-center text-faint text-sm">Sin datos</div>
               )}
             </div>
           </div>
 
           {/* Monthly table */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-white mb-4">Tabla Mensual — {year}</h3>
+            <h3 className="text-sm font-semibold text-strong mb-4">Tabla Mensual — {year}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b" style={{ borderColor: '#1e3050' }}>
-                    <th className="text-left py-2 text-slate-400">Mes</th>
-                    <th className="text-right py-2 text-slate-400">Productos</th>
-                    <th className="text-right py-2 text-slate-400">IPTV</th>
-                    <th className="text-right py-2 text-slate-400">Total</th>
+                  <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                    <th className="text-left py-2 text-muted">Mes</th>
+                    <th className="text-right py-2 text-muted">Productos</th>
+                    <th className="text-right py-2 text-muted">IPTV</th>
+                    <th className="text-right py-2 text-muted">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {monthlyCombined.map((m: any) => (
-                    <tr key={m.name} className="table-row-hover border-b" style={{ borderColor: '#1e3050' }}>
-                      <td className="py-2 text-slate-300">{m.name}</td>
-                      <td className="py-2 text-right text-slate-300">{m.productos > 0 ? fmt(m.productos) : '—'}</td>
-                      <td className="py-2 text-right text-slate-300">{m.iptv      > 0 ? fmt(m.iptv)      : '—'}</td>
-                      <td className="py-2 text-right font-semibold text-white">
+                    <tr key={m.name} className="table-row-hover border-b" style={{ borderColor: 'var(--border)' }}>
+                      <td className="py-2 text-body">{m.name}</td>
+                      <td className="py-2 text-right text-body">{m.productos > 0 ? fmt(m.productos) : '—'}</td>
+                      <td className="py-2 text-right text-body">{m.iptv      > 0 ? fmt(m.iptv)      : '—'}</td>
+                      <td className="py-2 text-right font-semibold text-strong">
                         {m.productos + m.iptv > 0 ? fmt(m.productos + m.iptv) : '—'}
                       </td>
                     </tr>
@@ -413,11 +413,11 @@ export default function Reports() {
       {tab === 'waterfall' && (
         <div className="space-y-4">
           <div className="card">
-            <h3 className="text-sm font-semibold text-white mb-1">Flujo de Dinero Mensual (Waterfall)</h3>
-            <p className="text-xs text-slate-500 mb-5">Ingreso → Gastos → Ahorro neto del mes actual</p>
+            <h3 className="text-sm font-semibold text-strong mb-1">Flujo de Dinero Mensual (Waterfall)</h3>
+            <p className="text-xs text-dim mb-5">Ingreso → Gastos → Ahorro neto del mes actual</p>
 
             {waterfallData.every(d => d.value === 0) ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-600">
+              <div className="flex flex-col items-center justify-center py-16 gap-3 text-faint">
                 <TrendingDown size={40} />
                 <p className="text-sm">Conecta tu hoja de Presupuesto para ver el flujo de dinero</p>
                 <a href="/presupuesto" className="btn-secondary text-xs">Ir a Presupuesto →</a>
@@ -425,9 +425,9 @@ export default function Reports() {
             ) : (
               <ResponsiveContainer width="100%" height={320}>
                 <ComposedChart data={waterfallData} barCategoryGap="25%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e3050" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false}
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false}
                     tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
@@ -446,12 +446,12 @@ export default function Reports() {
             )}
 
             {/* Leyenda */}
-            <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t" style={{ borderColor: '#1e3050' }}>
+            <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
               {waterfallData.map(d => (
                 <div key={d.name} className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-sm" style={{ background: d.fill, display: 'inline-block' }} />
-                  <span className="text-xs text-slate-300">{d.name}</span>
-                  <span className="text-xs font-semibold text-white">{fmt(d.value)}</span>
+                  <span className="text-xs text-body">{d.name}</span>
+                  <span className="text-xs font-semibold text-strong">{fmt(d.value)}</span>
                 </div>
               ))}
             </div>
@@ -465,7 +465,7 @@ export default function Reports() {
 
           {/* Upload zone */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-strong mb-4 flex items-center gap-2">
               <Upload size={14} className="text-indigo-400" /> Subir Reporte PDF
             </h3>
             <PdfDropZone onUpload={loadAll} />
@@ -474,7 +474,7 @@ export default function Reports() {
           {/* Lista de PDFs */}
           <div className="card">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-              <h3 className="text-sm font-semibold text-white">PDFs subidos ({filteredPdfs.length})</h3>
+              <h3 className="text-sm font-semibold text-strong">PDFs subidos ({filteredPdfs.length})</h3>
               <select className="input w-auto" value={filterTipo} onChange={e => setFilterTipo(e.target.value)}>
                 <option value="todos">Todos los tipos</option>
                 <option value="gastos">Gastos</option>
@@ -484,23 +484,23 @@ export default function Reports() {
             </div>
 
             {filteredPdfs.length === 0 ? (
-              <div className="flex flex-col items-center py-12 gap-3 text-slate-600">
+              <div className="flex flex-col items-center py-12 gap-3 text-faint">
                 <FileText size={40} />
                 <p className="text-sm">No hay PDFs subidos aún</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {filteredPdfs.map(pdf => (
-                  <div key={pdf.id} className="flex items-center gap-4 py-3 px-3 rounded-xl table-row-hover border" style={{ borderColor: '#1e3050' }}>
-                    <div className="p-2 rounded-lg" style={{ background: '#1e293b' }}>
+                  <div key={pdf.id} className="flex items-center gap-4 py-3 px-3 rounded-xl table-row-hover border" style={{ borderColor: 'var(--border)' }}>
+                    <div className="p-2 rounded-lg" style={{ background: 'var(--surface-2)' }}>
                       <FileText size={18} className={
                         pdf.tipo === 'gastos'   ? 'text-red-400'    :
                         pdf.tipo === 'ingresos' ? 'text-green-400'  : 'text-blue-400'
                       } />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-200 font-medium truncate">{pdf.nombre}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-sm text-strong font-medium truncate">{pdf.nombre}</p>
+                      <p className="text-xs text-dim mt-0.5">
                         {MESES_FULL[pdf.mes - 1]} {pdf.anio}
                         {pdf.monto_total ? ` · ${fmt(pdf.monto_total)}` : ''}
                         {pdf.notas ? ` · ${pdf.notas}` : ''}

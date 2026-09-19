@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Heart, Plus, Trash2, Users, Target, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { AvisoError } from '../components/AvisoError'
 import { fmt } from '../lib/utils'
 
 interface Gasto {
@@ -27,12 +28,13 @@ interface Meta {
 }
 
 const CATEGORIAS_GASTO = ['general', 'renta', 'comida', 'entretenimiento', 'salud', 'transporte', 'ropa', 'servicios', 'viaje', 'otro']
-const TIPO_META = { financiera: '#22c55e', relacion: '#ec4899', bienestar: '#06b6d4', otro: '#94a3b8' }
+const TIPO_META = { financiera: 'var(--green)', relacion: '#ec4899', bienestar: 'var(--cyan)', otro: 'var(--text-muted)' }
 
 export default function Pareja() {
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [metas, setMetas] = useState<Meta[]>([])
   const [loading, setLoading] = useState(true)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [tab, setTab] = useState<'gastos' | 'metas'>('gastos')
   const [mes, setMes] = useState(new Date().toISOString().slice(0, 7))
   const [showForm, setShowForm] = useState(false)
@@ -44,6 +46,7 @@ export default function Pareja() {
   const [metaForm, setMetaForm] = useState({ nombre: '', descripcion: '', tipo: 'relacion' as 'financiera' | 'relacion' | 'bienestar' | 'otro', fecha_meta: '' })
 
   const load = async () => {
+    setErrorCarga(null)
     // El finally es obligatorio: si una consulta rechaza (base pausada,
     // red caída), sin él el spinner se queda girando para siempre.
     try {
@@ -55,6 +58,7 @@ export default function Pareja() {
       setMetas(m ?? [])
     } catch (e) {
       console.error('[Pareja] no se pudieron cargar los datos', e)
+      setErrorCarga(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
@@ -122,16 +126,17 @@ export default function Pareja() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      <AvisoError mensaje={errorCarga} onReintentar={() => { setLoading(true); load() }} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-strong flex items-center gap-2">
             <Heart className="text-pink-400" size={24} /> Finanzas en Pareja
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Gastos compartidos y metas juntos</p>
+          <p className="text-muted text-sm mt-1">Gastos compartidos y metas juntos</p>
         </div>
         <button onClick={() => setShowForm(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
-          style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
+          style={{ background: 'linear-gradient(135deg, #ec4899, var(--accent-2))' }}>
           <Plus size={16} /> Agregar
         </button>
       </div>
@@ -139,21 +144,21 @@ export default function Pareja() {
       {/* Balance del mes */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Total del Mes</p>
-          <p className="text-xl font-bold text-white">{fmt(totalMes)}</p>
+          <p className="text-xs text-muted mb-1">Total del Mes</p>
+          <p className="text-xl font-bold text-strong">{fmt(totalMes)}</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Le corresponde a Brandon</p>
+          <p className="text-xs text-muted mb-1">Le corresponde a Brandon</p>
           <p className="text-xl font-bold text-indigo-400">{fmt(toBrandon)}</p>
-          <p className="text-xs text-slate-400">Pagó: {fmt(pagoBrandon)}</p>
+          <p className="text-xs text-muted">Pagó: {fmt(pagoBrandon)}</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Le corresponde a Pareja</p>
+          <p className="text-xs text-muted mb-1">Le corresponde a Pareja</p>
           <p className="text-xl font-bold text-pink-400">{fmt(toPareja)}</p>
-          <p className="text-xs text-slate-400">Pagó: {fmt(pagoPareja)}</p>
+          <p className="text-xs text-muted">Pagó: {fmt(pagoPareja)}</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-slate-400 mb-1">Balance</p>
+          <p className="text-xs text-muted mb-1">Balance</p>
           {Math.abs(balanceBrandon) < 1 ? (
             <p className="text-xl font-bold text-green-400">¡Par!</p>
           ) : balanceBrandon > 0 ? (
@@ -170,10 +175,10 @@ export default function Pareja() {
 
       {/* Tabs */}
       <div className="flex items-center gap-4">
-        <div className="flex gap-1 p-1 rounded-lg flex-1" style={{ background: '#1e293b' }}>
+        <div className="flex gap-1 p-1 rounded-lg flex-1" style={{ background: 'var(--surface-2)' }}>
           {[{ id: 'gastos', label: 'Gastos' }, { id: 'metas', label: 'Metas Juntos' }].map(t => (
             <button key={t.id} onClick={() => setTab(t.id as 'gastos' | 'metas')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${tab === t.id ? 'bg-pink-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${tab === t.id ? 'bg-pink-600 text-strong' : 'text-muted hover:text-strong'}`}>
               {t.label}
             </button>
           ))}
@@ -186,18 +191,18 @@ export default function Pareja() {
       {/* Form gasto */}
       {showForm && tab === 'gastos' && (
         <div className="card">
-          <h2 className="text-sm font-semibold text-white mb-4">Nuevo Gasto</h2>
+          <h2 className="text-sm font-semibold text-strong mb-4">Nuevo Gasto</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Concepto *</label>
+              <label className="text-xs text-muted mb-1 block">Concepto *</label>
               <input className="input w-full" placeholder="Ej: Cena, Renta..." value={form.concepto} onChange={e => setForm(f => ({ ...f, concepto: e.target.value }))} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Monto (MXN) *</label>
+              <label className="text-xs text-muted mb-1 block">Monto (MXN) *</label>
               <input className="input w-full" type="number" placeholder="0.00" value={form.monto} onChange={e => setForm(f => ({ ...f, monto: e.target.value }))} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">¿Quién pagó?</label>
+              <label className="text-xs text-muted mb-1 block">¿Quién pagó?</label>
               <select className="input w-full" value={form.pagado_por} onChange={e => setForm(f => ({ ...f, pagado_por: e.target.value as 'brandon' | 'pareja' | 'ambos' }))}>
                 <option value="brandon">Brandon</option>
                 <option value="pareja">Pareja</option>
@@ -205,30 +210,30 @@ export default function Pareja() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Categoría</label>
+              <label className="text-xs text-muted mb-1 block">Categoría</label>
               <select className="input w-full" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
                 {CATEGORIAS_GASTO.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">% para Brandon</label>
+              <label className="text-xs text-muted mb-1 block">% para Brandon</label>
               <div className="flex items-center gap-2">
                 <input className="input flex-1" type="number" min="0" max="100" value={form.porcentaje_brandon}
                   onChange={e => setForm(f => ({ ...f, porcentaje_brandon: e.target.value }))} />
-                <span className="text-slate-400 text-sm">/ {100 - Number(form.porcentaje_brandon)}% pareja</span>
+                <span className="text-muted text-sm">/ {100 - Number(form.porcentaje_brandon)}% pareja</span>
               </div>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Fecha</label>
+              <label className="text-xs text-muted mb-1 block">Fecha</label>
               <input className="input w-full" type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={createGasto} disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#ec4899' }}>
+              className="px-4 py-2 rounded-lg text-sm font-medium text-strong" style={{ background: '#ec4899' }}>
               {saving ? 'Guardando...' : 'Agregar Gasto'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">Cancelar</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong">Cancelar</button>
           </div>
         </div>
       )}
@@ -237,17 +242,17 @@ export default function Pareja() {
       {tab === 'gastos' && (
         gastos.length === 0 ? (
           <div className="card text-center py-12">
-            <Users size={40} className="mx-auto text-slate-600 mb-3" />
-            <p className="text-white font-medium">Sin gastos este mes</p>
-            <p className="text-slate-400 text-sm mt-1">Registra los gastos del mes para ver el balance</p>
+            <Users size={40} className="mx-auto text-faint mb-3" />
+            <p className="text-strong font-medium">Sin gastos este mes</p>
+            <p className="text-muted text-sm mt-1">Registra los gastos del mes para ver el balance</p>
           </div>
         ) : (
           <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: '1px solid #2d3f58' }}>
+                <tr style={{ borderBottom: '1px solid var(--border-hi)' }}>
                   {['Concepto', 'Monto', 'Pagó', 'Brandon', 'Pareja', ''].map(h => (
-                    <th key={h} className="text-left py-2 px-3 text-xs text-slate-400 font-medium">{h}</th>
+                    <th key={h} className="text-left py-2 px-3 text-xs text-muted font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -256,21 +261,21 @@ export default function Pareja() {
                   const bParte = g.dividir ? g.monto * g.porcentaje_brandon / 100 : (g.pagado_por === 'brandon' ? g.monto : 0)
                   const pParte = g.dividir ? g.monto * (100 - g.porcentaje_brandon) / 100 : (g.pagado_por === 'pareja' ? g.monto : 0)
                   return (
-                    <tr key={g.id} style={{ borderBottom: '1px solid #1e293b' }}>
+                    <tr key={g.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td className="py-2 px-3">
-                        <div className="text-white">{g.concepto}</div>
-                        <div className="text-xs text-slate-500">{g.categoria} · {g.fecha}</div>
+                        <div className="text-strong">{g.concepto}</div>
+                        <div className="text-xs text-dim">{g.categoria} · {g.fecha}</div>
                       </td>
-                      <td className="py-2 px-3 text-white font-medium">{fmt(g.monto)}</td>
+                      <td className="py-2 px-3 text-strong font-medium">{fmt(g.monto)}</td>
                       <td className="py-2 px-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${g.pagado_por === 'brandon' ? 'bg-indigo-500/20 text-indigo-400' : g.pagado_por === 'pareja' ? 'bg-pink-500/20 text-pink-400' : 'bg-slate-700 text-slate-400'}`}>
+                        <span className={`text-xs px-2 py-1 rounded-full ${g.pagado_por === 'brandon' ? 'bg-indigo-500/20 text-indigo-400' : g.pagado_por === 'pareja' ? 'bg-pink-500/20 text-pink-400' : 'surface-2 text-muted'}`}>
                           {g.pagado_por === 'brandon' ? 'Brandon' : g.pagado_por === 'pareja' ? 'Pareja' : 'Ambos'}
                         </span>
                       </td>
                       <td className="py-2 px-3 text-indigo-400">{fmt(bParte)}</td>
                       <td className="py-2 px-3 text-pink-400">{fmt(pParte)}</td>
                       <td className="py-2 px-3">
-                        <button onClick={() => deleteGasto(g.id)} className="text-slate-600 hover:text-red-400">
+                        <button onClick={() => deleteGasto(g.id)} className="text-faint hover:text-red-400">
                           <Trash2 size={14} />
                         </button>
                       </td>
@@ -288,7 +293,7 @@ export default function Pareja() {
         <div className="space-y-4">
           {/* Form meta */}
           <div className="card">
-            <h2 className="text-sm font-semibold text-white mb-3">Nueva Meta</h2>
+            <h2 className="text-sm font-semibold text-strong mb-3">Nueva Meta</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <input className="input w-full" placeholder="Nombre de la meta *" value={metaForm.nombre} onChange={e => setMetaForm(f => ({ ...f, nombre: e.target.value }))} />
@@ -303,7 +308,7 @@ export default function Pareja() {
               </div>
               <div>
                 <button onClick={createMeta} disabled={saving}
-                  className="w-full px-3 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#ec4899' }}>
+                  className="w-full px-3 py-2 rounded-lg text-sm font-medium text-strong" style={{ background: '#ec4899' }}>
                   {saving ? '...' : 'Agregar Meta'}
                 </button>
               </div>
@@ -312,9 +317,9 @@ export default function Pareja() {
 
           {metas.length === 0 ? (
             <div className="card text-center py-12">
-              <Target size={40} className="mx-auto text-slate-600 mb-3" />
-              <p className="text-white font-medium">Sin metas aún</p>
-              <p className="text-slate-400 text-sm mt-1">Agrega metas que quieran lograr juntos</p>
+              <Target size={40} className="mx-auto text-faint mb-3" />
+              <p className="text-strong font-medium">Sin metas aún</p>
+              <p className="text-muted text-sm mt-1">Agrega metas que quieran lograr juntos</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -324,24 +329,24 @@ export default function Pareja() {
                     <div className="w-5 h-5 rounded-full border-2" style={{ borderColor: TIPO_META[m.tipo] }} />
                   </button>
                   <div className="flex-1">
-                    <p className="text-white font-medium text-sm">{m.nombre}</p>
-                    {m.descripcion && <p className="text-xs text-slate-400">{m.descripcion}</p>}
+                    <p className="text-strong font-medium text-sm">{m.nombre}</p>
+                    {m.descripcion && <p className="text-xs text-muted">{m.descripcion}</p>}
                   </div>
                   <span className="text-xs px-2 py-1 rounded-full" style={{ background: TIPO_META[m.tipo] + '22', color: TIPO_META[m.tipo] }}>
                     {m.tipo}
                   </span>
-                  {m.fecha_meta && <span className="text-xs text-slate-500">{m.fecha_meta}</span>}
+                  {m.fecha_meta && <span className="text-xs text-dim">{m.fecha_meta}</span>}
                 </div>
               ))}
               {metas.filter(m => m.completado).length > 0 && (
                 <div className="space-y-2 opacity-50">
-                  <p className="text-xs text-slate-500 px-1">Logradas</p>
+                  <p className="text-xs text-dim px-1">Logradas</p>
                   {metas.filter(m => m.completado).map(m => (
                     <div key={m.id} className="card flex items-center gap-3 py-2">
                       <button onClick={() => toggleMeta(m.id, false)} className="flex-shrink-0">
                         <TrendingUp size={16} className="text-green-400" />
                       </button>
-                      <p className="text-slate-400 text-sm line-through flex-1">{m.nombre}</p>
+                      <p className="text-muted text-sm line-through flex-1">{m.nombre}</p>
                     </div>
                   ))}
                 </div>

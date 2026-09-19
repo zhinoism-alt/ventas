@@ -18,7 +18,7 @@ const SECTIONS: Section[] = [
     emoji: '🏠',
     description: 'Checklist y organizacion para la mudanza',
     type: 'placeholder',
-    color: '#6366f1',
+    color: 'var(--accent)',
   },
   {
     key: 'peso-yo',
@@ -26,7 +26,7 @@ const SECTIONS: Section[] = [
     emoji: '💪',
     description: 'Seguimiento de ejercicio, dieta y progreso personal',
     type: 'placeholder',
-    color: '#22c55e',
+    color: 'var(--green)',
   },
   {
     key: 'peso-itzel',
@@ -42,7 +42,7 @@ const SECTIONS: Section[] = [
     emoji: '🧠',
     description: 'Notas, reflexiones y seguimiento de terapia',
     type: 'placeholder',
-    color: '#f59e0b',
+    color: 'var(--yellow)',
   },
   {
     key: 'presupuesto',
@@ -51,7 +51,7 @@ const SECTIONS: Section[] = [
     description: 'Dashboard financiero desde Google Sheets',
     url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2YTKIDdQ4aW22utLTZFGw0ZNvCMSz5Eh9fx4JSMsRQSvAoXNpA2bSRFs2VESqhe_m2nLjApHaM3vr/pubhtml',
     type: 'iframe',
-    color: '#06b6d4',
+    color: 'var(--cyan)',
   },
 ]
 
@@ -61,14 +61,14 @@ function PlaceholderCard({ section, onSetUrl }: { section: Section; onSetUrl: (k
 
   return (
     <div className="rounded-xl p-6 text-center space-y-4"
-      style={{ background: '#1e293b', border: `1px solid ${section.color}44` }}>
+      style={{ background: 'var(--surface-2)', border: `1px solid ${section.color}44` }}>
       <div className="text-4xl">{section.emoji}</div>
       <div>
-        <h3 className="text-white font-semibold text-lg">{section.label}</h3>
-        <p className="text-slate-400 text-sm mt-1">{section.description}</p>
+        <h3 className="text-strong font-semibold text-lg">{section.label}</h3>
+        <p className="text-muted text-sm mt-1">{section.description}</p>
       </div>
       <div className="space-y-2">
-        <p className="text-slate-500 text-xs">Pega el link de tu Google Doc, Notion, o cualquier URL embebible:</p>
+        <p className="text-dim text-xs">Pega el link de tu Google Doc, Notion, o cualquier URL embebible:</p>
         {editing ? (
           <div className="flex gap-2">
             <input
@@ -76,19 +76,19 @@ function PlaceholderCard({ section, onSetUrl }: { section: Section; onSetUrl: (k
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="https://docs.google.com/..."
-              className="flex-1 text-xs rounded-lg px-3 py-2 text-white bg-slate-900 border border-slate-600 focus:border-indigo-500 outline-none"
+              className="flex-1 text-xs rounded-lg px-3 py-2 text-strong surface-3 border bd-hi focus:border-indigo-500 outline-none"
             />
             <button
               onClick={() => { if (input.trim()) { onSetUrl(section.key, input.trim()); setEditing(false) } }}
-              className="px-3 py-2 rounded-lg text-xs font-medium text-white"
+              className="px-3 py-2 rounded-lg text-xs font-medium text-strong"
               style={{ background: section.color }}
             >Guardar</button>
-            <button onClick={() => setEditing(false)} className="px-3 py-2 rounded-lg text-xs text-slate-400 bg-slate-700">X</button>
+            <button onClick={() => setEditing(false)} className="px-3 py-2 rounded-lg text-xs text-muted surface-2">X</button>
           </div>
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="px-4 py-2 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
+            className="px-4 py-2 rounded-lg text-xs font-medium text-strong transition-opacity hover:opacity-80"
             style={{ background: section.color + 'cc' }}
           >
             + Agregar URL
@@ -105,13 +105,13 @@ function IframeCard({ section, url }: { section: Section; url: string }) {
 
   return (
     <div className={fullscreen ? 'fixed inset-0 z-50 flex flex-col' : 'space-y-3'}
-      style={fullscreen ? { background: '#0f172a', padding: '12px' } : {}}>
+      style={fullscreen ? { background: 'var(--bg)', padding: '12px' } : {}}>
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xl">{section.emoji}</span>
           <div>
-            <h3 className="text-white font-semibold text-sm">{section.label}</h3>
-            <p className="text-slate-500 text-xs">{section.description}</p>
+            <h3 className="text-strong font-semibold text-sm">{section.label}</h3>
+            <p className="text-dim text-xs">{section.description}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -151,8 +151,8 @@ export default function Personal() {
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="px-1">
-        <h1 className="text-2xl font-bold text-white">Personal</h1>
-        <p className="text-slate-400 text-sm mt-0.5">Planes personales, bienestar y finanzas</p>
+        <h1 className="text-2xl font-bold text-strong">Personal</h1>
+        <p className="text-muted text-sm mt-0.5">Planes personales, bienestar y finanzas</p>
       </div>
 
       <div className="space-y-3">
@@ -162,7 +162,7 @@ export default function Personal() {
 
           return (
             <div key={section.key} className="rounded-xl overflow-hidden"
-              style={{ background: '#1e293b', border: '1px solid #2d3f58' }}>
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
               {/* Header colapsable */}
               <button
                 className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-white/5"
@@ -174,19 +174,19 @@ export default function Personal() {
                     {section.emoji}
                   </div>
                   <div>
-                    <p className="text-white font-medium text-sm">{section.label}</p>
-                    <p className="text-slate-500 text-xs">{section.description}</p>
+                    <p className="text-strong font-medium text-sm">{section.label}</p>
+                    <p className="text-dim text-xs">{section.description}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {url && <span className="text-xs text-green-400">● Activo</span>}
-                  <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={16} className={`text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
               </button>
 
               {/* Contenido */}
               {isOpen && (
-                <div className="border-t border-slate-700 p-4">
+                <div className="border-t bd p-4">
                   {url ? (
                     <IframeCard section={section} url={url} />
                   ) : (
@@ -195,7 +195,7 @@ export default function Personal() {
                   {url && section.type !== 'iframe' && (
                     <button
                       onClick={() => setUrl(section.key, '')}
-                      className="mt-3 text-xs text-slate-500 hover:text-red-400 transition-colors"
+                      className="mt-3 text-xs text-dim hover:text-red-400 transition-colors"
                     >
                       ✕ Quitar URL
                     </button>
