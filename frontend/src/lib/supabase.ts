@@ -1,32 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-declare global {
-  interface Window {
-    Clerk?: {
-      session?: {
-        getToken: (opts?: { template?: string }) => Promise<string | null>
-      }
-    }
-  }
-}
+// Fallbacks para desarrollo local (anon key es pública por diseño en Supabase)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://kydfkrrjhmliybtuymuf.supabase.co'
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5ZGZrcnJqaG1saXlidHV5bXVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA5MjQsImV4cCI6MjA5MTg1NjkyNH0.qcRu96c57g5Z-vit_gjb5n-WY6gTxZ1w5x8CXLd4bSE'
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
-  {
-    global: {
-      fetch: async (url, init = {}) => {
-        let token: string | null = null
-        try {
-          // Tries Clerk JWT template 'supabase' if configured — falls back to anon key
-          token = await window.Clerk?.session?.getToken({ template: 'supabase' }) ?? null
-        } catch {
-          // Template not set up yet — anon key will be used (RLS allows anon for this personal app)
-        }
-        const headers = new Headers(init.headers as HeadersInit | undefined)
-        if (token) headers.set('Authorization', `Bearer ${token}`)
-        return fetch(url, { ...init, headers })
-      }
-    }
-  }
-)
+// RLS está deshabilitado en todas las tablas — anon key es suficiente para uso local personal
+// El custom fetch con Clerk JWT fue eliminado porque inyectaba un JWT sin template configurado,
+// lo que sobreescribía el header Authorization de Supabase causando 401 en todas las queries.
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
