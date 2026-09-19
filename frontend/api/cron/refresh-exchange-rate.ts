@@ -3,9 +3,22 @@ import { Redis } from '@upstash/redis'
 import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify cron secret
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Autorizacion del cron.
+  // Si CRON_SECRET esta configurado, se exige: es el modo correcto.
+  // Si NO lo esta, Vercel invoca igual pero sin cabecera Authorization, y la
+  // comparacion daba `Bearer undefined` -> 401 en cada ejecucion, en silencio.
+  // Ese era el bug: el cron llevaba meses sin escribir nada. Como respaldo
+  // aceptamos la cabecera x-vercel-cron, que Vercel pone en sus invocaciones
+  // programadas. Es menos estricta que el secreto -- configura CRON_SECRET.
+  const secreto = process.env.CRON_SECRET
+  const autorizado = secreto
+    ? req.headers.authorization === `Bearer ${secreto}`
+    : req.headers['x-vercel-cron'] !== undefined
+  if (!autorizado) {
     return res.status(401).json({ error: 'Unauthorized' })
+  }
+  if (!secreto) {
+    console.warn('[CRON] CRON_SECRET no esta configurado en Vercel; usando x-vercel-cron como respaldo.')
   }
 
   try {
