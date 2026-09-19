@@ -5,7 +5,7 @@ import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
-  Wallet, Heart, PiggyBank, Truck, Leaf, FileSpreadsheet
+  Wallet, Heart, PiggyBank, Truck, Leaf, FileSpreadsheet, Briefcase
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -20,6 +20,7 @@ import Mudanza from './pages/Mudanza'
 import Pareja from './pages/Pareja'
 import Bienestar from './pages/Bienestar'
 import SheetsSync from './pages/SheetsSync'
+import Empleo from './pages/Empleo'
 import { getExchangeRate, refreshExchangeRate, getWhatsAppStatus } from './lib/api'
 
 // ─── Layout protegido ─────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ function Layout() {
     { to: '/pareja',      icon: <Heart size={18} />,           label: 'Pareja',       group: 'vida' },
     { to: '/bienestar',   icon: <Leaf size={18} />,            label: 'Bienestar',    group: 'vida' },
     { to: '/personal',    icon: <LayoutDashboard size={18} />, label: 'Personal',     group: 'vida' },
+    { to: '/empleo',      icon: <Briefcase size={18} />,       label: 'Empleo',       group: 'vida' },
   ]
 
   return (
@@ -193,6 +195,7 @@ function Layout() {
             <Route path="/pareja"      element={<Pareja />} />
             <Route path="/bienestar"   element={<Bienestar />} />
             <Route path="/personal"    element={<Personal />} />
+            <Route path="/empleo"      element={<Empleo />} />
             <Route path="/sheets"      element={<SheetsSync />} />
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
