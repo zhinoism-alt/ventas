@@ -12,3 +12,14 @@ frontend/dist/
 .wwebjs_auth/
 .wwebjs_cache/
 *.log
+
+# ── Ruido de herramientas ─────────────────────────────
+log-*.txt
+*.bak
+frontend/vite.config.ts.timestamp-*.mjs
+supabase/.temp/
+.claude/settings.local.json
+
+# Copia duplicada del proyecto, dejada por un scaffold previo.
+# Revísala y bórrala cuando confirmes que no tiene nada único.
+ventas-claude-inventory-marketplace-automation-K0hqL/
