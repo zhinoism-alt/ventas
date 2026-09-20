@@ -41,6 +41,12 @@ interface Perfil {
   ppr_inicio: string | null
   ppr_suma_asegurada_udi: number
   ppr_rend_garantizado: number
+  ppr_anios_pago: number
+  ppr_anio_poliza: number
+  ppr_costo_anual_udi: number
+  ppr_rend_observado: number
+  ppr_factores: string | null
+  ppr_cargo_rescate: string | null
   afore_nombre: string | null
   afore_retiro: number
   afore_vivienda: number
@@ -80,6 +86,43 @@ function interesAnual(c: Cuenta) {
   const enPromo = tope > 0 ? Math.min(saldo, tope) : saldo
   const excedente = Math.max(0, saldo - enPromo)
   return enPromo * (num(c.tasa_promo) / 100) + excedente * (num(c.tasa_base) / 100)
+}
+
+/**
+ * Proyecta el saldo del PPR hasta el ultimo pago.
+ *
+ * Dos cosas que una proyeccion ingenua se salta y que cambian el resultado:
+ *
+ * 1. El costo del seguro SUBE cada anio con la edad. Los factores de
+ *    mortalidad de la poliza van de 1.08 a 1.94 entre el anio 2 y el 15.
+ *    Proyectar con el costo de hoy da una cifra optimista y falsa.
+ * 2. Ese costo se cobra sobre la SUMA EN RIESGO -- asegurada menos saldo --
+ *    que baja conforme crece el ahorro. Ignorarlo castiga de mas al producto.
+ *
+ * Es un modelo, no la cifra garantizada por la aseguradora.
+ */
+function proyectaPPR(p: Perfil, rendimiento: number) {
+  const factores = (p.ppr_factores ?? '').split(',').map(f => num(f)).filter(f => f > 0)
+  const anios = num(p.ppr_anios_pago)
+  const a0 = Math.max(1, num(p.ppr_anio_poliza))
+  const suma = num(p.ppr_suma_asegurada_udi)
+  const prima = num(p.ppr_prima_anual_udi)
+  if (!factores.length || !anios || !suma) return null
+
+  // Costo por unidad de factor y de suma en riesgo, calibrado con lo observado.
+  const riesgo0 = suma - num(p.ppr_saldo_udi)
+  const base = num(p.ppr_costo_anual_udi) / (factores[a0 - 1] * riesgo0)
+
+  let saldo = num(p.ppr_saldo_udi)
+  const filas: { anio: number; costo: number; alAhorro: number; saldo: number }[] = []
+  for (let a = a0; a <= anios; a++) {
+    const f = factores[a - 1] ?? factores[factores.length - 1]
+    const costo = base * f * (suma - saldo)
+    const alAhorro = prima - costo
+    saldo = (saldo + alAhorro) * (1 + rendimiento)
+    filas.push({ anio: a, costo, alAhorro, saldo })
+  }
+  return { filas, saldoFinal: saldo, aportadoTotal: prima * anios }
 }
 
 export function Patrimonio() {
@@ -281,6 +324,8 @@ export function Patrimonio() {
           <Par k="Rendimiento garantizado" v={pct(num(perfil.ppr_rend_garantizado))} />
         </dl>
 
+        <ProyeccionPPR perfil={perfil} udi={udi} marg={marg} />
+
         <p className="text-xs text-dim mt-4 leading-relaxed">
           El costo del seguro no es dinero perdido: paga la cobertura por fallecimiento y los anexos.
           Se muestra aparte porque en los primeros años se lleva la mayor parte de la prima, y eso no
@@ -337,6 +382,90 @@ export function Patrimonio() {
       <p className="text-xs text-dim text-center max-w-2xl mx-auto">
         Esto es aritmética sobre tus propios documentos, no asesoría financiera.
         Para decidir qué hacer con un PPR o un crédito hipotecario, consulta a un asesor certificado.
+      </p>
+    </div>
+  )
+}
+
+function ProyeccionPPR({ perfil, udi, marg }: { perfil: Perfil; udi: number; marg: number }) {
+  const escenarios = [
+    { nombre: 'Mínimo garantizado', r: num(perfil.ppr_rend_garantizado) / 100 },
+    { nombre: 'Al ritmo observado', r: num(perfil.ppr_rend_observado) / 100 },
+  ]
+  const base = proyectaPPR(perfil, escenarios[1].r)
+  if (!base) return null
+
+  const aportado = base.aportadoTotal
+  const dedTotal = aportado * udi * marg
+
+  return (
+    <div className="rounded-xl p-4 mt-5" style={{ background: 'var(--surface-2)' }}>
+      <p className="text-xs uppercase tracking-wider text-muted mb-1">
+        Cuánto tendrías al terminar de pagar
+      </p>
+      <p className="text-xs text-dim mb-4 max-w-2xl">
+        Al año {num(perfil.ppr_anios_pago)}, cuando cierres los pagos. El costo del seguro sube
+        con tu edad — el factor de mortalidad casi se duplica entre hoy y el último pago — así que
+        cada año va menos dinero al ahorro aunque la prima no cambie.
+      </p>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {escenarios.map(e => {
+          const pr = proyectaPPR(perfil, e.r)
+          if (!pr) return null
+          return (
+            <Tile key={e.nombre} k={e.nombre}
+              v={mxn(pr.saldoFinal * udi)}
+              sub={`${pr.saldoFinal.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI · ${pct(e.r * 100)}`} />
+          )
+        })}
+        <Tile k="Habrás aportado" v={mxn(aportado * udi)}
+              sub={`${aportado.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI en ${num(perfil.ppr_anios_pago)} años`}
+              tono="warn" />
+        <Tile k="ISR recuperado" v={mxn(dedTotal)} sub="deducción acumulada" tono="ok" />
+      </div>
+
+      <div className="scroll-x">
+        <table className="w-full text-xs" style={{ minWidth: 420 }}>
+          <thead>
+            <tr className="text-dim">
+              <th className="text-left font-medium pb-2">Año</th>
+              <th className="text-right font-medium pb-2">Costo del seguro</th>
+              <th className="text-right font-medium pb-2">% de la prima</th>
+              <th className="text-right font-medium pb-2">Va al ahorro</th>
+              <th className="text-right font-medium pb-2">Saldo</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono">
+            {base.filas.map(f => {
+              const pctPrima = f.costo / num(perfil.ppr_prima_anual_udi) * 100
+              return (
+                <tr key={f.anio} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td className="py-1.5 text-body">{f.anio}</td>
+                  <td className="py-1.5 text-right text-body">{f.costo.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</td>
+                  <td className="py-1.5 text-right" style={{ color: pctPrima >= 100 ? 'var(--red)' : pctPrima >= 85 ? 'var(--yellow)' : 'var(--text-dim)' }}>
+                    {pctPrima.toFixed(0)}%
+                  </td>
+                  <td className="py-1.5 text-right" style={{ color: f.alAhorro < 0 ? 'var(--red)' : 'var(--text-body)' }}>
+                    {f.alAhorro.toLocaleString('es-MX', { maximumFractionDigits: 0 })}
+                  </td>
+                  <td className="py-1.5 text-right text-strong">{f.saldo.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {perfil.ppr_cargo_rescate && (
+        <p className="text-xs mt-3 flex items-start gap-2" style={{ color: 'var(--yellow)' }}>
+          <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+          <span>Cargo por rescate: {perfil.ppr_cargo_rescate}.</span>
+        </p>
+      )}
+      <p className="text-xs text-dim mt-2">
+        Es un modelo con los factores de tu póliza, no la cifra garantizada por la aseguradora.
+        Seguros Monterrey puede darte la proyección oficial.
       </p>
     </div>
   )

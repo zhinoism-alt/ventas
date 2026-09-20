@@ -259,7 +259,7 @@ export default function Ahorros() {
               : { color: 'var(--text-muted)' }}>
             {t === 'fondos'   ? `💰 Fondos (${fondos.length})`
            : t === 'metas'    ? `🎯 Metas (${ahorros.length})`
-           :                    '📊 Rendimiento real'}
+           :                    '🏦 Patrimonio'}
           </button>
         ))}
       </div>
