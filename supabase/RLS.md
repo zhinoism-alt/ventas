@@ -62,7 +62,7 @@ Cuando funcione en local, agrega la misma variable en Vercel
 ### 4. Activar RLS
 
 Solo ahora. En el SQL Editor, corre
-`supabase/migrations/20260919010000_rls.sql`.
+`supabase/pendientes/20260919010000_rls.sql`.
 
 La consulta final debe devolver `rls_activo = true` y `politicas = 1` en
 todas las filas. Vuelve a cargar la app y verifica que sigue leyendo.
