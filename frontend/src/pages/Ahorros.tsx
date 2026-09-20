@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { AvisoError } from '../components/AvisoError'
+import { Patrimonio } from '../components/Patrimonio'
 import { fmt } from '../lib/utils'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ export default function Ahorros() {
   const [loading, setLoading]       = useState(true)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [saving, setSaving]         = useState(false)
-  const [tab, setTab]               = useState<'fondos' | 'metas'>('fondos')
+  const [tab, setTab]               = useState<'fondos' | 'metas' | 'patrimonio'>('fondos')
 
   // ── Carga de datos ──────────────────────────────────────────────────────────
 
@@ -250,18 +251,22 @@ export default function Ahorros() {
 
       {/* ── Tabs ── */}
       <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--surface-2)' }}>
-        {(['fondos', 'metas'] as const).map(t => (
+        {(['fondos', 'metas', 'patrimonio'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
             style={tab === t
               ? { background: 'var(--accent)', color: '#fff' }
               : { color: 'var(--text-muted)' }}>
-            {t === 'fondos' ? `💰 Fondos (${fondos.length})` : `🎯 Metas (${ahorros.length})`}
+            {t === 'fondos'   ? `💰 Fondos (${fondos.length})`
+           : t === 'metas'    ? `🎯 Metas (${ahorros.length})`
+           :                    '📊 Rendimiento real'}
           </button>
         ))}
       </div>
 
       {/* ══════════════════ TAB: FONDOS ══════════════════ */}
+      {tab === 'patrimonio' && <Patrimonio />}
+
       {tab === 'fondos' && (
         <div className="space-y-4">
 
