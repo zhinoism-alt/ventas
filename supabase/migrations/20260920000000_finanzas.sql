@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS ahorros_cuentas (
   institucion  TEXT,
   -- banco  -> IPAB cubre hasta 400,000 UDI
   -- sofipo -> fondo de proteccion propio, hasta 25,000 UDI
-  tipo         TEXT NOT NULL DEFAULT 'banco',
+  tipo         TEXT NOT NULL DEFAULT 'banco'
+                 CHECK (tipo IN ('banco','sofipo','cetes','otro')),
   saldo        NUMERIC(14,2) NOT NULL DEFAULT 0,
   tasa_promo   NUMERIC(6,3)  NOT NULL DEFAULT 0,   -- % anual
   tope_promo   NUMERIC(14,2) NOT NULL DEFAULT 0,   -- hasta este monto
@@ -64,12 +65,19 @@ CREATE TABLE IF NOT EXISTS finanzas_perfil (
   updated_at             TIMESTAMPTZ DEFAULT now()
 );
 
-INSERT INTO ahorros_cuentas (nombre, institucion, tipo, saldo, tasa_promo, tope_promo, tasa_base, notas) VALUES
- ('Cuenta de ahorro', 'Open Bank', 'banco', 25743.67, 13, 30000, 0,
-  'Tasa promocional al 13% sobre los primeros 30,000. Falta confirmar que tasa aplica arriba del tope.'),
- ('Cuenta de ahorro', 'Mifel', 'banco', 72039.04, 10, 500000, 0,
-  'Tasa del 10% hasta 500,000, asi que todo el saldo esta dentro del tope.')
-ON CONFLICT DO NOTHING;
+-- Idempotente por institucion. `ON CONFLICT DO NOTHING` no servia aqui:
+-- la unica restriccion unica es el id BIGSERIAL, que se genera solo y nunca
+-- choca, asi que volver a correr la migracion duplicaba las cuentas y el
+-- capital se contaba doble.
+INSERT INTO ahorros_cuentas (nombre, institucion, tipo, saldo, tasa_promo, tope_promo, tasa_base, notas)
+SELECT 'Cuenta de ahorro', 'Open Bank', 'banco', 25743.67, 13, 30000, 0,
+       'Tasa promocional al 13% sobre los primeros 30,000. Falta confirmar que tasa aplica arriba del tope.'
+WHERE NOT EXISTS (SELECT 1 FROM ahorros_cuentas WHERE institucion = 'Open Bank');
+
+INSERT INTO ahorros_cuentas (nombre, institucion, tipo, saldo, tasa_promo, tope_promo, tasa_base, notas)
+SELECT 'Cuenta de ahorro', 'Mifel', 'banco', 72039.04, 10, 500000, 0,
+       'Tasa del 10% hasta 500,000, asi que todo el saldo esta dentro del tope.'
+WHERE NOT EXISTS (SELECT 1 FROM ahorros_cuentas WHERE institucion = 'Mifel');
 
 INSERT INTO finanzas_perfil (
   id, isr_retencion_pct, isr_marginal_pct, inflacion_pct, udi,
@@ -90,5 +98,19 @@ INSERT INTO finanzas_perfil (
 ALTER TABLE ahorros_cuentas  DISABLE ROW LEVEL SECURITY;
 ALTER TABLE finanzas_perfil  DISABLE ROW LEVEL SECURITY;
 
-SELECT 'cuentas' AS tabla, count(*) FROM ahorros_cuentas
-UNION ALL SELECT 'perfil', count(*) FROM finanzas_perfil;
+-- Verificacion: 2 cuentas, 1 perfil, y cero instituciones repetidas.
+SELECT 'cuentas'        AS concepto, count(*)::text AS valor FROM ahorros_cuentas
+UNION ALL SELECT 'perfil',            count(*)::text FROM finanzas_perfil
+UNION ALL SELECT 'instituciones dup', coalesce(string_agg(institucion, ', '), 'ninguna')
+  FROM (SELECT institucion FROM ahorros_cuentas GROUP BY institucion HAVING count(*) > 1) d;
+
+-- ─────────────────────────────────────────────────────────────────────
+-- Si corriste la version anterior mas de una vez, las cuentas quedaron
+-- duplicadas y el capital se cuenta doble. Esto conserva la mas reciente
+-- de cada institucion y desactiva el resto. Descomentalo solo si la
+-- verificacion de arriba reporta instituciones repetidas.
+-- ─────────────────────────────────────────────────────────────────────
+-- UPDATE ahorros_cuentas SET activo = FALSE
+-- WHERE id NOT IN (
+--   SELECT max(id) FROM ahorros_cuentas WHERE activo GROUP BY institucion
+-- );
