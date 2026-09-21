@@ -324,12 +324,18 @@ export default function Presupuesto() {
   const extraExcluido = excluidos.has('extra')
   // Lo tuyo: nomina mas lo que entro por ventas. Sin tu pareja.
   const ingresoPropio = ingresoNomina + totalOtros
-  const ingresoContado = ingresoPropio + (hayExtra && !extraExcluido ? d!.totalExtra : 0)
+  const ingresoContado = ingresoPropio + (d && hayExtra && !extraExcluido ? d.totalExtra : 0)
 
   const gastoTotal = (d?.totalNecesarios ?? 0) + (d?.totalNoNecesarios ?? 0)
   const sobra = ingresoContado - gastoTotal
-  const pctNec = ingresoContado ? (d!.totalNecesarios / ingresoContado) * 100 : 0
-  const pctNoNec = ingresoContado ? (d!.totalNoNecesarios / ingresoContado) * 100 : 0
+
+  // El `d!` de antes era mentira y tiraba la pagina. La guarda era
+  // `ingresoContado ? ...`, dando por hecho que si hay ingreso hay mes
+  // cargado. No: los vales de despensa viven en presupuesto_ingresos, no en
+  // la hoja, asi que el ingreso puede ser mayor que cero con `d` en null
+  // — que es justo el estado al abrir antes de la primera sincronizacion.
+  const pctNec = d && ingresoContado ? (d.totalNecesarios / ingresoContado) * 100 : 0
+  const pctNoNec = d && ingresoContado ? (d.totalNoNecesarios / ingresoContado) * 100 : 0
 
   // Solo con su ingreso: lo que queda si su pareja deja de aportar.
   const soloPropio = useMemo(() => {
