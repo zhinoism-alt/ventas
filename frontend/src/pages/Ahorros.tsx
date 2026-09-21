@@ -128,6 +128,9 @@ export default function Ahorros() {
 
   const abrirEdicionFondo = (f: Fondo) => {
     setErrorForm(null)
+    // Si ya estaba abierto en este fondo, el mismo boton lo cierra.
+    if (editFondo?.id === f.id) { setEditFondo(null); return }
+    setAbonoDe(null)          // no dejar dos cajas abiertas a la vez
     setEditFondo(f)
     setEditForm({
       nombre: f.nombre, saldo: String(f.saldo), rendimiento: String(f.rendimiento),
@@ -179,6 +182,20 @@ export default function Ahorros() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Escape cierra lo que este abierto. Es lo primero que intenta cualquiera
+  // que se siente atrapado en un formulario, y antes no hacia nada.
+  useEffect(() => {
+    if (editFondo === null && abonoDe === null) return
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setErrorForm(null)
+      setEditFondo(null)
+      setAbonoDe(null)
+    }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [editFondo, abonoDe])
 
   // ── Fondos: CRUD ────────────────────────────────────────────────────────────
 
@@ -564,8 +581,9 @@ export default function Ahorros() {
                         <div className="flex items-center gap-1">
                           <button onClick={() => abrirEdicionFondo(f)}
                             className="text-dim hover:text-blue-400 p-1.5 rounded-lg transition-colors"
-                            title="Editar este fondo">
-                            <Edit2 size={13} />
+                            style={isEditing ? { color: 'var(--accent)' } : undefined}
+                            title={isEditing ? 'Cerrar sin guardar' : 'Editar este fondo'}>
+                            {isEditing ? <X size={14} /> : <Edit2 size={13} />}
                           </button>
                           <button onClick={() => deleteFondo(f.id)}
                             className="text-dim hover:text-red-400 p-1.5 rounded-lg transition-colors">
@@ -578,6 +596,17 @@ export default function Ahorros() {
                       <div className="mt-4">
                         {isEditing ? (
                           <div className="rounded-xl p-3 space-y-3" style={{ background: 'var(--surface-2)' }}>
+                            {/* La salida tiene que estar arriba tambien: en un
+                                telefono el boton de abajo queda fuera de pantalla
+                                y el formulario se siente sin salida. */}
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-strong">Editando este fondo</p>
+                              <button onClick={() => { setErrorForm(null); setEditFondo(null) }}
+                                className="text-muted hover:text-strong p-1 rounded-lg"
+                                title="Cerrar sin guardar">
+                                <X size={16} />
+                              </button>
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="text-xs text-muted mb-1 block">Nombre *</label>
@@ -632,6 +661,9 @@ export default function Ahorros() {
                                 <X size={14} /> Cancelar
                               </button>
                             </div>
+                            <p className="text-xs text-dim">
+                              También sales con la tecla Escape o con la ✕ de arriba.
+                            </p>
                           </div>
                         ) : (
                           <p className="text-2xl font-bold text-strong">{fmt(f.saldo)}</p>

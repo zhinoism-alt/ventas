@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pencil, Check, X } from 'lucide-react'
 import { AvisoForm } from './FormAvisos'
 
@@ -58,6 +58,15 @@ export function EditorCampos({ titulo, campos, valores, onGuardar, onCancelar }:
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
+  // Escape cierra. Es lo primero que intenta quien se siente atrapado en un
+  // formulario, y sin esto la unica salida es un boton que en un telefono
+  // queda debajo de doce campos, fuera de pantalla.
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancelar() }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [onCancelar])
+
   const guardar = async () => {
     setError(null)
     setGuardando(true)
@@ -75,7 +84,13 @@ export function EditorCampos({ titulo, campos, valores, onGuardar, onCancelar }:
 
   return (
     <div className="rounded-xl p-4 mb-4" style={{ background: 'var(--surface-2)' }}>
-      <p className="text-sm font-semibold text-strong mb-3">{titulo}</p>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="text-sm font-semibold text-strong">{titulo}</p>
+        <button onClick={onCancelar} className="text-muted hover:text-strong p-1 rounded-lg"
+                title="Cerrar sin guardar">
+          <X size={16} />
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {campos.map(c => {
@@ -127,6 +142,10 @@ export function EditorCampos({ titulo, campos, valores, onGuardar, onCancelar }:
           <X size={14} /> Cancelar
         </button>
       </div>
+
+      <p className="text-xs text-dim mt-2">
+        También sales con la tecla Escape o con la ✕ de arriba.
+      </p>
     </div>
   )
 }
