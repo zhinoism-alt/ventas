@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Briefcase, Plus, Trash2, ExternalLink, GraduationCap, Award,
-  SlidersHorizontal, X, AlertTriangle, Info, RotateCcw
+  SlidersHorizontal, X, AlertTriangle, Info, RotateCcw, Sparkles
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -57,6 +57,12 @@ interface Vacante {
   id: number
   empresa: string
   puesto: string
+  /** 'manual' la pusiste tu; 'auto' la trajo la busqueda diaria. */
+  origen?: string
+  /** Lo automatico entra sin revisar y espera tu visto bueno. */
+  revisada?: boolean
+  /** Texto del anuncio, para no tener que volver a abrir el enlace. */
+  resumen?: string | null
   fuente: string | null
   link: string | null
   estado: string
@@ -399,6 +405,21 @@ export default function Empleo() {
     }
   }
 
+  /**
+   * Triaje de lo que trae la busqueda diaria. Son dos gestos y nada mas:
+   * interesa (queda como cualquier otra) o no (se archiva). Pedir mas que eso
+   * para una vacante que todavia no has leido convierte la ayuda en tarea.
+   */
+  async function triarVacante(id: number, interesa: boolean) {
+    const cambios = interesa
+      ? { revisada: true }
+      : { revisada: true, activo: false }
+    const { error } = await supabase.from('empleo_vacantes')
+      .update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', id)
+    if (error) { setAvisoForm(`No se guardo: ${error.message}`); return }
+    await load()
+  }
+
   async function borrarVacante(id: number) {
     if (!confirm('¿Quitar esta vacante del seguimiento?')) return
     await supabase.from('empleo_vacantes').update({ activo: false }).eq('id', id)
@@ -472,8 +493,14 @@ export default function Empleo() {
 
   // ─── Derivados ──────────────────────────────────────────────
   const base = evalBase(perfil)
-  const evals = vacantes.map(v => ({ v, e: evalVacante(v, perfil) }))
+  // Solo lo revisado entra a las cuentas. Ver arriba por que.
+  const evals = vacantes.filter(v => v.revisada !== false).map(v => ({ v, e: evalVacante(v, perfil) }))
   const vivas = evals.filter(x => etapa(x.v.estado).viva)
+
+  // Lo que trajo la busqueda diaria y todavia no has mirado. Va aparte: si
+  // entrara a las evaluaciones, tus promedios y tu "mejor oferta" cambiarian
+  // por vacantes que ni siquiera has leido.
+  const sinRevisar = vacantes.filter(v => v.revisada === false)
 
   let lista = filtro === 'vivas' ? vivas
             : filtro === 'todas' ? evals
@@ -538,6 +565,50 @@ export default function Empleo() {
           </button>
         )}
       </div>
+
+      {tab === 'vacantes' && !!sinRevisar.length && (
+        <div className="card" style={{ borderColor: 'var(--accent)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles size={16} className="accent" />
+            <h2 className="text-strong font-semibold">
+              {sinRevisar.length} vacante{sinRevisar.length > 1 ? 's' : ''} que encontró tu búsqueda diaria
+            </h2>
+          </div>
+          <p className="text-xs text-dim mb-4">
+            Todavía no cuentan en tus números. Decide cuáles te interesan.
+          </p>
+          <div className="space-y-2">
+            {sinRevisar.map(v => (
+              <div key={v.id} className="rounded-xl p-3 flex items-start gap-3 flex-wrap"
+                   style={{ background: 'var(--surface-2)' }}>
+                <div className="flex-1 min-w-0" style={{ minWidth: 220 }}>
+                  <p className="text-sm font-medium text-strong">{v.puesto}</p>
+                  <p className="text-xs text-muted">
+                    {v.empresa}
+                    {v.ciudad ? ` · ${v.ciudad}` : ''}
+                    {v.fuente ? ` · ${v.fuente}` : ''}
+                  </p>
+                  {v.resumen && (
+                    <p className="text-xs text-dim mt-1 line-clamp-2">{v.resumen}</p>
+                  )}
+                  {v.link && (
+                    <a href={v.link} target="_blank" rel="noreferrer"
+                       className="text-xs accent inline-flex items-center gap-1 mt-1">
+                      Ver el anuncio <ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button className="btn-primary text-xs"
+                          onClick={() => triarVacante(v.id, true)}>Me interesa</button>
+                  <button className="btn-secondary text-xs"
+                          onClick={() => triarVacante(v.id, false)}>Descartar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {rescate && !formVac && tab === 'vacantes' && (
         <div className="card flex items-center gap-3 py-3 flex-wrap"
