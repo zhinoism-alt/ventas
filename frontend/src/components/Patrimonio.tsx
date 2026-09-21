@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ShieldCheck, AlertTriangle, TrendingUp, Home, Landmark } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { SimuladorPPR, SimuladorInfonavit } from './Simuladores'
+import { Horizonte } from './Horizonte'
 
 /* ═══════════════════════════════════════════════════════════════════════
    Rendimiento real, PPR, AFORE e INFONAVIT.
@@ -55,6 +56,12 @@ interface Perfil {
   ppr_liquidacion: string | null
   ppr_modelo_confiable: boolean | null
   ppr_modelo_nota: string | null
+  fi_gasto_mensual: number
+  fi_tasa_retiro: number
+  fi_aporte_mensual: number
+  fi_rendimiento_real: number
+  fi_edad_actual: number
+  inflacion_esperada: number
   afore_nombre: string | null
   afore_retiro: number
   afore_vivienda: number
@@ -359,6 +366,20 @@ export function Patrimonio() {
         costoAnualObservado: num(perfil.ppr_costo_anual_udi),
         factores: (perfil.ppr_factores ?? '').split(',').map(f => num(f)).filter(f => f > 0),
         udi,
+      }} />
+
+      <Horizonte p={{
+        udiHoy: udi,
+        liquido: capital,
+        pprUdi: num(perfil.ppr_saldo_udi),
+        aforeRetiro: num(perfil.afore_retiro),
+        aforeVivienda: num(perfil.afore_vivienda),
+        gastoMensual: num(perfil.fi_gasto_mensual),
+        tasaRetiro: num(perfil.fi_tasa_retiro),
+        aporteMensual: num(perfil.fi_aporte_mensual),
+        rendimientoReal: num(perfil.fi_rendimiento_real),
+        edadActual: num(perfil.fi_edad_actual),
+        inflacionEsperada: num(perfil.inflacion_esperada),
       }} />
 
       <SimuladorInfonavit p={{
