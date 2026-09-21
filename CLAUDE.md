@@ -124,6 +124,23 @@ traiga dos gastos más.
 El parser está verificado contra las diez pestañas existentes: los totales que
 calcula coinciden con los que la propia hoja suma.
 
+### De quién es cada ingreso
+
+Confirmado por Brandon, no es suposición:
+
+- **«Ingreso Mensual (Después de impuestos)»**, la celda B1 — es su nómina.
+- **«Ingreso Quincenal Extra»**, el bloque que aparece desde agosto 2026 — es
+  **de su pareja**, y ella va a dejar de trabajar pronto. Va excluido por
+  defecto (`presupuesto_config.ingresos_excluidos = 'extra'`).
+- Brandon además tiene **ingresos propios irregulares** por ventas e IPTV que
+  la hoja no registra. Se capturan en `presupuesto_ingresos` y se marcan como
+  `variable`, aparte de la nómina: presupuestar gastos fijos contra un ingreso
+  que entra a veces es justo como se rompe un presupuesto.
+
+Hay una cosa sin resolver: su ingreso principal fue $37,044 en enero y desde
+abril anda en $21–27k, aunque su SBC del IMSS dice $37,050 mensuales. **Pregunta
+antes de sacar conclusiones de esa diferencia.**
+
 ---
 
 ## Deuda conocida

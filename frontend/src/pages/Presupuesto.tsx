@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+  Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
   ResponsiveContainer, Line, ComposedChart,
 } from 'recharts'
 import {
-  RefreshCw, ExternalLink, AlertTriangle, CheckCircle2, Link2,
+  RefreshCw, ExternalLink, CheckCircle2, Link2,
   Loader2, Settings2, Calendar, Users, Download, TrendingDown, TrendingUp,
+  Plus, X, Store,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { TOOLTIP_STYLE } from '../lib/constants'
 import { fmt } from '../lib/utils'
 import { AvisoError } from '../components/AvisoError'
+import { AvisoForm, BorradorRecuperado } from '../components/FormAvisos'
+import { useDraft } from '../lib/useDraft'
 import {
   listaHojas, descargaHoja, parsePresupuesto, hojaDelMes, hojasDeMeses,
   pubIdDeUrl, MESES,
@@ -38,6 +41,16 @@ interface Config {
   auto_sync: boolean
   ingresos_excluidos: string
   ultima_sync: string | null
+}
+
+interface IngresoExtra {
+  id: number
+  anio: number
+  mes: number
+  concepto: string
+  monto: number
+  tipo: 'variable' | 'fijo'
+  nota: string
 }
 
 interface MesGuardado {
@@ -80,18 +93,27 @@ export default function Presupuesto() {
   const [ajustes, setAjustes] = useState(false)
   const [urlBorrador, setUrlBorrador] = useState('')
 
+  // Ingresos propios que la hoja no registra: ventas, IPTV, lo que caiga.
+  const [otros, setOtros] = useState<IngresoExtra[]>([])
+  const [altaOtro, setAltaOtro] = useState(false)
+  const bOtro = useDraft('presupuesto-ingreso', { concepto: '', monto: '', tipo: 'variable' as 'variable' | 'fijo', nota: '' })
+  const [errorOtro, setErrorOtro] = useState<string | null>(null)
+  const [guardandoOtro, setGuardandoOtro] = useState(false)
+
   // ── Carga inicial ─────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     setError(null)
     try {
-      const [{ data: cfgs }, { data: ms }] = await Promise.all([
+      const [{ data: cfgs }, { data: ms }, { data: ing }] = await Promise.all([
         supabase.from('presupuesto_config').select('*').eq('activo', true).limit(1),
         supabase.from('presupuesto_meses').select('*').order('anio', { ascending: false }).order('mes', { ascending: false }),
+        supabase.from('presupuesto_ingresos').select('*').eq('activo', true).order('created_at', { ascending: false }),
       ])
       const cfg = (cfgs ?? [])[0] ?? null
       setConfig(cfg)
       setUrlBorrador(cfg?.url ?? '')
       setMeses((ms ?? []) as MesGuardado[])
+      setOtros((ing ?? []) as IngresoExtra[])
       return cfg as Config | null
     } catch (e) {
       console.error('[Presupuesto] no se pudo cargar', e)
@@ -192,6 +214,33 @@ export default function Presupuesto() {
     await supabase.from('presupuesto_config').update(cambios).eq('id', config.id)
   }
 
+  const agregaOtro = async () => {
+    const f = bOtro.valor
+    if (!f.concepto.trim()) return setErrorOtro('Ponle un nombre: de donde salio.')
+    if (!f.monto || !Number.isFinite(Number(f.monto))) return setErrorOtro('Falta el monto.')
+    setErrorOtro(null)
+    setGuardandoOtro(true)
+    try {
+      const { error: err } = await supabase.from('presupuesto_ingresos').insert({
+        anio: Math.floor(sel / 100), mes: sel % 100,
+        concepto: f.concepto.trim(), monto: Number(f.monto), tipo: f.tipo, nota: f.nota,
+      })
+      if (err) { setErrorOtro(`No se guardo: ${err.message}`); return }
+      bOtro.limpiar()
+      setAltaOtro(false)
+      await cargar()
+    } catch (e) {
+      setErrorOtro(e instanceof Error ? e.message : String(e))
+    } finally {
+      setGuardandoOtro(false)
+    }
+  }
+
+  const quitaOtro = async (id: number) => {
+    await supabase.from('presupuesto_ingresos').update({ activo: false }).eq('id', id)
+    setOtros(prev => prev.filter(o => o.id !== id))
+  }
+
   const excluidos = useMemo(
     () => new Set((config?.ingresos_excluidos ?? '').split('|').filter(Boolean)),
     [config?.ingresos_excluidos],
@@ -220,9 +269,17 @@ export default function Presupuesto() {
   const mesSel = meses.find(m => claveMes(m.anio, m.mes) === sel) ?? null
   const d = mesSel?.datos ?? null
 
-  const ingresoPropio = d?.ingresoPrincipal ?? 0
+  const otrosDelMes = useMemo(
+    () => otros.filter(o => o.anio === Math.floor(sel / 100) && o.mes === sel % 100),
+    [otros, sel],
+  )
+  const totalOtros = otrosDelMes.reduce((t, o) => t + Number(o.monto), 0)
+
+  const ingresoNomina = d?.ingresoPrincipal ?? 0
   const hayExtra = (d?.ingresoExtra.length ?? 0) > 0
   const extraExcluido = excluidos.has('extra')
+  // Lo tuyo: nomina mas lo que entro por ventas. Sin tu pareja.
+  const ingresoPropio = ingresoNomina + totalOtros
   const ingresoContado = ingresoPropio + (hayExtra && !extraExcluido ? d!.totalExtra : 0)
 
   const gastoTotal = (d?.totalNecesarios ?? 0) + (d?.totalNoNecesarios ?? 0)
@@ -247,7 +304,10 @@ export default function Presupuesto() {
   const serie = useMemo(() => [...meses]
     .sort((a, b) => claveMes(a.anio, a.mes) - claveMes(b.anio, b.mes))
     .map(m => {
-      const ing = (m.datos.ingresoPrincipal ?? 0)
+      const propios = otros
+        .filter(o => o.anio === m.anio && o.mes === m.mes)
+        .reduce((t, o) => t + Number(o.monto), 0)
+      const ing = (m.datos.ingresoPrincipal ?? 0) + propios
         + (excluidos.has('extra') ? 0 : m.datos.totalExtra)
       return {
         mes: `${MESES[m.mes - 1].slice(0, 3)} ${String(m.anio).slice(2)}`,
@@ -256,7 +316,7 @@ export default function Presupuesto() {
         'No necesarios': Math.round(m.datos.totalNoNecesarios),
         Sobra: Math.round(ing - m.datos.totalNecesarios - m.datos.totalNoNecesarios),
       }
-    }), [meses, excluidos])
+    }), [meses, excluidos, otros])
 
   const disponiblesSel = useMemo(() => {
     const vistos = new Map<number, { anio: number; mes: number; nombre: string }>()
@@ -393,16 +453,28 @@ export default function Presupuesto() {
 
             <div className="space-y-2">
               <FuenteIngreso
-                nombre="Ingreso mensual (después de impuestos)"
+                nombre="Tu nómina"
                 nota={d.ingresoNota || 'La celda de arriba de tu hoja'}
-                monto={ingresoPropio}
+                monto={ingresoNomina}
                 incluido
                 fijo
               />
+
+              {otrosDelMes.map(o => (
+                <FuenteIngreso key={o.id}
+                  nombre={o.concepto}
+                  nota={o.nota || (o.tipo === 'variable' ? 'Entra de vez en cuando' : 'Se repite cada mes')}
+                  monto={Number(o.monto)}
+                  incluido
+                  etiqueta={o.tipo === 'variable' ? 'variable' : 'fijo'}
+                  onQuitar={() => quitaOtro(o.id)}
+                />
+              ))}
+
               {hayExtra && (
                 <FuenteIngreso
-                  nombre="Ingreso quincenal extra"
-                  nota={`${d.ingresoExtra.length} quincenas en la hoja de este mes`}
+                  nombre="Ingreso de tu pareja"
+                  nota={`${d.ingresoExtra.length} quincenas · el bloque «Ingreso Quincenal Extra» de tu hoja`}
                   monto={d.totalExtra}
                   incluido={!extraExcluido}
                   onToggle={() => alternaIngreso('extra')}
@@ -410,21 +482,66 @@ export default function Presupuesto() {
               )}
             </div>
 
-            {hayExtra && (
-              <p className="text-xs mt-3 px-3 py-2.5 rounded-lg"
-                 style={{ background: 'var(--yellow-soft)', color: 'var(--yellow)' }}>
-                <AlertTriangle size={12} className="inline mr-1 -mt-0.5" />
-                Dejé el «ingreso quincenal extra» apagado porque pediste no contar el ingreso
-                de tu pareja — pero no sé con certeza que ese bloque sea el suyo. Si me
-                equivoqué, préndelo aquí y dime cuál es el de ella.
-              </p>
+            {/* Alta de ingresos propios que la hoja no registra */}
+            {!altaOtro ? (
+              <button onClick={() => { setErrorOtro(null); setAltaOtro(true) }}
+                      className="btn-secondary text-xs mt-3">
+                <Plus size={13} /> Agregar un ingreso de {MESES[(sel % 100) - 1]}
+              </button>
+            ) : (
+              <div className="rounded-xl p-4 mt-3" style={{ background: 'var(--surface-2)' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Store size={14} className="accent" />
+                  <p className="text-sm text-strong font-medium">
+                    Ingreso de {MESES[(sel % 100) - 1]} {Math.floor(sel / 100)}
+                  </p>
+                </div>
+                <div className="grid md:grid-cols-4 gap-3">
+                  <div className="md:col-span-2">
+                    <label className="text-xs text-muted mb-1 block">De dónde salió *</label>
+                    <input className="input w-full" placeholder="Venta de una consola, IPTV…"
+                      value={bOtro.valor.concepto}
+                      onChange={e => bOtro.campo('concepto', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted mb-1 block">Monto *</label>
+                    <input className="input w-full" type="number" placeholder="0.00"
+                      value={bOtro.valor.monto}
+                      onChange={e => bOtro.campo('monto', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted mb-1 block">Tipo</label>
+                    <select className="input w-full" value={bOtro.valor.tipo}
+                      onChange={e => bOtro.campo('tipo', e.target.value as 'variable' | 'fijo')}>
+                      <option value="variable">Entra a veces</option>
+                      <option value="fijo">Cada mes</option>
+                    </select>
+                  </div>
+                </div>
+                <AvisoForm mensaje={errorOtro} />
+                <BorradorRecuperado b={bOtro} />
+                <div className="flex gap-2 mt-3">
+                  <button onClick={agregaOtro} disabled={guardandoOtro} className="btn-primary text-xs">
+                    {guardandoOtro ? 'Guardando…' : 'Guardar'}
+                  </button>
+                  <button onClick={() => { setErrorOtro(null); setAltaOtro(false) }}
+                          className="btn-secondary text-xs">Cancelar</button>
+                </div>
+                <p className="text-xs text-dim mt-2 max-w-xl">
+                  «Entra a veces» se cuenta en el mes pero se marca aparte: presupuestar
+                  gastos fijos contra un ingreso irregular es justo como se rompe un
+                  presupuesto.
+                </p>
+              </div>
             )}
           </div>
 
           {/* ── KPIs ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Tile k="Ingreso contado" v={fmt(ingresoContado)}
-                  sub={extraExcluido && hayExtra ? `sin ${fmt(d.totalExtra)} del extra` : 'todas las fuentes'} />
+                  sub={extraExcluido && hayExtra
+                    ? `solo tuyo · sin ${fmt(d.totalExtra)} de tu pareja`
+                    : 'incluye el ingreso de tu pareja'} />
             <Tile k="Gastos necesarios" v={fmt(d.totalNecesarios)}
                   sub={`${pctNec.toFixed(0)}% del ingreso · meta 55%`}
                   tono={pctNec <= 55 ? 'ok' : 'bad'} />
@@ -442,7 +559,9 @@ export default function Presupuesto() {
               <h2 className="text-strong font-semibold mb-1">Si solo contara tu ingreso</h2>
               <p className="text-xs text-dim mb-4 max-w-2xl">
                 Tu pareja va a dejar de trabajar. Esto es {MESES[(sel % 100) - 1]} recalculado
-                sobre {fmt(soloPropio.ingreso)} tuyos, con los gastos tal como están hoy.
+                sobre {fmt(soloPropio.ingreso)} tuyos
+                {totalOtros > 0 && <> ({fmt(ingresoNomina)} de nómina más {fmt(totalOtros)} de ventas)</>},
+                con los gastos tal como están hoy.
               </p>
 
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
@@ -648,9 +767,9 @@ export default function Presupuesto() {
 
 // ── Piezas ──────────────────────────────────────────────────────────────────
 
-function FuenteIngreso({ nombre, nota, monto, incluido, onToggle, fijo }: {
+function FuenteIngreso({ nombre, nota, monto, incluido, onToggle, fijo, etiqueta, onQuitar }: {
   nombre: string; nota: string; monto: number; incluido: boolean
-  onToggle?: () => void; fijo?: boolean
+  onToggle?: () => void; fijo?: boolean; etiqueta?: string; onQuitar?: () => void
 }) {
   return (
     <div className="flex items-center justify-between gap-3 p-3 rounded-xl"
@@ -665,11 +784,23 @@ function FuenteIngreso({ nombre, nota, monto, incluido, onToggle, fijo }: {
                        textDecoration: incluido ? 'none' : 'line-through' }}>
           {fmt(monto)}
         </span>
-        {fijo
-          ? <span className="badge badge-gray">fijo</span>
-          : <button onClick={onToggle} className="btn-secondary text-xs">
-              {incluido ? 'No contar' : 'Contar'}
-            </button>}
+        {etiqueta && (
+          <span className={`badge ${etiqueta === 'variable' ? 'badge-yellow' : 'badge-gray'}`}>
+            {etiqueta}
+          </span>
+        )}
+        {onQuitar && (
+          <button onClick={onQuitar} className="text-faint hover:text-red-400 p-1"
+                  title="Quitar este ingreso">
+            <X size={14} />
+          </button>
+        )}
+        {fijo && <span className="badge badge-gray">nómina</span>}
+        {onToggle && (
+          <button onClick={onToggle} className="btn-secondary text-xs">
+            {incluido ? 'No contar' : 'Contar'}
+          </button>
+        )}
       </div>
     </div>
   )
