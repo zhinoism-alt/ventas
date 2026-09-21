@@ -124,6 +124,19 @@ traiga dos gastos más.
 El parser está verificado contra las diez pestañas existentes: los totales que
 calcula coinciden con los que la propia hoja suma.
 
+### Lo que el parser NO lee, a proposito
+
+Las columnas de la derecha de la hoja traen bloques sueltos sin encabezado con
+gastos grandes planeados: «Viaje Enero 31 $65,000», «Viaje Disney y SW
+$40,000», «EliteTV», etc.
+
+**No los leas.** Parece un hueco y no lo es. Esas cifras son el costo total del
+viaje, y una parte ya esta apartada en los fondos que el parser si registra
+(«Saldo de Fondo de emergencia», «Saldo de Fondo de inversion», los apartados
+semanales). Sumarlas contaria dos veces el mismo dinero y haria ver deuda donde
+hay ahorro. Brandon lo confirmo explicitamente: el comportamiento actual es el
+correcto.
+
 ### De quién es cada ingreso
 
 Confirmado por Brandon, no es suposición:
