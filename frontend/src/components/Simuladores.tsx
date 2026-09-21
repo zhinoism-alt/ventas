@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CampoNumero } from './CampoNumero'
 import { Sliders, TrendingUp, Home } from 'lucide-react'
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -402,21 +403,9 @@ export function SimuladorInfonavit({ p }: { p: ParamsInfonavit }) {
 
 // ─── piezas compartidas ──────────────────────────────────────────────────
 
-function Campo({ label, valor, onChange, sufijo, paso = 1, ayuda }: {
-  label: string; valor: number; onChange: (v: number) => void
-  sufijo?: string; paso?: number; ayuda?: string
-}) {
-  return (
-    <div>
-      <label className="text-xs text-muted block mb-1.5">
-        {label}{sufijo ? ` (${sufijo})` : ''}
-      </label>
-      <input className="input font-mono" type="number" value={valor} step={paso}
-             onChange={e => onChange(num(e.target.value))} />
-      {ayuda && <p className="text-xs text-dim mt-1 leading-snug">{ayuda}</p>}
-    </div>
-  )
-}
+// El campo numerico ahora vive en components/CampoNumero.tsx: la version
+// local no dejaba borrar un cero.
+const Campo = CampoNumero
 
 function Tile({ k, v, sub, tono }: { k: string; v: string; sub?: string; tono?: 'ok' | 'warn' | 'bad' }) {
   const color = tono === 'ok' ? 'var(--green)' : tono === 'warn' ? 'var(--yellow)'

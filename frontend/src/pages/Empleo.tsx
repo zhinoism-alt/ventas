@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Briefcase, Plus, Trash2, ExternalLink, GraduationCap, Award,
   SlidersHorizontal, X, AlertTriangle, Info, RotateCcw, Sparkles
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { CampoNumero } from '../components/CampoNumero'
 
 /* ═══════════════════════════════════════════════════════════════
    Empleo — seguimiento de vacantes, certificaciones y escuela.
@@ -1285,17 +1286,14 @@ function Campo({ label, value, onChange, type = 'text', placeholder, hint }: {
   )
 }
 
+// El campo numerico vive en components/CampoNumero.tsx, compartido con los
+// simuladores: la version local no dejaba borrar un cero. Este adaptador existe
+// solo para conservar los nombres de prop que ya usan los 42 llamados de esta
+// pagina; renombrarlos uno por uno seria ruido sin beneficio.
 function CampoNum({ label, value, onChange, hint }: {
   label: string; value: number; onChange: (v: number) => void; hint?: string
 }) {
-  return (
-    <div>
-      <label className="text-xs text-muted block mb-1.5">{label}</label>
-      <input className="input font-mono" type="number" value={value}
-        onChange={e => onChange(num(e.target.value))} />
-      {hint && <p className="text-xs text-faint mt-1">{hint}</p>}
-    </div>
-  )
+  return <CampoNumero label={label} valor={value} onChange={onChange} ayuda={hint} />
 }
 
 function Select({ label, value, onChange, opciones }: {
