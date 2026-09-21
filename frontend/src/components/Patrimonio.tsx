@@ -47,6 +47,10 @@ interface Perfil {
   ppr_rend_observado: number
   ppr_factores: string | null
   ppr_cargo_rescate: string | null
+  ppr_anios_total: number
+  ppr_costo_tras_pagos: boolean | null
+  ppr_vencimiento: string | null
+  ppr_aseguradora: string | null
   afore_nombre: string | null
   afore_retiro: number
   afore_vivienda: number
@@ -101,28 +105,36 @@ function interesAnual(c: Cuenta) {
  *
  * Es un modelo, no la cifra garantizada por la aseguradora.
  */
-function proyectaPPR(p: Perfil, rendimiento: number) {
+function proyectaPPR(p: Perfil, rendimiento: number, costoTrasPagos: boolean) {
   const factores = (p.ppr_factores ?? '').split(',').map(f => num(f)).filter(f => f > 0)
-  const anios = num(p.ppr_anios_pago)
+  const pagos = num(p.ppr_anios_pago)
+  const total = Math.max(pagos, num(p.ppr_anios_total))
   const a0 = Math.max(1, num(p.ppr_anio_poliza))
   const suma = num(p.ppr_suma_asegurada_udi)
   const prima = num(p.ppr_prima_anual_udi)
-  if (!factores.length || !anios || !suma) return null
+  if (!factores.length || !total || !suma) return null
 
   // Costo por unidad de factor y de suma en riesgo, calibrado con lo observado.
   const riesgo0 = suma - num(p.ppr_saldo_udi)
   const base = num(p.ppr_costo_anual_udi) / (factores[a0 - 1] * riesgo0)
 
   let saldo = num(p.ppr_saldo_udi)
-  const filas: { anio: number; costo: number; alAhorro: number; saldo: number }[] = []
-  for (let a = a0; a <= anios; a++) {
+  let seAgota: number | null = null
+  const filas: { anio: number; prima: number; costo: number; saldo: number }[] = []
+  for (let a = a0; a <= total; a++) {
     const f = factores[a - 1] ?? factores[factores.length - 1]
-    const costo = base * f * (suma - saldo)
-    const alAhorro = prima - costo
-    saldo = (saldo + alAhorro) * (1 + rendimiento)
-    filas.push({ anio: a, costo, alAhorro, saldo })
+    const primaA = a <= pagos ? prima : 0
+    const cobra = a <= pagos || costoTrasPagos
+    const costo = cobra ? base * f * Math.max(0, suma - saldo) : 0
+    saldo = Math.max(0, (saldo + primaA - costo) * (1 + rendimiento))
+    if (saldo === 0 && seAgota === null) seAgota = a
+    filas.push({ anio: a, prima: primaA, costo, saldo })
   }
-  return { filas, saldoFinal: saldo, aportadoTotal: prima * anios }
+  return {
+    filas, saldoFinal: saldo, seAgota,
+    aportadoTotal: prima * pagos,
+    saldoAlUltimoPago: filas.find(f => f.anio === pagos)?.saldo ?? 0,
+  }
 }
 
 export function Patrimonio() {
@@ -388,84 +400,107 @@ export function Patrimonio() {
 }
 
 function ProyeccionPPR({ perfil, udi, marg }: { perfil: Perfil; udi: number; marg: number }) {
-  const escenarios = [
+  const pagos = num(perfil.ppr_anios_pago)
+  const total = num(perfil.ppr_anios_total)
+  const rendimientos = [
     { nombre: 'Mínimo garantizado', r: num(perfil.ppr_rend_garantizado) / 100 },
     { nombre: 'Al ritmo observado', r: num(perfil.ppr_rend_observado) / 100 },
   ]
-  const base = proyectaPPR(perfil, escenarios[1].r)
-  if (!base) return null
+  // La duda que decide todo: tras el ultimo pago, sigue saliendo el costo del
+  // seguro del fondo? Mientras no este confirmado se muestran las dos ramas.
+  const hipotesis = perfil.ppr_costo_tras_pagos === null
+    ? [false, true]
+    : [perfil.ppr_costo_tras_pagos]
 
-  const aportado = base.aportadoTotal
-  const dedTotal = aportado * udi * marg
+  const referencia = proyectaPPR(perfil, rendimientos[1].r, false)
+  if (!referencia) return null
+  const aportado = referencia.aportadoTotal
 
   return (
     <div className="rounded-xl p-4 mt-5" style={{ background: 'var(--surface-2)' }}>
       <p className="text-xs uppercase tracking-wider text-muted mb-1">
-        Cuánto tendrías al terminar de pagar
+        Proyección hasta los 65
       </p>
       <p className="text-xs text-dim mb-4 max-w-2xl">
-        Al año {num(perfil.ppr_anios_pago)}, cuando cierres los pagos. El costo del seguro sube
-        con tu edad — el factor de mortalidad casi se duplica entre hoy y el último pago — así que
-        cada año va menos dinero al ahorro aunque la prima no cambie.
+        Pagas {pagos} años pero la póliza cubre {total}, hasta{' '}
+        {perfil.ppr_vencimiento
+          ? new Date(perfil.ppr_vencimiento).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+          : 'el vencimiento'}. Todo en UDI, que ya está protegido de la inflación:
+        una UDI de 2062 compra lo mismo que una de hoy.
       </p>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        {escenarios.map(e => {
-          const pr = proyectaPPR(perfil, e.r)
-          if (!pr) return null
-          return (
-            <Tile key={e.nombre} k={e.nombre}
-              v={mxn(pr.saldoFinal * udi)}
-              sub={`${pr.saldoFinal.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI · ${pct(e.r * 100)}`} />
-          )
-        })}
-        <Tile k="Habrás aportado" v={mxn(aportado * udi)}
-              sub={`${aportado.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI en ${num(perfil.ppr_anios_pago)} años`}
-              tono="warn" />
-        <Tile k="ISR recuperado" v={mxn(dedTotal)} sub="deducción acumulada" tono="ok" />
-      </div>
+      {perfil.ppr_costo_tras_pagos === null && (
+        <div className="rounded-lg p-3 mb-4 flex items-start gap-2"
+             style={{ background: 'var(--yellow-soft)' }}>
+          <AlertTriangle size={14} style={{ color: 'var(--yellow)' }} className="flex-shrink-0 mt-0.5" />
+          <div className="text-xs" style={{ color: 'var(--yellow)' }}>
+            <strong>Falta confirmar con la aseguradora:</strong> después del pago {pagos},
+            ¿se sigue descontando el costo del seguro del fondo? Las dos respuestas dan
+            resultados opuestos, así que abajo se muestran ambas.
+          </div>
+        </div>
+      )}
 
-      <div className="scroll-x">
-        <table className="w-full text-xs" style={{ minWidth: 420 }}>
+      <div className="scroll-x mb-4">
+        <table className="w-full text-sm" style={{ minWidth: 520 }}>
           <thead>
-            <tr className="text-dim">
-              <th className="text-left font-medium pb-2">Año</th>
-              <th className="text-right font-medium pb-2">Costo del seguro</th>
-              <th className="text-right font-medium pb-2">% de la prima</th>
-              <th className="text-right font-medium pb-2">Va al ahorro</th>
-              <th className="text-right font-medium pb-2">Saldo</th>
+            <tr className="text-dim text-xs">
+              <th className="text-left font-medium pb-2">Hipótesis</th>
+              <th className="text-right font-medium pb-2">Rendimiento</th>
+              <th className="text-right font-medium pb-2">Al último pago</th>
+              <th className="text-right font-medium pb-2">A los 65</th>
             </tr>
           </thead>
-          <tbody className="font-mono">
-            {base.filas.map(f => {
-              const pctPrima = f.costo / num(perfil.ppr_prima_anual_udi) * 100
+          <tbody>
+            {hipotesis.map(costo => rendimientos.map(rend => {
+              const pr = proyectaPPR(perfil, rend.r, costo)
+              if (!pr) return null
+              const muere = pr.seAgota !== null
               return (
-                <tr key={f.anio} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td className="py-1.5 text-body">{f.anio}</td>
-                  <td className="py-1.5 text-right text-body">{f.costo.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</td>
-                  <td className="py-1.5 text-right" style={{ color: pctPrima >= 100 ? 'var(--red)' : pctPrima >= 85 ? 'var(--yellow)' : 'var(--text-dim)' }}>
-                    {pctPrima.toFixed(0)}%
+                <tr key={`${costo}-${rend.nombre}`} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td className="py-2 text-body text-xs">
+                    {costo ? 'El costo sigue saliendo del fondo' : 'Póliza saldada, sin costo'}
                   </td>
-                  <td className="py-1.5 text-right" style={{ color: f.alAhorro < 0 ? 'var(--red)' : 'var(--text-body)' }}>
-                    {f.alAhorro.toLocaleString('es-MX', { maximumFractionDigits: 0 })}
+                  <td className="py-2 text-right font-mono text-xs text-dim">
+                    {rend.nombre} · {pct(rend.r * 100)}
                   </td>
-                  <td className="py-1.5 text-right text-strong">{f.saldo.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</td>
+                  <td className="py-2 text-right font-mono text-body">
+                    {pr.saldoAlUltimoPago.toLocaleString('es-MX', { maximumFractionDigits: 0 })}
+                  </td>
+                  <td className="py-2 text-right font-mono font-semibold"
+                      style={{ color: muere ? 'var(--red)' : 'var(--green)' }}>
+                    {muere
+                      ? `se agota en el año ${pr.seAgota}`
+                      : `${pr.saldoFinal.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI`}
+                  </td>
                 </tr>
               )
-            })}
+            }))}
           </tbody>
         </table>
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        <Tile k="Habrás aportado" v={`${aportado.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI`}
+              sub={`${mxn(aportado * udi)} de hoy`} tono="warn" />
+        <Tile k="ISR recuperado" v={mxn(aportado * udi * marg)} sub="deducción acumulada" tono="ok" />
+        <Tile k="Cobertura mientras tanto"
+              v={mxn(num(perfil.ppr_suma_asegurada_udi) * udi)} sub={`durante ${total} años`} />
+      </div>
+
+      <p className="text-xs text-dim leading-relaxed">
+        Al vencimiento la aseguradora <strong className="text-body">no te entrega el saldo</strong>:
+        le aplica un factor de rentas y paga una renta mensual. Ese factor no viene en tus
+        documentos, así que la renta no se puede calcular aquí.
+      </p>
       {perfil.ppr_cargo_rescate && (
-        <p className="text-xs mt-3 flex items-start gap-2" style={{ color: 'var(--yellow)' }}>
-          <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-          <span>Cargo por rescate: {perfil.ppr_cargo_rescate}.</span>
+        <p className="text-xs mt-2" style={{ color: 'var(--yellow)' }}>
+          Cargo por rescate anticipado: {perfil.ppr_cargo_rescate}.
         </p>
       )}
       <p className="text-xs text-dim mt-2">
-        Es un modelo con los factores de tu póliza, no la cifra garantizada por la aseguradora.
-        Seguros Monterrey puede darte la proyección oficial.
+        Modelo con los factores de mortalidad de tu póliza, no la cifra garantizada.
+        {perfil.ppr_aseguradora} puede darte la proyección oficial.
       </p>
     </div>
   )
