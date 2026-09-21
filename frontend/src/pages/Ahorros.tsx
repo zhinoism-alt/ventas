@@ -35,6 +35,16 @@ interface Movimiento {
   fecha: string
 }
 
+interface MovFondo {
+  id: number
+  fondo_id: number
+  monto: number
+  tipo: 'abono' | 'retiro' | 'ajuste' | 'rendimiento'
+  saldo_despues: number | null
+  nota: string
+  fecha: string
+}
+
 /** Lo minimo de finanzas_perfil para poder descontar impuestos e inflacion. */
 interface Supuestos {
   isr_retencion_pct: number
@@ -116,6 +126,9 @@ export default function Ahorros() {
   }
 
   // — General —
+  const [movFondos, setMovFondos]   = useState<MovFondo[]>([])
+  const [abonoDe, setAbonoDe]       = useState<number | null>(null)
+  const [abono, setAbono]           = useState({ monto: '', nota: '' })
   const [supuestos, setSupuestos]   = useState<Supuestos | null>(null)
   const [cuentasPat, setCuentasPat] = useState<CuentaPatrimonio[]>([])
   const [loading, setLoading]       = useState(true)
@@ -131,7 +144,7 @@ export default function Ahorros() {
     // El finally es obligatorio: si una consulta rechaza (base pausada,
     // red caída), sin él el spinner se queda girando para siempre.
     try {
-      const [{ data: a }, { data: m }, { data: f }, { data: sup }, { data: cp }] = await Promise.all([
+      const [{ data: a }, { data: m }, { data: f }, { data: sup }, { data: cp }, { data: mf }] = await Promise.all([
         supabase.from('ahorros').select('*').eq('activo', true).order('created_at', { ascending: false }),
         supabase.from('ahorros_movimientos').select('*').order('fecha', { ascending: false }),
         supabase.from('fondos_ahorro').select('*').eq('activo', true).order('created_at', { ascending: false }),
@@ -139,12 +152,14 @@ export default function Ahorros() {
         // los suyos, el mismo dinero daria dos numeros distintos.
         supabase.from('finanzas_perfil').select('isr_retencion_pct,inflacion_pct').eq('id', 1).maybeSingle(),
         supabase.from('ahorros_cuentas').select('institucion,saldo').eq('activo', true),
+        supabase.from('fondos_movimientos').select('*').order('fecha', { ascending: false }).limit(200),
       ])
       setAhorros(a ?? [])
       setMovimientos(m ?? [])
       setFondos(f ?? [])
       setSupuestos((sup as Supuestos) ?? null)
       setCuentasPat((cp ?? []) as CuentaPatrimonio[])
+      setMovFondos((mf ?? []) as MovFondo[])
     } catch (e) {
       console.error('[Ahorros] no se pudieron cargar los datos', e)
       setErrorCarga(e instanceof Error ? e.message : String(e))
@@ -177,6 +192,41 @@ export default function Ahorros() {
       if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
       bFondo.limpiar()
       setShowFondoForm(false)
+      load()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /**
+   * Suma o resta del saldo y deja constancia. El calculo se hace aqui sobre el
+   * saldo que ya tenemos cargado, no con una suma en la base: si otro
+   * dispositivo lo movio mientras tanto, recargar antes de guardar seria mas
+   * correcto, pero para un tablero de una sola persona esto sobra.
+   */
+  const moverFondo = async (fondo: Fondo, signo: 1 | -1) => {
+    const monto = Number(abono.monto)
+    if (!abono.monto || !Number.isFinite(monto) || monto <= 0)
+      return setErrorForm('Escribe cuánto vas a mover, en positivo.')
+    const nuevo = fondo.saldo + signo * monto
+    if (nuevo < 0) return setErrorForm(`No puedes sacar ${fmt(monto)}: el fondo tiene ${fmt(fondo.saldo)}.`)
+    setErrorForm(null)
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('fondos_ahorro')
+        .update({ saldo: nuevo, updated_at: new Date().toISOString() }).eq('id', fondo.id)
+      if (error) { setErrorForm(`No se guardó: ${error.message}`); return }
+      // La bitacora es secundaria: si falla, el saldo ya quedo bien y no vale
+      // la pena tirar la operacion entera.
+      const { error: errMov } = await supabase.from('fondos_movimientos').insert({
+        fondo_id: fondo.id, monto, tipo: signo > 0 ? 'abono' : 'retiro',
+        saldo_despues: nuevo, nota: abono.nota,
+      })
+      if (errMov) console.error('[Ahorros] el saldo se guardó pero no el movimiento', errMov)
+      setAbono({ monto: '', nota: '' })
+      setAbonoDe(null)
       load()
     } catch (e) {
       setErrorForm(e instanceof Error ? e.message : String(e))
@@ -476,7 +526,12 @@ export default function Ahorros() {
             <div className="grid gap-4 md:grid-cols-2">
               {fondos.map(f => {
                 const gananciasAnual = f.saldo * (f.rendimiento / 100)
-                const totalAnio     = f.saldo + gananciasAnual
+                // Lo que de verdad te queda: el banco paga el bruto, el ISR
+                // muerde el capital y la inflacion se lleva el resto.
+                const realAnual     = gananciasAnual - f.saldo * isrPct - f.saldo * inflPct
+                const totalAnio     = f.saldo + (haySupuestos ? realAnual : gananciasAnual)
+                const movs          = movFondos.filter(mv => mv.fondo_id === f.id).slice(0, 5)
+                const abonando      = abonoDe === f.id
                 const isEditing     = editFondo?.id === f.id
                 return (
                   <div key={f.id} className="card relative overflow-hidden">
@@ -572,6 +627,52 @@ export default function Ahorros() {
                         <p className="text-xs text-dim mt-0.5">saldo actual</p>
                       </div>
 
+                      {/* Abonar o sacar: lo que mas se hace y lo que no existia.
+                          Antes habia que editar el saldo a mano y calcular la
+                          suma de cabeza, sin quedar constancia de nada. */}
+                      {!isEditing && (
+                        <div className="mt-3">
+                          {!abonando ? (
+                            <button onClick={() => { setErrorForm(null); setAbonoDe(f.id); setAbono({ monto: '', nota: '' }) }}
+                              className="btn-secondary text-xs w-full">
+                              <Plus size={13} /> Abonar o sacar
+                            </button>
+                          ) : (
+                            <div className="rounded-lg p-3 space-y-2" style={{ background: 'var(--surface-2)' }}>
+                              <div className="flex gap-2">
+                                <input className="input flex-1" type="number" placeholder="250" autoFocus
+                                  value={abono.monto}
+                                  onChange={e => setAbono(v => ({ ...v, monto: e.target.value }))}
+                                  onKeyDown={e => e.key === 'Enter' && moverFondo(f, 1)} />
+                                <input className="input flex-1" placeholder="Nota (opcional)"
+                                  value={abono.nota}
+                                  onChange={e => setAbono(v => ({ ...v, nota: e.target.value }))} />
+                              </div>
+                              {!!Number(abono.monto) && (
+                                <p className="text-xs font-mono text-dim">
+                                  {fmt(f.saldo)} + {fmt(Number(abono.monto))} ={' '}
+                                  <strong className="text-body">{fmt(f.saldo + Number(abono.monto))}</strong>
+                                </p>
+                              )}
+                              <div className="flex gap-2 flex-wrap">
+                                <button onClick={() => moverFondo(f, 1)} disabled={saving}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-white flex-1"
+                                  style={{ background: 'var(--green)' }}>
+                                  {saving ? 'Guardando…' : 'Abonar'}
+                                </button>
+                                <button onClick={() => moverFondo(f, -1)} disabled={saving}
+                                  className="btn-secondary text-xs" style={{ color: 'var(--red)' }}>
+                                  Sacar
+                                </button>
+                                <button onClick={() => { setErrorForm(null); setAbonoDe(null) }}
+                                  className="btn-secondary text-xs">Cancelar</button>
+                              </div>
+                              {abonando && <AvisoForm mensaje={errorForm} />}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Rendimiento */}
                       <div className="mt-4 pt-3 grid grid-cols-2 gap-3" style={{ borderTop: '1px solid var(--border)' }}>
                         <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
@@ -584,17 +685,48 @@ export default function Ahorros() {
                         <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <TrendingUp size={11} className="text-green-400" />
-                            <p className="text-xs text-muted">Ganancia anual est.</p>
+                            <p className="text-xs text-muted">
+                              {haySupuestos ? 'Ganancia real' : 'Ganancia anual est.'}
+                            </p>
                           </div>
-                          <p className="text-base font-bold text-green-400">+{fmt(gananciasAnual)}</p>
+                          <p className="text-base font-bold"
+                             style={{ color: (haySupuestos ? realAnual : gananciasAnual) >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                            {(haySupuestos ? realAnual : gananciasAnual) >= 0 ? '+' : ''}
+                            {fmt(haySupuestos ? realAnual : gananciasAnual)}
+                          </p>
+                          {haySupuestos && (
+                            <p className="text-xs text-dim mt-0.5">bruto +{fmt(gananciasAnual)}</p>
+                          )}
                         </div>
                       </div>
 
                       {f.rendimiento > 0 && (
                         <div className="mt-2 rounded-lg px-3 py-2 flex items-center justify-between"
                           style={{ background: f.color + '15', border: `1px solid ${f.color}30` }}>
-                          <span className="text-xs text-muted">Total en 1 año</span>
+                          <span className="text-xs text-muted">
+                            Total en 1 año{haySupuestos ? ', en pesos de hoy' : ''}
+                          </span>
                           <span className="text-sm font-bold" style={{ color: f.color }}>{fmt(totalAnio)}</span>
+                        </div>
+                      )}
+
+                      {!!movs.length && (
+                        <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                          <p className="text-xs text-muted mb-1.5">Últimos movimientos</p>
+                          <div className="space-y-1">
+                            {movs.map(mv => (
+                              <div key={mv.id} className="flex items-center justify-between text-xs gap-2">
+                                <span className="text-dim truncate">
+                                  {new Date(mv.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                                  {mv.nota ? ` · ${mv.nota}` : ''}
+                                </span>
+                                <span className="font-mono flex-shrink-0"
+                                      style={{ color: mv.tipo === 'retiro' ? 'var(--red)' : 'var(--green)' }}>
+                                  {mv.tipo === 'retiro' ? '−' : '+'}{fmt(mv.monto)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
