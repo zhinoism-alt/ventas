@@ -85,6 +85,16 @@ const num2 = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0
 }
 
+/** Un renglon del desglose: concepto a la izquierda, monto a la derecha. */
+function Renglon({ k, v, tono }: { k: string; v: string; tono?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-dim truncate">{k}</span>
+      <span className="text-xs font-mono flex-shrink-0" style={{ color: tono ?? 'var(--text-body)' }}>{v}</span>
+    </div>
+  )
+}
+
 const ICONOS = ['💰', '🛡️', '📈', '🏦', '🎯', '🏠', '✈️', '🚗', '💻', '📱', '💍', '🏖️', '📚', '💎']
 
 // ── Componente principal ─────────────────────────────────────────────────────
@@ -528,7 +538,9 @@ export default function Ahorros() {
                 const gananciasAnual = f.saldo * (f.rendimiento / 100)
                 // Lo que de verdad te queda: el banco paga el bruto, el ISR
                 // muerde el capital y la inflacion se lleva el resto.
-                const realAnual     = gananciasAnual - f.saldo * isrPct - f.saldo * inflPct
+                const isrFondo      = f.saldo * isrPct
+                const inflFondo     = f.saldo * inflPct
+                const realAnual     = gananciasAnual - isrFondo - inflFondo
                 const totalAnio     = f.saldo + (haySupuestos ? realAnual : gananciasAnual)
                 const movs          = movFondos.filter(mv => mv.fondo_id === f.id).slice(0, 5)
                 const abonando      = abonoDe === f.id
@@ -694,11 +706,30 @@ export default function Ahorros() {
                             {(haySupuestos ? realAnual : gananciasAnual) >= 0 ? '+' : ''}
                             {fmt(haySupuestos ? realAnual : gananciasAnual)}
                           </p>
-                          {haySupuestos && (
-                            <p className="text-xs text-dim mt-0.5">bruto +{fmt(gananciasAnual)}</p>
-                          )}
                         </div>
                       </div>
+
+                      {/* El desglose, no solo el resultado. Ver que el ISR se
+                          cobra sobre el capital explica por que un fondo con
+                          tasa baja puede perder contra la inflacion. */}
+                      {haySupuestos && (
+                        <div className="mt-2 rounded-lg px-3 py-2 space-y-1"
+                             style={{ background: 'var(--bg)' }}>
+                          <Renglon k={`Lo que paga (${f.rendimiento}%)`} v={`+${fmt(gananciasAnual)}`} />
+                          <Renglon k={`ISR ${(isrPct * 100).toFixed(2)}% del saldo`}
+                                   v={`−${fmt(isrFondo)}`} tono="var(--red)" />
+                          <Renglon k={`Inflación ${(inflPct * 100).toFixed(2)}%`}
+                                   v={`−${fmt(inflFondo)}`} tono="var(--red)" />
+                          <div className="flex items-center justify-between pt-1"
+                               style={{ borderTop: '1px solid var(--border)' }}>
+                            <span className="text-xs font-medium text-body">Te queda</span>
+                            <span className="text-xs font-mono font-bold"
+                                  style={{ color: realAnual >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                              {realAnual >= 0 ? '+' : ''}{fmt(realAnual)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {f.rendimiento > 0 && (
                         <div className="mt-2 rounded-lg px-3 py-2 flex items-center justify-between"
