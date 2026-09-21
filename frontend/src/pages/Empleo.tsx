@@ -214,6 +214,23 @@ function evalBase(p: Perfil) {
   return { paquete, traslado, vida, horas, disponible: paquete - traslado - vida }
 }
 
+/**
+ * Quita las columnas que calcula la base antes de mandarle la fila de vuelta.
+ *
+ * El formulario carga la vacante completa con select('*'), asi que trae tambien
+ * link_norm — la columna generada que usamos para no duplicar vacantes. Al
+ * guardar se la devolviamos y Postgres respondia:
+ *
+ *   column "link_norm" can only be updated to DEFAULT
+ *
+ * que es correcto: una columna generada la escribe el, no nosotros.
+ */
+function paraGuardar(v: Record<string, unknown>): Record<string, unknown> {
+  const campos: Record<string, unknown> = { ...v, updated_at: new Date().toISOString() }
+  for (const k of ['id', 'link_norm', 'created_at']) delete campos[k]
+  return campos
+}
+
 function evalVacante(v: Vacante, p: Perfil) {
   const base = evalBase(p)
   const tc = num(p.tipo_cambio) || 1
@@ -387,12 +404,13 @@ export default function Empleo() {
     setAvisoForm(null)
     setSaving(true)
     try {
-      const { id, ...campos } = formVac
+      const campos = paraGuardar(formVac)
+      const id = formVac.id
       // Antes nadie miraba el error: si la insercion fallaba, el modal se
       // cerraba igual y parecia guardado.
       const { error } = id
         ? await supabase.from('empleo_vacantes')
-            .update({ ...campos, updated_at: new Date().toISOString() }).eq('id', id)
+            .update(campos).eq('id', id)
         : await supabase.from('empleo_vacantes').insert(campos)
       if (error) { setAvisoForm(`No se guardo: ${error.message}`); return }
       setFormVac(null)
