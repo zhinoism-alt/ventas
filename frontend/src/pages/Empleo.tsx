@@ -1383,13 +1383,19 @@ function Modal({ titulo, children, onClose, onGuardar, onBorrar, saving, aviso }
       style={{ background: 'rgba(20,22,26,.55)' }}>
       <div className="rounded-xl w-full max-w-3xl my-8"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: 'var(--sh-lg)' }}>
-        <div className="flex items-center justify-between p-4 sticky top-0 rounded-t-xl"
+        {/* z-20 en las barras y z-0 en el contenido, a proposito.
+            `position: sticky` sin z-index no gana el apilamiento: el contenido
+            que viene despues en el DOM se pinta encima, y el formulario se veia
+            atravesando el encabezado y el pie. */}
+        <div className="flex items-center justify-between p-4 sticky top-0 z-20 rounded-t-xl"
           style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-strong font-semibold">{titulo}</h2>
-          <button onClick={onClose} className="text-muted hover:text-strong"><X size={18} /></button>
+          <button onClick={onClose} className="text-muted hover:text-strong" title="Cerrar">
+            <X size={18} />
+          </button>
         </div>
-        <div className="p-5">{children}</div>
-        <div className="flex items-center gap-2 p-4 sticky bottom-0 rounded-b-xl flex-wrap"
+        <div className="p-5 relative z-0">{children}</div>
+        <div className="flex items-center gap-2 p-4 sticky bottom-0 z-20 rounded-b-xl flex-wrap"
           style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
           {aviso && <p className="w-full text-sm" style={{ color: 'var(--red)' }}>{aviso}</p>}
           {onBorrar && (
