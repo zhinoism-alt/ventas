@@ -75,15 +75,24 @@ fila.
 
 | Campo | Para qué sirve |
 |---|---|
-| `sueldo_min`, `sueldo_max` | Sin esto la comparación contra tu sueldo actual no corre |
 | `modalidad` | `remoto`, `hibrido` o `presencial` |
 | `dias_oficina` | Con `hibrido`, cuántos días vas |
 | `ciudad` | Decide si implica mudarte |
 | `vales_mensual`, `bono_anual` | Entran al paquete anual, que es lo que decide |
 | `requisitos` | Separado por comas |
 
-Lo que no venga en el anuncio, déjalo fuera: un cero inventado es peor que un
+Lo que no venga en el anuncio, déjalo fuera: un número inventado es peor que un
 hueco, porque se ve igual que un dato.
+
+## El sueldo no se persigue
+
+Los anuncios casi nunca publican sueldo — sale hasta la llamada de screening.
+La tarea no debe buscar de más para llenarlo: deja `sueldo_min` y `sueldo_max`
+en 0.
+
+La aplicación ya lo maneja: marca la vacante como «Falta el sueldo», no le pone
+veredicto y la deja fuera de «mejor oferta». Cuando Brandon llegue al screening
+y le digan la cifra, la captura él y ahí corre la comparación.
 
 ## Sobre la llave
 
