@@ -4,6 +4,21 @@ La tarea diaria escribe directo en Supabase. No hay backend de por medio: es la
 misma tabla que lee la pestaña **Empleo**, así que lo que mande aparece en el
 tablero en cuanto recargues.
 
+## Antes de buscar: leer qué ya está registrado
+
+La tarea tenía una lista de «empresas ya aplicadas» escrita a mano dentro del
+prompt. Cada rechazo obligaba a editar el prompt, y eso se desincronizaba de
+VentasPro, que es donde esa información ya vive.
+
+Ahora la lee:
+
+```
+GET  .../rest/v1/empleo_vacantes?select=empresa,puesto,estado,link&activo=eq.true
+```
+
+Omite las vacantes cuyo enlace ya aparezca. Si la empresa está pero con otro
+puesto, sí se lista, aclarándolo.
+
 ## El llamado
 
 ```
