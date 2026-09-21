@@ -51,6 +51,9 @@ interface Perfil {
   ppr_costo_tras_pagos: boolean | null
   ppr_vencimiento: string | null
   ppr_aseguradora: string | null
+  ppr_liquidacion: string | null
+  ppr_modelo_confiable: boolean | null
+  ppr_modelo_nota: string | null
   afore_nombre: string | null
   afore_retiro: number
   afore_vivienda: number
@@ -429,6 +432,16 @@ function ProyeccionPPR({ perfil, udi, marg }: { perfil: Perfil; udi: number; mar
         una UDI de 2062 compra lo mismo que una de hoy.
       </p>
 
+      {perfil.ppr_modelo_confiable === false && (
+        <div className="rounded-lg p-3 mb-4 flex items-start gap-2"
+             style={{ background: 'var(--red-soft)' }}>
+          <AlertTriangle size={14} style={{ color: 'var(--red)' }} className="flex-shrink-0 mt-0.5" />
+          <div className="text-xs" style={{ color: 'var(--red)' }}>
+            <strong>Esta proyección no es confiable.</strong> {perfil.ppr_modelo_nota}
+          </div>
+        </div>
+      )}
+
       {perfil.ppr_costo_tras_pagos === null && (
         <div className="rounded-lg p-3 mb-4 flex items-start gap-2"
              style={{ background: 'var(--yellow-soft)' }}>
@@ -489,9 +502,9 @@ function ProyeccionPPR({ perfil, udi, marg }: { perfil: Perfil; udi: number; mar
       </div>
 
       <p className="text-xs text-dim leading-relaxed">
-        Al vencimiento la aseguradora <strong className="text-body">no te entrega el saldo</strong>:
-        le aplica un factor de rentas y paga una renta mensual. Ese factor no viene en tus
-        documentos, así que la renta no se puede calcular aquí.
+        Opción de liquidación de tu póliza: <strong className="text-body">{perfil.ppr_liquidacion}</strong>.
+        Recibes el saldo, no una renta mensual — el factor de rentas de las condiciones generales
+        es la opción por defecto del producto, no la que quedó en tu carátula.
       </p>
       {perfil.ppr_cargo_rescate && (
         <p className="text-xs mt-2" style={{ color: 'var(--yellow)' }}>
