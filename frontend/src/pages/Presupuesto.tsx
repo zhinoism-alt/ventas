@@ -4,14 +4,13 @@ import {
   ResponsiveContainer, Line, ComposedChart,
 } from 'recharts'
 import {
-  RefreshCw, ExternalLink, CheckCircle2, Link2,
+  RefreshCw, ExternalLink, CheckCircle2, Link2, AlertTriangle,
   Loader2, Settings2, Calendar, Users, Download, TrendingDown, TrendingUp,
   Plus, X, Store, ArrowRightLeft,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { TOOLTIP_STYLE } from '../lib/constants'
 import { fmt } from '../lib/utils'
-import { AvisoError } from '../components/AvisoError'
 import { AvisoForm, BorradorRecuperado } from '../components/FormAvisos'
 import { useDraft } from '../lib/useDraft'
 import {
@@ -109,13 +108,21 @@ const claveMes = (a: number, m: number) => a * 100 + m
 export default function Presupuesto() {
   const [config, setConfig] = useState<Config | null>(null)
   const [hojas, setHojas] = useState<Hoja[]>([])
+  // Sin esto, los botones de sincronizar estaban vivos antes de saber que
+  // pestanas hay, y picarlos daba 'ninguna parece ser un mes' — que suena a
+  // que tu hoja esta mal cuando en realidad solo faltaba esperar.
+  const [hojasEstado, setHojasEstado] = useState<'cargando' | 'listas' | 'error'>('cargando')
   const [meses, setMeses] = useState<MesGuardado[]>([])
   const [sel, setSel] = useState<number>(claveMes(ANIO_HOY, MES_HOY))
 
   const [cargando, setCargando] = useState(true)
   const [sincronizando, setSincronizando] = useState<string | null>(null)
+  // Se excluyen a proposito: tener un error rojo y un exito verde a la vez,
+  // diciendo cosas opuestas, es peor que no decir nada.
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
+  const avisaError = (m: string) => { setAviso(null); setError(m) }
+  const avisaBien  = (m: string) => { setError(null); setAviso(m) }
   const [ajustes, setAjustes] = useState(false)
   const [urlBorrador, setUrlBorrador] = useState('')
 
@@ -159,9 +166,14 @@ export default function Presupuesto() {
   useEffect(() => {
     if (!config?.pub_id) return
     let vivo = true
+    setHojasEstado('cargando')
     listaHojas(config.pub_id)
-      .then(h => { if (vivo) setHojas(h) })
-      .catch(e => { if (vivo) setError(`No se pudieron leer las pestañas: ${e.message}`) })
+      .then(h => { if (vivo) { setHojas(h); setHojasEstado('listas') } })
+      .catch(e => {
+        if (!vivo) return
+        setHojasEstado('error')
+        avisaError(`No se pudieron leer las pestañas de tu hoja: ${e.message}`)
+      })
     return () => { vivo = false }
   }, [config?.pub_id])
 
@@ -186,16 +198,25 @@ export default function Presupuesto() {
   }, [])
 
   const sincroniza = useCallback(async (todos: boolean) => {
-    if (!config) { setError('Falta configurar el enlace de la hoja.'); return }
+    if (!config) { avisaError('Falta configurar el enlace de tu hoja.'); return }
+    if (hojasEstado === 'cargando') {
+      avisaError('Todavía estoy leyendo las pestañas de tu hoja. Dame un segundo.')
+      return
+    }
     const candidatas = hojasDeMeses(hojas, ANIO_HOY)
-    if (!candidatas.length) { setError('Ninguna pestaña parece ser un mes.'); return }
+    if (!candidatas.length) {
+      avisaError(hojas.length
+        ? `Encontré ${hojas.length} pestañas pero ninguna se llama como un mes (Enero, Febrero…).`
+        : 'No encontré pestañas en tu hoja. Revisa que el enlace sea el de «Publicar en la web».')
+      return
+    }
 
     const objetivo = todos
       ? candidatas
       : [hojaDelMes(hojas, Math.floor(sel / 100), sel % 100)].filter(Boolean) as typeof candidatas
 
     if (!objetivo.length) {
-      setError(`No hay pestaña para ${MESES[(sel % 100) - 1]} ${Math.floor(sel / 100)}.`)
+      avisaError(`Tu hoja no tiene una pestaña de ${MESES[(sel % 100) - 1]} ${Math.floor(sel / 100)}.`)
       return
     }
 
@@ -208,15 +229,15 @@ export default function Presupuesto() {
       await supabase.from('presupuesto_config')
         .update({ ultima_sync: new Date().toISOString() }).eq('id', config.id)
       await cargar()
-      setAviso(objetivo.length === 1
+      avisaBien(objetivo.length === 1
         ? `${objetivo[0].nombre} actualizado.`
         : `${objetivo.length} meses actualizados.`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      avisaError(e instanceof Error ? e.message : String(e))
     } finally {
       setSincronizando(null)
     }
-  }, [config, hojas, sel, sincronizaHoja, cargar])
+  }, [config, hojas, hojasEstado, sel, sincronizaHoja, cargar])
 
   // Auto-sync del mes en curso: solo si esta activado y el dato ya no es de hoy.
   useEffect(() => {
@@ -409,12 +430,16 @@ export default function Presupuesto() {
               <option key={k} value={k}>{MESES[v.mes - 1]} {v.anio}</option>
             ))}
           </select>
-          <button onClick={() => sincroniza(false)} disabled={!!sincronizando} className="btn-primary">
+          <button onClick={() => sincroniza(false)}
+                  disabled={!!sincronizando || hojasEstado === 'cargando'} className="btn-primary">
             {sincronizando
               ? <><Loader2 size={14} className="animate-spin" /> {sincronizando}…</>
+              : hojasEstado === 'cargando'
+              ? <><Loader2 size={14} className="animate-spin" /> Leyendo tu hoja…</>
               : <><RefreshCw size={14} /> Actualizar mes</>}
           </button>
-          <button onClick={() => sincroniza(true)} disabled={!!sincronizando} className="btn-secondary">
+          <button onClick={() => sincroniza(true)}
+                  disabled={!!sincronizando || hojasEstado === 'cargando'} className="btn-secondary">
             <Download size={14} /> Todos
           </button>
           <button onClick={() => setAjustes(a => !a)} className="btn-secondary">
@@ -423,11 +448,24 @@ export default function Presupuesto() {
         </div>
       </div>
 
-      {error && <AvisoError mensaje={error} onReintentar={() => { setError(null); cargar() }} />}
-      {aviso && (
+      {/* Uno u otro, nunca los dos: antes convivian un error y un exito
+          contradiciendose, y no habia forma de saber cual era el estado real. */}
+      {error && (
+        <div className="card flex items-start gap-3 py-3"
+             style={{ borderColor: 'var(--red)', background: 'var(--red-soft)' }}>
+          <AlertTriangle size={16} style={{ color: 'var(--red)' }} className="mt-0.5 flex-shrink-0" />
+          <p className="text-sm flex-1 min-w-0 break-words" style={{ color: 'var(--red)' }}>{error}</p>
+          <button className="btn-secondary text-xs flex-shrink-0"
+                  onClick={() => { setError(null); cargar() }}>Reintentar</button>
+          <button className="btn-secondary text-xs flex-shrink-0"
+                  onClick={() => setError(null)}>Cerrar</button>
+        </div>
+      )}
+      {!error && aviso && (
         <div className="card flex items-center gap-2 py-3">
           <CheckCircle2 size={15} style={{ color: 'var(--green)' }} />
-          <p className="text-sm text-body">{aviso}</p>
+          <p className="text-sm text-body flex-1">{aviso}</p>
+          <button className="btn-secondary text-xs" onClick={() => setAviso(null)}>Cerrar</button>
         </div>
       )}
 
