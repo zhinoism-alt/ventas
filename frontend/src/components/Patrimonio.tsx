@@ -366,6 +366,7 @@ export function Patrimonio() {
         costoAnualObservado: num(perfil.ppr_costo_anual_udi),
         factores: (perfil.ppr_factores ?? '').split(',').map(f => num(f)).filter(f => f > 0),
         udi,
+        inflacionEsperada: num(perfil.inflacion_esperada),
       }} />
 
       <Horizonte p={{

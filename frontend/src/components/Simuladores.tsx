@@ -40,7 +40,26 @@ export interface ParamsPPR {
   costoAnualObservado: number
   factores: number[]
   udi: number
+  inflacionEsperada: number   // para convertir UDI a pesos nominales del futuro
 }
+
+/**
+ * Escenarios de cuanto del cargo actual es comision de adquisicion.
+ *
+ * Existe porque el cargo observado (2.87 por millar) es entre 28 y 57 veces
+ * la mortalidad esperada de un hombre de 29 anios no fumador. Ese exceso es
+ * comision amortizada, que se extingue, no mortalidad, que crece. La
+ * diferencia cambia el resultado por completo, y el dato exacto solo lo
+ * tiene la aseguradora. Mientras no este, se elige entre tres supuestos.
+ */
+const ESCENARIOS = [
+  { id: 'conservador', nombre: 'Conservador', pct: 30, anios: 5,
+    desc: 'Casi todo el cargo es mortalidad y crecera con tu edad.' },
+  { id: 'probable', nombre: 'Probable', pct: 70, anios: 10,
+    desc: 'Lo tipico: la comision domina los primeros anios y luego se extingue.' },
+  { id: 'optimista', nombre: 'Optimista', pct: 85, anios: 7,
+    desc: 'La comision se amortiza rapido y queda poco costo de mortalidad.' },
+] as const
 
 interface Palancas {
   rendimiento: number      // % anual, en UDI (real)
@@ -107,7 +126,20 @@ export function SimuladorPPR({ p }: { p: ParamsPPR }) {
     aniosAdquisicion: 10,
     costoTrasPagos: false,
   })
+  const [escenario, setEscenario] = useState<string>('probable')
+  const [avanzado, setAvanzado] = useState(false)
   const set = (k: keyof Palancas, v: number | boolean) => setL({ ...l, [k]: v })
+  const aplicaEscenario = (id: string) => {
+    const e = ESCENARIOS.find(x => x.id === id)
+    if (!e) return
+    setEscenario(id)
+    setL({ ...l, pctAdquisicion: e.pct, aniosAdquisicion: e.anios })
+  }
+
+  // Valor del UDI dentro de N anios, para leer el saldo en pesos de ese momento.
+  const udiEn = (aniosAdelante: number) =>
+    p.udi * (1 + p.inflacionEsperada / 100) ** Math.max(0, aniosAdelante)
+  const aniosA = (anioPoliza: number) => anioPoliza - p.anioActual
 
   const sim = simulaPPR(p, l)
   const sinExtra = simulaPPR(p, { ...l, extraMensual: 0 })
@@ -132,12 +164,45 @@ export function SimuladorPPR({ p }: { p: ParamsPPR }) {
         <Campo label="Aportación extra" sufijo="UDI/mes" valor={l.extraMensual} paso={50}
                onChange={v => set('extraMensual', v)}
                ayuda={`1 UDI ≈ ${mxn(p.udi)}. Se suma a la prima planeada.`} />
-        <Campo label="Del cargo, es adquisición" sufijo="%" valor={l.pctAdquisicion} paso={5}
-               onChange={v => set('pctAdquisicion', Math.min(100, Math.max(0, v)))}
-               ayuda="La comisión amortizada. Se extingue; no crece con la edad." />
-        <Campo label="Adquisición corre hasta el año" valor={l.aniosAdquisicion} paso={1}
-               onChange={v => set('aniosAdquisicion', v)}
-               ayuda="Después de ese año solo queda el costo de mortalidad." />
+      </div>
+
+      <div className="rounded-xl p-3 mb-5" style={{ background: 'var(--surface-2)' }}>
+        <p className="text-xs text-muted mb-1">
+          Que parte de tu cargo mensual es comision del asesor
+        </p>
+        <p className="text-xs text-dim mb-3 max-w-2xl">
+          Pagas 232 UDI al mes de &quot;costo del seguro&quot;. Eso son 2.87 por millar: entre
+          28 y 57 veces la mortalidad real de un hombre de 29 anos no fumador. El exceso es
+          comision, que <strong className="text-body">se extingue</strong>; la mortalidad{' '}
+          <strong className="text-body">crece</strong> con la edad. Cuanto es cada cosa cambia
+          todo el resultado, y ese dato solo lo tiene tu aseguradora. Mientras tanto, elige.
+        </p>
+        <div className="flex gap-2 flex-wrap mb-2">
+          {ESCENARIOS.map(e => (
+            <button key={e.id} onClick={() => aplicaEscenario(e.id)}
+              className="btn-secondary text-xs"
+              style={escenario === e.id
+                ? { borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--accent-soft)' }
+                : undefined}>
+              {e.nombre}
+            </button>
+          ))}
+          <button onClick={() => setAvanzado(!avanzado)} className="btn-secondary text-xs">
+            {avanzado ? 'Ocultar' : 'Ajustar a mano'}
+          </button>
+        </div>
+        <p className="text-xs text-dim">
+          {ESCENARIOS.find(e => e.id === escenario)?.desc}{' '}
+          Comision: {l.pctAdquisicion}% del cargo, hasta el ano {l.aniosAdquisicion}.
+        </p>
+        {avanzado && (
+          <div className="grid md:grid-cols-2 gap-3 mt-3">
+            <Campo label="Del cargo, es comision" sufijo="%" valor={l.pctAdquisicion} paso={5}
+                   onChange={v => { setEscenario('manual'); set('pctAdquisicion', Math.min(100, Math.max(0, v))) }} />
+            <Campo label="La comision corre hasta el ano" valor={l.aniosAdquisicion} paso={1}
+                   onChange={v => { setEscenario('manual'); set('aniosAdquisicion', v) }} />
+          </div>
+        )}
       </div>
 
       <label className="flex items-center gap-2 text-sm text-body mb-5 cursor-pointer">
@@ -147,16 +212,50 @@ export function SimuladorPPR({ p }: { p: ParamsPPR }) {
         <span className="text-xs text-dim">(sin confirmar con la aseguradora)</span>
       </label>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Tile k={`Al pago ${p.aniosPago}`} v={udiFmt(sim.alUltimoPago)} sub={mxn(sim.alUltimoPago * p.udi)} />
-        <Tile k="A los 65" tono={sim.seAgota ? 'bad' : 'ok'}
-              v={sim.seAgota ? `se agota año ${sim.seAgota}` : udiFmt(sim.saldoFinal)}
-              sub={sim.seAgota ? 'con estos supuestos' : mxn(sim.saldoFinal * p.udi)} />
-        <Tile k="Habrás aportado" v={udiFmt(sim.aportadoTotal)} sub={mxn(sim.aportadoTotal * p.udi)} tono="warn" />
-        <Tile k="Saldo ÷ aportado"
-              v={sim.aportadoTotal ? `${(sim.saldoFinal / sim.aportadoTotal).toFixed(2)}×` : '—'}
-              sub="cuánto recuperas por cada UDI" />
+      <div className="scroll-x mb-4">
+        <table className="w-full text-sm" style={{ minWidth: 560 }}>
+          <thead>
+            <tr className="text-dim text-xs">
+              <th className="text-left font-medium pb-2">Momento</th>
+              <th className="text-right font-medium pb-2">En UDI</th>
+              <th className="text-right font-medium pb-2">Pesos de hoy</th>
+              <th className="text-right font-medium pb-2">Pesos de ese ano</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono">
+            {[
+              { k: `Al pago ${p.aniosPago}`, udis: sim.alUltimoPago, anio: p.aniosPago, tono: 'var(--text)' },
+              { k: 'A los 65',               udis: sim.saldoFinal,   anio: p.aniosTotal, tono: 'var(--green)' },
+              { k: 'Habras aportado',        udis: sim.aportadoTotal, anio: p.aniosPago, tono: 'var(--yellow)' },
+            ].map(f => (
+              <tr key={f.k} style={{ borderTop: '1px solid var(--border)' }}>
+                <td className="py-2 text-body">{f.k}</td>
+                <td className="py-2 text-right font-semibold" style={{ color: f.tono }}>{udiFmt(f.udis)}</td>
+                <td className="py-2 text-right text-dim">{mxn(f.udis * p.udi)}</td>
+                <td className="py-2 text-right text-strong">{mxn(f.udis * udiEn(aniosA(f.anio)))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        <Tile k="Saldo / aportado"
+              v={sim.aportadoTotal ? `${(sim.saldoFinal / sim.aportadoTotal).toFixed(2)}x` : '-'}
+              sub="por cada UDI que pusiste"
+              tono={sim.saldoFinal > sim.aportadoTotal ? 'ok' : 'warn'} />
+        <Tile k="El UDI a los 65" v={udiEn(aniosA(p.aniosTotal)).toFixed(2)}
+              sub={`hoy ${p.udi.toFixed(4)}, creciendo ${p.inflacionEsperada}% al ano`} />
+        <Tile k="Cobertura por fallecimiento" v={mxn(p.sumaAseguradaUdi * p.udi)}
+              sub="en pesos de hoy, mientras vivas" />
+      </div>
+
+      <p className="text-xs text-dim mb-4 max-w-2xl">
+        <strong className="text-body">Pesos de hoy</strong> responde que compraria ese saldo si
+        lo tuvieras ahora. <strong className="text-body">Pesos de ese ano</strong> es la cifra
+        que dira el estado de cuenta. Las dos son correctas; la de UDI es la unica que no
+        depende del escenario de inflacion.
+      </p>
 
       {sim.tocaTecho && (
         <div className="rounded-lg p-3 mb-4 flex items-start gap-2" style={{ background: 'var(--yellow-soft)' }}>
