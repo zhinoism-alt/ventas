@@ -4,11 +4,21 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const cron = require('node-cron');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
 const { getDb } = require('./database');
 const requireAuth = require('./middleware/requireAuth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// ─── Servir frontend buildeado (si existe) ────────────────────────────────────
+const FRONTEND_DIST = path.join(__dirname, '..', 'frontend', 'dist');
+const SERVE_STATIC = fs.existsSync(FRONTEND_DIST);
+if (SERVE_STATIC) {
+  app.use(express.static(FRONTEND_DIST));
+  console.log(`[Static] Sirviendo frontend desde ${FRONTEND_DIST}`);
+}
 
 app.use(cors({
   origin: true,
@@ -19,6 +29,18 @@ app.use(cookieParser());
 
 // ─── Rutas publicas ───────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
+
+// ─── SPA fallback: rutas no-API sirven index.html (ANTES de requireAuth) ─────
+// Esto permite que /login, /inventario, etc. carguen el React app sin auth
+if (SERVE_STATIC) {
+  app.get('*', (req, res, next) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+    } else {
+      next();
+    }
+  });
+}
 
 // ─── Rutas protegidas (requieren sesion activa) ───────────────────────────────
 app.use(requireAuth);
@@ -73,8 +95,10 @@ cron.schedule('0 8 * * *', () => {
   }
 });
 
+
 app.listen(PORT, () => {
   console.log(`\nServidor corriendo en http://localhost:${PORT}`);
   console.log(`Base de datos: backend/data/ventas.db`);
+  if (SERVE_STATIC) console.log(`Frontend: http://localhost:${PORT} (build estatico)`);
   getDb();
 });

@@ -2,10 +2,13 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const DATA_DIR = path.join(__dirname, 'data');
+// En Fly.io usamos /data (volumen persistente); localmente backend/data/
+const DATA_DIR = process.env.DB_PATH
+  ? path.dirname(process.env.DB_PATH)
+  : path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true }); // no-op if already exists
 
-const DB_PATH = path.join(DATA_DIR, 'ventas.db');
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'ventas.db');
 
 let db;
 
@@ -109,6 +112,21 @@ function initializeDb() {
     );
 
     INSERT OR IGNORE INTO exchange_rates (id, usd_to_mxn) VALUES (1, 17.5);
+
+    CREATE TABLE IF NOT EXISTS wa_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      direction TEXT DEFAULT 'in',
+      body TEXT DEFAULT '',
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS wa_config (
+      key TEXT PRIMARY KEY,
+      value TEXT DEFAULT ''
+    );
+
+    INSERT OR IGNORE INTO wa_config (key, value) VALUES ('auto_reply_enabled', '0');
   `);
 }
 

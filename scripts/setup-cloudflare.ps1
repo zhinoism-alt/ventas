@@ -29,7 +29,7 @@ Write-Host "     Presiona ENTER cuando termines de autorizar en el navegador..."
 cloudflared tunnel login
 Read-Host
 
-# 3. Crear tunel
+# 3. Crear tunel (o reutilizar si ya existe)
 Write-Host ""
 Write-Host "[3/5] Creando tunel 'ventaspro'..." -ForegroundColor Yellow
 $output = cloudflared tunnel create ventaspro 2>&1
@@ -38,36 +38,44 @@ Write-Host $output
 # Extraer tunnel ID
 $tunnelId = ($output | Select-String -Pattern "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").Matches[0].Value
 if (-not $tunnelId) {
-    # Puede que ya exista, obtenerlo
     $listOutput = cloudflared tunnel list 2>&1
     $tunnelId = ($listOutput | Select-String -Pattern "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").Matches[0].Value
 }
 Write-Host "     Tunnel ID: $tunnelId" -ForegroundColor Green
 
-# 4. Crear config.yml
+# 4. Crear config.yml con rutas para frontend Y backend
 Write-Host ""
 Write-Host "[4/5] Creando archivo de configuracion..." -ForegroundColor Yellow
 $cfDir = "$env:USERPROFILE\.cloudflared"
 $credFile = "$cfDir\$tunnelId.json"
+
+# NOTA: El frontend (Vite) ya hace proxy de /api al backend,
+# por lo que solo necesitamos exponer el frontend.
+# Si quieres acceso directo al backend: api.zhinoism.online -> localhost:3001
 $configContent = @"
 tunnel: $tunnelId
 credentials-file: $credFile
 
 ingress:
+  # Frontend + proxy de API (todo por el mismo tunel)
   - hostname: zhinoism.online
     service: http://localhost:5173
   - hostname: www.zhinoism.online
     service: http://localhost:5173
+  # Backend directo (opcional, para acceso sin frontend)
+  - hostname: api.zhinoism.online
+    service: http://localhost:3001
   - service: http_status:404
 "@
 $configContent | Out-File -FilePath "$cfDir\config.yml" -Encoding UTF8
 Write-Host "     Config guardada en $cfDir\config.yml" -ForegroundColor Green
 
-# Crear DNS
+# 5. Crear registros DNS en Cloudflare
 Write-Host ""
 Write-Host "[5/5] Creando registros DNS en Cloudflare..." -ForegroundColor Yellow
 cloudflared tunnel route dns ventaspro zhinoism.online
 cloudflared tunnel route dns ventaspro www.zhinoism.online
+cloudflared tunnel route dns ventaspro api.zhinoism.online
 Write-Host "     DNS configurado." -ForegroundColor Green
 
 # Instalar como servicio Windows
@@ -82,8 +90,9 @@ Write-Host "============================================" -ForegroundColor Green
 Write-Host "  CONFIGURACION COMPLETADA" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Tunnel ID : $tunnelId" -ForegroundColor White
-Write-Host "  URL       : https://zhinoism.online" -ForegroundColor White
+Write-Host "  Tunnel ID   : $tunnelId" -ForegroundColor White
+Write-Host "  Frontend    : https://zhinoism.online" -ForegroundColor White
+Write-Host "  Backend API : https://api.zhinoism.online" -ForegroundColor White
 Write-Host ""
 Write-Host "  Ahora ejecuta: start-ventaspro.bat" -ForegroundColor Cyan
 Write-Host ""

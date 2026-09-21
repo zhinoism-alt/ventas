@@ -1,0 +1,29 @@
+# Node modules (se instalan dentro del container)
+node_modules
+backend/node_modules
+frontend/node_modules
+
+# Build del frontend local (se genera dentro del container)
+frontend/dist
+
+# Base de datos local
+backend/data/
+
+# Archivos de entorno locales
+backend/.env
+.env
+
+# Git
+.git
+.gitignore
+
+# Scripts de Windows
+scripts/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

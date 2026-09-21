@@ -1,0 +1,38 @@
+# fly.toml — Brandon Dashboard
+# Región: dfw (Dallas) — más cercana a Ciudad Juárez
+
+app = 'brandon-dashboard'
+primary_region = 'dfw'
+
+[build]
+
+# Variables de entorno (no sensibles)
+[env]
+  PORT = '3001'
+  NODE_ENV = 'production'
+  DB_PATH = '/data/ventas.db'
+
+# Servicio HTTP
+[http_service]
+  internal_port = 3001
+  force_https = false
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [http_service.concurrency]
+    type = 'requests'
+    soft_limit = 200
+    hard_limit = 250
+
+# Volumen persistente para la base de datos SQLite
+[[mounts]]
+  source   = 'ventas_data'
+  destination = '/data'
+
+# Recursos de la máquina (tier gratuito)
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1

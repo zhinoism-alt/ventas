@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Brandon & Itzel 2026</title>
+<style>
+:root {
+  --salud: #10b981; --salud-d: #059669;
+  --metas: #6366f1; --metas-d: #4f46e5;
+  --finanzas: #f59e0b; --finanzas-d: #d97706;
+  --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+  --text: #f1f5f9; --text2: #94a3b8; --border: #334155;
+  --red: #ef4444; --green: #10b981; --yellow: #f59e0b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* HEADER */
+.site-header { background: linear-gradient(135deg,#1a1a2e,#16213e,#0f3460); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #1e3a5f; }
+.site-title { font-size: 1.3rem; font-weight: 700; color: #fff; }
+.site-title span { color: #60a5fa; }
+.header-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+.hstat { text-align: center; }
+.hstat-val { font-size: 1.1rem; font-weight: 700; color: #60a5fa; }
+.hstat-lbl { font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; }
+
+/* SECTION NAV */
+.sec-nav { display: flex; background: #0f172a; border-bottom: 2px solid var(--border); overflow-x: auto; }
+.sec-btn { flex: 1; min-width: 120px; padding: 14px 10px; border: none; background: none; color: var(--text2); font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all .2s; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.sec-btn:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.sec-btn.active-salud { color: var(--salud); border-bottom-color: var(--salud); }
+.sec-btn.active-metas { color: var(--metas); border-bottom-color: var(--metas); }
+.sec-btn.active-finanzas { color: var(--finanzas); border-bottom-color: var(--finanzas); }
+
+/* SUB-TAB NAV */
+.sub-nav { display: flex; gap: 4px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; flex-wrap: nowrap; }
+.sub-btn { padding: 6px 14px; border: 1px solid var(--border); background: none; color: var(--text2); border-radius: 20px; font-size: 0.82rem; cursor: pointer; white-space: nowrap; transition: all .2s; }
+.sub-btn.on { color: #fff; border-color: currentColor; }
+.sub-btn.on-salud { background: var(--salud); border-color: var(--salud); color: #fff; }
+.sub-btn.on-metas { background: var(--metas); border-color: var(--metas); color: #fff; }
+.sub-btn.on-finanzas { background: var(--finanzas); border-color: var(--finanzas); color: #fff; }
+
+/* SECTIONS */
+.section { display: none; }
+.section.active { display: block; }
+.sub-panel { display: none; padding: 20px 16px; max-width: 960px; margin: 0 auto; }
+.sub-panel.active { display: block; }
+
+/* CARDS */
+.card { background: var(--surface); border-radius: 12px; padding: 16px; margin-bottom: 14px; border: 1px solid var(--border); }
+.card-title { font-size: 0.85rem; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media(max-width:600px){ .grid2,.grid3{ grid-template-columns:1fr; } }
+
+/* STAT BOXES */
+.stat-box { background: var(--surface2); border-radius: 10px; padding: 12px; text-align: center; }
+.stat-val { font-size: 1.5rem; font-weight: 700; }
+.stat-lbl { font-size: 0.72rem; color: var(--text2); margin-top: 2px; }
+.stat-sub { font-size: 0.8rem; color: var(--text2); }
+
+/* PROGRESS BAR */
+.prog-wrap { background: var(--surface2); border-radius: 8px; height: 12px; overflow: hidden; margin: 6px 0; }
+.prog-fill { height: 100%; border-radius: 8px; transition: width .5s; }
+
+/* BUTTONS */
+.btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all .2s; }
+.btn-green { background: var(--salud); color: #fff; }
+.btn-blue { background: #3b82f6; color: #fff; }
+.btn-yellow { background: var(--finanzas); color: #fff; }
+.btn-purple { background: var(--metas); color: #fff; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn:hover { opacity: .85; transform: translateY(-1px); }
+
+/* FORM INPUTS */
+input, textarea, select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 0.9rem; width: 100%; margin-bottom: 8px; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: #60a5fa; }
+label { font-size: 0.8rem; color: var(--text2); margin-bottom: 3px; display: block; }
+
+/* TAGS */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; margin: 2px; }
+.tag-red { background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+.tag-green { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
+.tag-yellow { background: rgba(245,158,11,.15); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); }
+.tag-blue { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+.tag-purple { background: rgba(99,102,241,.15); color: #a78bfa; border: 1px solid rgba(99,102,241,.3); }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: 16px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border); }
+.modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 14px; }
+.modal-close { float: right; background: none; border: none; color: var(--text2); font-size: 1.3rem; cursor: pointer; }
+
+/* ROT BUTTONS (schedule/week toggles) */
+.rot-btn { padding: 7px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text2); cursor: pointer; font-size: 0.82rem; transition: all .2s; }
+.rot-btn.on { background: var(--salud); border-color: var(--salud); color: #fff; }
+
+/* WATER TRACKER */
+.water-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+.water-btn { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #3b82f6; background: none; font-size: 1.3rem; cursor: pointer; transition: all .2s; }
+.water-btn.filled { background: #3b82f6; }
+
+/* EXERCISE CARDS */
+.ex-card { background: var(--surface2); border-radius: 10px; padding: 14px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start; }
+.ex-icon { font-size: 2rem; min-width: 44px; text-align: center; }
+.ex-info h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+.ex-info p { font-size: 0.8rem; color: var(--text2); margin-bottom: 6px; }
+.ex-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.yt-link { display: inline-flex; align-items: center; gap: 4px; color: #f87171; font-size: 0.78rem; text-decoration: none; padding: 3px 8px; border: 1px solid rgba(239,68,68,.3); border-radius: 6px; margin-top: 5px; }
+.yt-link:hover { background: rgba(239,68,68,.1); }
+
+/* GROCERY LIST */
+.grocery-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.grocery-item:last-child { border-bottom: none; }
+.grocery-item input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--salud); flex-shrink: 0; }
+.grocery-name { flex: 1; font-size: 0.88rem; }
+.grocery-price { font-size: 0.82rem; color: #fbbf24; font-weight: 600; white-space: nowrap; }
+
+/* CALENDAR */
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+.cal-day-hdr { text-align: center; font-size: 0.72rem; color: var(--text2); padding: 4px; font-weight: 600; }
+.cal-day { min-height: 54px; background: var(--surface2); border-radius: 6px; padding: 4px; font-size: 0.75rem; cursor: pointer; transition: background .2s; position: relative; }
+.cal-day:hover { background: #3b4a60; }
+.cal-day.today { border: 2px solid var(--salud); }
+.cal-day.other-month { opacity: .35; }
+.cal-day-num { font-weight: 600; margin-bottom: 2px; }
+.cal-event-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin: 1px; }
+
+/* GOAL CARDS */
+.goal-card { background: var(--surface2); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 4px solid var(--metas); }
+.goal-title { font-weight: 600; margin-bottom: 4px; }
+.goal-steps { margin-top: 8px; padding-left: 16px; }
+.goal-steps li { font-size: 0.82rem; color: var(--text2); margin-bottom: 3px; }
+
+/* FINANCE */
+.fin-month-card { background: var(--surface2); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.fin-month-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.fin-metric { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 8px; }
+.fin-num { font-size: 1.1rem; font-weight: 700; }
+.fin-lbl { font-size: 0.7rem; color: var(--text2); }
+.alert-item { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); border-radius: 6px; padding: 7px 10px; margin-bottom: 5px; font-size: 0.8rem; color: #f87171; }
+.alert-warn { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.2); color: #fbbf24; }
+.alert-good { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.2); color: #34d399; }
+
+/* CANVAS */
+canvas { width: 100% !important; border-radius: 8px; }
+
+/* FLOATING BUTTON */
+.float-btn { position: fixed; bottom: 20px; right: 20px; background: var(--red); color: #fff; border: none; border-radius: 50px; padding: 12px 18px; font-size: 0.85rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 20px rgba(239,68,68,.4); z-index: 500; transition: all .2s; }
+.float-btn:hover { transform: scale(1.05); }
+
+/* COPY BTN */
+.copy-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; }
+.copy-btn:hover { color: var(--text); }
+.prompt-box { background: #0f172a; border-radius: 8px; padding: 12px; font-size: 0.82rem; line-height: 1.5; color: #cbd5e1; white-space: pre-wrap; margin: 6px 0; }
+
+/* TABS IN THERAPY */
+.apt-row { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- FLOATING RECOVERY BUTTON -->
+<button class="float-btn" onclick="openModal('modalRecovery')">🆘 Hoy fallamos</button>
+
+<!-- RECOVERY MODAL -->
+<div class="modal-overlay" id="modalRecovery">
+<div class="modal">
+  <button class="modal-close" onclick="closeModal('modalRecovery')">✕</button>
+  <div class="modal-title">🆘 Plan de Recuperación</div>
+  <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px">¿Qué pasó hoy? Elige tu situación:</p>
+  <div id="recov-scenarios">
+    <div class="sub-btn" style="display:block;margin-bottom:8px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--border)" onclick="showRecov(0)">🍽️ Comimos en restaurante</div>
+    <div class="sub-btn" style="display:block;margin-bottom:8px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--border)" onclick="showRecov(1)">🍕 Comimos de más (buffet/fiesta)</div>
+    <div class="sub-btn" style="display:block;margin-bottom:8px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--border)" onclick="showRecov(2)">🛋️ No hicimos ejercicio</div>
+    <div class="sub-btn" style="display:block;margin-bottom:8px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--border)" onclick="showRecov(3)">🍫 Tuve antojos fuertes</div>
+    <div class="sub-btn" style="display:block;margin-bottom:8px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--border)" onclick="showRecov(4)">🌙 Comí muy tarde</div>
+    <div class="sub-btn" style="display:block;margin-bottom:8px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--border)" onclick="showRecov(5)">💥 Día completo fuera del plan</div>
+  </div>
+  <div id="recov-detail" style="display:none"></div>
+</div>
+</div>
+
+<!-- ADD EVENT MODAL -->
+<div class="modal-overlay" id="modalEvent">
+<div class="modal">
+  <button class="modal-close" onclick="closeModal('modalEvent')">✕</button>
+  <div class="modal-title">📅 Agregar Evento</div>
+  <label>Título</label><input id="ev-title" placeholder="Ej: Cita terapia">
+  <label>Fecha</label><input type="date" id="ev-date">
+  <label>Tipo</label>
+  <select id="ev-type">
+    <option value="salud">💪 Salud</option>
+    <option value="fin">💰 Finanzas</option>
+    <option value="meta">🎯 Meta</option>
+    <option value="terapia">💬 Terapia</option>
+    <option value="otro">📌 Otro</option>
+  </select>
+  <label>Nota (opcional)</label><textarea id="ev-note" rows="2"></textarea>
+  <button class="btn btn-purple" style="width:100%;margin-top:4px" onclick="saveEvent()">Guardar</button>
+</div>
+</div>
+
+<!-- ADD GOAL MODAL -->
+<div class="modal-overlay" id="modalGoal">
+<div class="modal">
+  <button class="modal-close" onclick="closeModal('modalGoal')">✕</button>
+  <div class="modal-title">🎯 Nueva Meta</div>
+  <label>Título de la meta</label><input id="goal-title" placeholder="Ej: Aprender inglés B2">
+  <label>Categoría</label>
+  <select id="goal-cat">
+    <option value="reloc">🗺️ Reubicación</option>
+    <option value="fin">💰 Finanzas</option>
+    <option value="salud">💪 Salud</option>
+    <option value="pers">🧠 Personal</option>
+  </select>
+  <label>Fecha objetivo</label><input type="date" id="goal-date">
+  <label>Pasos (separados por coma)</label><textarea id="goal-steps" rows="3" placeholder="Buscar cursos, inscribirse, practicar 30 min/día"></textarea>
+  <button class="btn btn-purple" style="width:100%;margin-top:4px" onclick="saveGoal()">Guardar Meta</button>
+</div>
+</div>
+
+<!-- ADD MONTH MODAL -->
+<div class="modal-overlay" id="modalMonth">
+<div class="modal">
+  <button class="modal-close" onclick="closeModal('modalMonth')">✕</button>
+  <div class="modal-title">📊 Agregar Mes</div>
+  <label>Mes</label><input id="m-mes" placeholder="Ej: Mayo 2026">
+  <label>Ingresos totales ($MXN)</label><input type="number" id="m-ing" placeholder="0">
+  <label>Gastos totales ($MXN)</label><input type="number" id="m-gas" placeholder="0">
+  <label>Necesidades (50%)</label><input type="number" id="m-nec" placeholder="0">
+  <label>Deseos (30%)</label><input type="number" id="m-des" placeholder="0">
+  <label>Ahorro/Inversión (20%)</label><input type="number" id="m-aho" placeholder="0">
+  <label>Alertas (separadas por |)</label><textarea id="m-alert" rows="2" placeholder="Alerta 1 | Alerta 2"></textarea>
+  <button class="btn btn-yellow" style="width:100%;margin-top:4px" onclick="saveMonth()">Guardar Mes</button>
+</div>
+</div>
+
+<!-- ADD TRANSACTION MODAL -->
+<div class="modal-overlay" id="modalTxn">
+<div class="modal">
+  <button class="modal-close" onclick="closeModal('modalTxn')">✕</button>
+  <div class="modal-title">💳 <span id="txn-modal-title">Nueva Transacción</span></div>
+  <input type="hidden" id="txn-edit-id">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div><label>Fecha</label><input type="date" id="txn-fecha"></div>
+    <div><label>Mes</label>
+      <select id="txn-mes">
+        <option value="Enero 2026">Enero 2026</option>
+        <option value="Febrero 2026">Febrero 2026</option>
+        <option value="Marzo 2026">Marzo 2026</option>
+      </select>
+    </div>
+  </div>
+  <label>Descripción</label><input id="txn-desc" placeholder="Ej: Gasolina">
+  <label>Categoría</label>
+  <input id="txn-cat" placeholder="Ej: Transporte" list="cat-list">
+  <datalist id="cat-list">
+    <option value="Salario"><option value="Transporte"><option value="Comida"><option value="Snacks">
+    <option value="Regalos"><option value="Ahorro"><option value="Inversión"><option value="Salud">
+    <option value="Entretenimiento"><option value="Recibos"><option value="Reparaciones"><option value="Seguros">
+    <option value="Colegio"><option value="Ropa"><option value="Comida Rápida"><option value="Otros Necesarios">
+    <option value="Otros No Necesarios"><option value="Freelance"><option value="Comisiones"><option value="Reembolso">
+    <option value="Educación"><option value="Eventos o Conciertos"><option value="Ganancia Extraordinaria"><option value="Préstamos">
+  </datalist>
+  <label>Tipo</label>
+  <select id="txn-tipo">
+    <option value="Gasto">Gasto</option>
+    <option value="Ingreso">Ingreso</option>
+  </select>
+  <label>Monto ($MXN)</label>
+  <input type="number" id="txn-monto" placeholder="0.00" step="0.01">
+  <button class="btn btn-yellow" style="width:100%;margin-top:4px" onclick="saveTxn()">💾 Guardar</button>
+</div>
+</div>
+
+<!-- SITE HEADER -->
+<div class="site-header">
+  <div class="site-title">💑 Brandon <span>&</span> Itzel — Dashboard 2026</div>
+  <div class="header-stats">
+    <div class="hstat"><div class="hstat-val" id="hdr-bpeso">119.4 kg</div><div class="hstat-lbl">Brandon</div></div>
+    <div class="hstat"><div class="hstat-val" id="hdr-ipeso">117.5 kg</div><div class="hstat-lbl">Itzel</div></div>
+    <div class="hstat"><div class="hstat-val" id="hdr-dias">1</div><div class="hstat-lbl">Día del plan</div></div>
+    <div class="hstat"><div class="hstat-val" id="hdr-streak">0🔥</div><div class="hstat-lbl">Racha</div></div>
+  </div>
+</div>
+
+<!-- SECTION NAV -->
+<div class="sec-nav">
+  <button class="sec-btn" id="secbtn-salud" onclick="showSection('salud')">💪 SALUD</button>
+  <button class="sec-btn" id="secbtn-metas" onclick="showSection('metas')">🗺️ METAS</button>
+  <button class="sec-btn" id="secbtn-finanzas" onclick="showSection('finanzas')">💰 FINANZAS</button>
+</div>
+
+<!-- ============ SECTION: SALUD ============ -->
+<div class="section" id="sec-salud">
+<div class="sub-nav">
+  <button class="sub-btn on-salud" id="sb-diag" onclick="showSub('salud','diag')">📊 Diagnóstico</button>
+  <button class="sub-btn" id="sb-hora" onclick="showSub('salud','hora')">🕐 Horarios</button>
+  <button class="sub-btn" id="sb-menu" onclick="showSub('salud','menu')">🍽️ Menú</button>
+  <button class="sub-btn" id="sb-sori" onclick="showSub('salud','sori')">🛒 Soriana</button>
+  <button class="sub-btn" id="sb-ejer" onclick="showSub('salud','ejer')">🏃 Ejercicio</button>
+  <button class="sub-btn" id="sb-bita" onclick="showSub('salud','bita')">📝 Bitácora</button>
+  <button class="sub-btn" id="sb-peso" onclick="showSub('salud','peso')">⚖️ Peso</button>
+  <button class="sub-btn" id="sb-asist" onclick="showSub('salud','asist')">🤖 Asistente</button>
+  <button class="sub-btn" id="sb-reglas" onclick="showSub('salud','reglas')">📋 Reglas</button>
+</div>
+
+<!-- DIAGNÓSTICO -->
+<div class="sub-panel active" id="sp-diag">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">📊 Diagnóstico Inicial</h2>
+  <div class="grid2">
+    <!-- Brandon -->
+    <div class="card" style="border-top:3px solid #3b82f6">
+      <div class="card-title">👨 Brandon, 29 años</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="stat-box"><div class="stat-val" style="color:#3b82f6" id="d-bpeso">119.4</div><div class="stat-lbl">Peso kg</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#f59e0b">35.7</div><div class="stat-lbl">IMC</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#ef4444">16</div><div class="stat-lbl">Grasa Visceral</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#10b981">2,065</div><div class="stat-lbl">TMB kcal</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#a78bfa">78.57</div><div class="stat-lbl">Masa Muscular kg</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#34d399">37</div><div class="stat-lbl">Edad Corporal</div></div>
+      </div>
+      <div class="card-title">Meta: 85 kg — Faltan <span style="color:#3b82f6">34.4 kg</span></div>
+      <div class="prog-wrap"><div class="prog-fill" style="background:#3b82f6;width:11.8%"></div></div>
+      <div style="font-size:.75rem;color:var(--text2);margin-top:3px">11.8% del camino · 1,900 kcal/día</div>
+      <div style="margin-top:8px">
+        <span class="tag tag-red">Sobrepeso Muscular</span>
+        <span class="tag tag-yellow">Grasa Visceral Alta</span>
+      </div>
+    </div>
+    <!-- Itzel -->
+    <div class="card" style="border-top:3px solid #ec4899">
+      <div class="card-title">👩 Itzel, 27 años</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="stat-box"><div class="stat-val" style="color:#ec4899" id="d-ipeso">117.5</div><div class="stat-lbl">Peso kg</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#f59e0b">~42</div><div class="stat-lbl">IMC est.</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#10b981">1,700</div><div class="stat-lbl">Kcal/día</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:#a78bfa">70</div><div class="stat-lbl">Meta kg</div></div>
+      </div>
+      <div class="card-title">Meta: 70 kg — Faltan <span style="color:#ec4899">47.5 kg</span></div>
+      <div class="prog-wrap"><div class="prog-fill" style="background:#ec4899;width:0%"></div></div>
+      <div style="font-size:.75rem;color:var(--text2);margin-top:3px">Inicio del plan · 1,700 kcal/día</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚠️ Alertas de Salud Prioritarias</div>
+    <div class="alert-item">🔴 Grasa visceral 16 (crítico >12) — riesgo metabólico elevado. Prioridad #1</div>
+    <div class="alert-item alert-warn">🟡 Edad corporal 37 vs real 29 — reducible con ejercicio y dieta</div>
+    <div class="alert-item alert-good">🟢 Masa muscular alta (78.57 kg) — ventaja metabólica, facilita pérdida de grasa</div>
+    <div class="alert-item alert-good">🟢 TMB 2,065 kcal — déficit de 165 kcal/día a 1,900 kcal es manejable y sostenible</div>
+  </div>
+  <div class="card">
+    <div class="card-title">📌 Regla de Oro del Plan</div>
+    <div style="font-size:1.1rem;font-weight:700;color:var(--salud);text-align:center;padding:12px">"Si fallamos hoy → retomamos MAÑANA, no el lunes"</div>
+    <div style="font-size:.85rem;color:var(--text2);text-align:center">Sostenibilidad > perfección. Progreso no lineal es normal.</div>
+  </div>
+</div>
+
+<!-- HORARIOS -->
+<div class="sub-panel" id="sp-hora">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">🕐 Horarios de Comida</h2>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="rot-btn on" onclick="showSched('of',this)">🏢 Oficina (Mar/Mié/Jue)</button>
+    <button class="rot-btn" onclick="showSched('ho',this)">🏠 Home Office (Lun/Vie)</button>
+    <button class="rot-btn" onclick="showSched('we',this)">🌅 Fin de Semana</button>
+  </div>
+
+  <div id="schedOf">
+    <div class="card" style="border-left:3px solid #3b82f6">
+      <div class="card-title">🏢 Días de Oficina (Mar/Mié/Jue)</div>
+      <div class="grid3">
+        <div class="stat-box">
+          <div style="font-size:1.4rem">☕</div>
+          <div class="stat-val" style="font-size:1.1rem">9:00 am</div>
+          <div class="stat-lbl">Almuerzo</div>
+          <div class="stat-sub">Empresa provee · Brandon</div>
+        </div>
+        <div class="stat-box">
+          <div style="font-size:1.4rem">🍽️</div>
+          <div class="stat-val" style="font-size:1.1rem">1:00 pm</div>
+          <div class="stat-lbl">Comida</div>
+          <div class="stat-sub">Empresa provee · Brandon</div>
+        </div>
+        <div class="stat-box">
+          <div style="font-size:1.4rem">🌙</div>
+          <div class="stat-val" style="font-size:1.1rem">6:00 pm</div>
+          <div class="stat-lbl">Cena</div>
+          <div class="stat-sub">Preparar en casa (ambos)</div>
+        </div>
+      </div>
+      <div class="alert-item alert-good" style="margin-top:10px">✅ Almuerzo y comida cubiertos por empresa. Solo preparar cena en casa.</div>
+      <div class="alert-item alert-warn">💪 Mejor horario gym: 6:30–7:30 am (antes de salir) o 7:00–8:00 pm (después de cenar)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Plan de Comidas — Día de Oficina</div>
+      <div style="font-size:.85rem;line-height:1.7">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)"><b style="color:#3b82f6">9:00 am</b> · Almuerzo empresa: elegir opción proteica, evitar frito</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)"><b style="color:#3b82f6">1:00 pm</b> · Comida empresa: plato balanceado, agua sin azúcar</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)"><b style="color:#3b82f6">3:30 pm</b> · Snack opcional: fruta o yogurt (traer de casa, ~150 kcal)</div>
+        <div style="padding:6px 0"><b style="color:#3b82f6">6:00 pm</b> · Cena ligera del menú semanal: sopa, ensalada o proteína simple</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="schedHo" style="display:none">
+    <div class="card" style="border-left:3px solid #10b981">
+      <div class="card-title">🏠 Home Office (Lun/Vie)</div>
+      <div class="grid3">
+        <div class="stat-box"><div style="font-size:1.4rem">☕</div><div class="stat-val" style="font-size:1.1rem">9:00 am</div><div class="stat-lbl">Almuerzo</div><div class="stat-sub">Preparar en casa</div></div>
+        <div class="stat-box"><div style="font-size:1.4rem">🍽️</div><div class="stat-val" style="font-size:1.1rem">1:00 pm</div><div class="stat-lbl">Comida</div><div class="stat-sub">Preparar en casa</div></div>
+        <div class="stat-box"><div style="font-size:1.4rem">🌙</div><div class="stat-val" style="font-size:1.1rem">6:00 pm</div><div class="stat-lbl">Cena</div><div class="stat-sub">Menú semanal</div></div>
+      </div>
+      <div class="alert-item alert-good" style="margin-top:10px">✅ Control total de los alimentos. Usar el menú semanal para las 3 comidas.</div>
+      <div class="alert-item alert-warn">💪 Gym ideal: 7:00–8:30 am (antes de empezar trabajo) o hora de comida 12–1pm</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Plan de Comidas — Home Office</div>
+      <div style="font-size:.85rem;line-height:1.7">
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)"><b style="color:#10b981">9:00 am</b> · Almuerzo del menú: avena, huevos, hotcakes de avena</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)"><b style="color:#10b981">11:30 am</b> · Snack: fruta o yogurt natural (~150 kcal)</div>
+        <div style="padding:6px 0;border-bottom:1px solid var(--border)"><b style="color:#10b981">1:00 pm</b> · Comida del menú: proteína + carbohidrato + verdura</div>
+        <div style="padding:6px 0"><b style="color:#10b981">6:00 pm</b> · Cena ligera: sopa, ensalada o proteína simple</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="schedWe" style="display:none">
+    <div class="card" style="border-left:3px solid #f59e0b">
+      <div class="card-title">🌅 Fin de Semana (Sáb/Dom)</div>
+      <div class="grid3">
+        <div class="stat-box"><div style="font-size:1.4rem">☀️</div><div class="stat-val" style="font-size:1.1rem">Flexible</div><div class="stat-lbl">Desayuno</div><div class="stat-sub">9–10 am aprox</div></div>
+        <div class="stat-box"><div style="font-size:1.4rem">🌮</div><div class="stat-val" style="font-size:1.1rem">Flexible</div><div class="stat-lbl">Comida</div><div class="stat-sub">1–3 pm · 1 libre/sem</div></div>
+        <div class="stat-box"><div style="font-size:1.4rem">🌙</div><div class="stat-val" style="font-size:1.1rem">7:00 pm</div><div class="stat-lbl">Cena</div><div class="stat-sub">Ligera siempre</div></div>
+      </div>
+      <div class="alert-item alert-warn" style="margin-top:10px">⚠️ Una comida libre permitida por semana (sábado o domingo). No un día completo libre.</div>
+      <div class="alert-item alert-good">✅ Domingo = prep de menú para la semana. Cocinar en lote ahorra tiempo y dinero.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:4px">
+    <div class="card-title">⏰ Recomendación Gym (Mes 2 en adelante)</div>
+    <div style="font-size:.85rem;color:var(--text2);line-height:1.6">
+      <b style="color:var(--salud)">Opción A (antes del trabajo):</b> 6:30–7:30 am · Ventaja: terminas el día con energía, no hay excusas<br>
+      <b style="color:#3b82f6">Opción B (después de cenar):</b> 7:00–8:00 pm · Ventaja: relajas el estrés del día<br>
+      <b style="color:#fbbf24">Semanas 1–4:</b> Ejercicio en casa primero. Sin gym hasta establecer el hábito.
+    </div>
+  </div>
+</div>
+
+<!-- MENÚ 4 SEMANAS -->
+<div class="sub-panel" id="sp-menu">
+  <h2 style="margin-bottom:10px;font-size:1.1rem">🍽️ Menú Semanal Rotativo</h2>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="rot-btn on" onclick="setWeek(1,this)">Semana 1</button>
+    <button class="rot-btn" onclick="setWeek(2,this)">Semana 2</button>
+    <button class="rot-btn" onclick="setWeek(3,this)">Semana 3</button>
+    <button class="rot-btn" onclick="setWeek(4,this)">Semana 4</button>
+  </div>
+  <div id="menu-display"></div>
+</div>
+
+<!-- SORIANA -->
+<div class="sub-panel" id="sp-sori">
+  <h2 style="margin-bottom:10px;font-size:1.1rem">🛒 Lista Soriana Juárez — $700 MXN/semana</h2>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <span style="font-size:.85rem;color:var(--text2)">Progreso de compra:</span>
+        <span id="grocery-pct" style="color:var(--salud);font-weight:700;margin-left:6px">0%</span>
+      </div>
+      <button class="btn btn-ghost" style="font-size:.75rem" onclick="clearGrocery()">↺ Reiniciar</button>
+    </div>
+    <div class="prog-wrap" style="height:10px;margin-bottom:14px"><div class="prog-fill" id="grocery-bar" style="background:var(--salud);width:0%"></div></div>
+    <div id="grocery-list"></div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+      <span style="font-size:.85rem;color:var(--text2)">Total estimado:</span>
+      <span style="font-weight:700;color:#fbbf24" id="grocery-total">$0 MXN</span>
+    </div>
+  </div>
+</div>
+
+<!-- EJERCICIO -->
+<div class="sub-panel" id="sp-ejer">
+  <h2 style="margin-bottom:10px;font-size:1.1rem">🏃 Rutina de Ejercicio (Semanas 1–4 en Casa)</h2>
+  <div class="card" style="background:rgba(16,185,129,.07);border-color:var(--salud)">
+    <div style="font-size:.85rem;color:var(--text2)">⏱️ 30–40 min por sesión · 4–5 veces por semana · Sin equipo</div>
+  </div>
+  <div id="exercise-list"></div>
+</div>
+
+<!-- BITÁCORA -->
+<div class="sub-panel" id="sp-bita">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">📝 Bitácora Diaria</h2>
+  <div class="card">
+    <div class="card-title">💧 Agua de hoy (8 vasos = 2L)</div>
+    <div class="water-grid" id="water-btns"></div>
+    <div style="font-size:.8rem;color:var(--text2);margin-top:8px" id="water-status">0 / 8 vasos</div>
+  </div>
+  <div class="card">
+    <div class="card-title">🍽️ Calorías del día</div>
+    <div class="grid2">
+      <div>
+        <div style="font-size:.85rem;font-weight:600;color:#3b82f6;margin-bottom:6px">👨 Brandon (meta: 1,900)</div>
+        <input type="number" id="kcal-b" placeholder="Kcal consumidas hoy">
+        <div id="kcal-b-status" style="font-size:.8rem;color:var(--text2)"></div>
+      </div>
+      <div>
+        <div style="font-size:.85rem;font-weight:600;color:#ec4899;margin-bottom:6px">👩 Itzel (meta: 1,700)</div>
+        <input type="number" id="kcal-i" placeholder="Kcal consumidas hoy">
+        <div id="kcal-i-status" style="font-size:.8rem;color:var(--text2)"></div>
+      </div>
+    </div>
+    <button class="btn btn-green" style="width:100%;margin-top:8px" onclick="logKcal()">Registrar</button>
+  </div>
+  <div class="card">
+    <div class="card-title">✏️ Nota del día</div>
+    <textarea id="nota-dia" rows="3" placeholder="¿Cómo te sentiste hoy? ¿Qué comiste? ¿Algo diferente?"></textarea>
+    <button class="btn btn-ghost" style="width:100%;margin-top:4px" onclick="saveNota()">💾 Guardar nota</button>
+    <div id="log-history" style="margin-top:12px;max-height:200px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- PESO -->
+<div class="sub-panel" id="sp-peso">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">⚖️ Seguimiento de Peso</h2>
+  <div class="card">
+    <div class="card-title">Registrar peso (lunes de cada semana)</div>
+    <div class="grid2">
+      <div>
+        <label>👨 Brandon (kg)</label>
+        <input type="number" id="pw-b" step="0.1" placeholder="Ej: 119.4">
+      </div>
+      <div>
+        <label>👩 Itzel (kg)</label>
+        <input type="number" id="pw-i" step="0.1" placeholder="Ej: 117.5">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-green" style="flex:1" onclick="addWeight()">📥 Registrar semana actual</button>
+      <button class="btn btn-ghost" onclick="clearWeights()">↺</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="color:#3b82f6">👨 Progreso Brandon — Meta: 85 kg</div>
+    <canvas id="chart-b" height="160"></canvas>
+    <div id="weight-stats-b" style="font-size:.82rem;color:var(--text2);margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="color:#ec4899">👩 Progreso Itzel — Meta: 70 kg</div>
+    <canvas id="chart-i" height="160"></canvas>
+    <div id="weight-stats-i" style="font-size:.82rem;color:var(--text2);margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- ASISTENTE -->
+<div class="sub-panel" id="sp-asist">
+  <h2 style="margin-bottom:10px;font-size:1.1rem">🤖 Prompts para Claude</h2>
+  <div class="alert-item alert-good" style="margin-bottom:14px">💡 Copia estos prompts en <a href="https://claude.ai" target="_blank" style="color:#60a5fa">claude.ai</a> para obtener ayuda personalizada</div>
+  <div id="prompts-list"></div>
+</div>
+
+<!-- REGLAS -->
+<div class="sub-panel" id="sp-reglas">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">📋 Reglas del Plan</h2>
+  <div class="card" style="border-left:4px solid var(--salud)">
+    <div class="card-title">✅ SÍ hacemos</div>
+    <div style="font-size:.85rem;line-height:1.8;color:var(--text2)">
+      ✅ Pesarnos cada lunes en la mañana en ayunas<br>
+      ✅ Agua: mínimo 2L (Brandon 2.5L) por día<br>
+      ✅ Comer las 3 comidas principales aunque sea poco<br>
+      ✅ Si salimos, elegir la opción más ligera disponible<br>
+      ✅ Preparar menú los domingos para la semana<br>
+      ✅ Registrar progreso en esta bitácora<br>
+      ✅ Celebrar cada kg perdido<br>
+      ✅ Apoyarse mutuamente sin juzgar
+    </div>
+  </div>
+  <div class="card" style="border-left:4px solid var(--red)">
+    <div class="card-title">❌ NO hacemos</div>
+    <div style="font-size:.85rem;line-height:1.8;color:var(--text2)">
+      ❌ Saltarnos comidas para "compensar"<br>
+      ❌ Dietas extremas o pasar hambre<br>
+      ❌ Castigarnos por un día malo<br>
+      ❌ Esperar el lunes para retomar<br>
+      ❌ Compararnos con otras personas<br>
+      ❌ Tomar decisiones de peso basadas en 1 semana<br>
+      ❌ Bebidas azucaradas (refresco, jugos industriales)<br>
+      ❌ Frituras como snack diario
+    </div>
+  </div>
+  <div class="card" style="border-left:4px solid var(--yellow)">
+    <div class="card-title">🔄 Principios de Recuperación</div>
+    <div style="font-size:.85rem;line-height:1.8;color:var(--text2)">
+      Si comemos mal → siguiente comida normal, no "compensación"<br>
+      Si falta ejercicio → mañana retomamos, no "doble sesión"<br>
+      Si hay evento social → disfrutar sin culpa, volver al plan al día siguiente<br>
+      El progreso no es lineal. Una meseta de 2 semanas es normal.
+    </div>
+  </div>
+</div>
+
+</div><!-- end sec-salud -->
+
+<!-- ============ SECTION: METAS ============ -->
+<div class="section" id="sec-metas">
+<div class="sub-nav">
+  <button class="sub-btn on-metas" id="mb-metas" onclick="showSub('metas','metas')">🎯 Metas</button>
+  <button class="sub-btn" id="mb-gym" onclick="showSub('metas','gym')">🏋️ Gym</button>
+  <button class="sub-btn" id="mb-tera" onclick="showSub('metas','tera')">💬 Terapia</button>
+  <button class="sub-btn" id="mb-cal" onclick="showSub('metas','cal')">📅 Calendario</button>
+</div>
+
+<!-- METAS -->
+<div class="sub-panel active" id="mp-metas">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h2 style="font-size:1.1rem">🎯 Metas de Pareja 2026</h2>
+    <button class="btn btn-purple" onclick="openModal('modalGoal')">+ Nueva Meta</button>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="rot-btn on" onclick="filterGoals('all',this)">Todas</button>
+    <button class="rot-btn" onclick="filterGoals('reloc',this)">🗺️ Reubicación</button>
+    <button class="rot-btn" onclick="filterGoals('fin',this)">💰 Finanzas</button>
+    <button class="rot-btn" onclick="filterGoals('salud',this)">💪 Salud</button>
+    <button class="rot-btn" onclick="filterGoals('pers',this)">🧠 Personal</button>
+  </div>
+  <div id="goals-list"></div>
+</div>
+
+<!-- GYM -->
+<div class="sub-panel" id="mp-gym">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">🏋️ Plan Gym — Smart Fit Juárez</h2>
+  <div class="card" style="border-top:3px solid var(--metas)">
+    <div class="card-title">💰 Comparativa de Membresía</div>
+    <div class="grid3">
+      <div class="stat-box"><div class="stat-val" style="color:#a78bfa">$199</div><div class="stat-lbl">Smart Fit/persona/mes</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:#a78bfa">$398</div><div class="stat-lbl">Pareja/mes</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:#fbbf24" id="gym-saved">$0</div><div class="stat-lbl">Ahorro acumulado</div></div>
+    </div>
+    <div style="font-size:.85rem;color:var(--text2);margin-top:10px;line-height:1.6">
+      <b style="color:var(--salud)">Plan:</b> Semanas 1–4 ejercicio en casa → Mes 2 evaluar gym<br>
+      <b style="color:#3b82f6">Mejor horario:</b> 6:30–7:30 am (Lun/Mié/Vie) para Brandon<br>
+      <b style="color:#ec4899">Objetivo primer mes gym:</b> 3 veces/semana · cardio + pesas básicas
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📅 Semanas sin gym = dinero ahorrado</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <input type="number" id="gym-weeks" placeholder="Semanas sin gym" style="width:150px">
+      <button class="btn btn-purple" onclick="calcGymSaved()">Calcular</button>
+    </div>
+    <div id="gym-calc-result" style="font-size:.85rem;color:var(--text2)"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🏃 Rutina Sugerida Primer Mes Gym</div>
+    <div style="font-size:.85rem;line-height:1.8;color:var(--text2)">
+      <b style="color:var(--salud)">Lunes:</b> Pecho + Tríceps + 20 min cardio<br>
+      <b style="color:var(--salud)">Miércoles:</b> Pierna + Glúteos + 15 min cardio<br>
+      <b style="color:var(--salud)">Viernes:</b> Espalda + Bíceps + 25 min cardio<br>
+      <b style="color:var(--text2)">Martes/Jueves:</b> Descanso activo (caminata 30 min)<br>
+      <b style="color:#f59e0b">Duración sesión:</b> 60–75 minutos
+    </div>
+  </div>
+</div>
+
+<!-- TERAPIA -->
+<div class="sub-panel" id="mp-tera">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">💬 Herramientas de Terapia</h2>
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-title">📅 Próximas Citas</div>
+      <div id="therapy-apts"></div>
+      <div style="margin-top:10px">
+        <input id="apt-desc" placeholder="Descripción cita">
+        <input type="date" id="apt-date">
+        <button class="btn btn-purple" style="width:100%" onclick="addApt()">+ Agregar cita</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">✅ Compromisos de Terapia</div>
+      <div id="therapy-coms"></div>
+      <div style="margin-top:10px">
+        <input id="com-desc" placeholder="Compromiso acordado">
+        <button class="btn btn-purple" style="width:100%" onclick="addCom()">+ Agregar compromiso</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📓 Notas de Sesión</div>
+    <div style="margin-bottom:10px">
+      <input type="date" id="ses-date">
+      <textarea id="ses-note" rows="3" placeholder="¿Qué trabajaron hoy? Insights, tareas, acuerdos..."></textarea>
+      <button class="btn btn-purple" style="width:100%" onclick="addSession()">💾 Guardar nota de sesión</button>
+    </div>
+    <div id="therapy-sessions" style="max-height:300px;overflow-y:auto"></div>
+  </div>
+  <div class="card" style="border-left:4px solid #a78bfa">
+    <div class="card-title">🧠 Herramientas Útiles</div>
+    <div style="font-size:.85rem;line-height:1.9;color:var(--text2)">
+      <b style="color:#a78bfa">Comunicación no violenta:</b> "Siento X cuando Y, necesito Z"<br>
+      <b style="color:#a78bfa">Regulación emocional:</b> Pausa 5 minutos antes de responder en conflicto<br>
+      <b style="color:#a78bfa">Check-in semanal:</b> ¿Qué salió bien? ¿Qué mejorar? ¿Qué necesitas de mí?<br>
+      <b style="color:#a78bfa">Gratitud diaria:</b> Una cosa que aprecias del otro antes de dormir
+    </div>
+  </div>
+</div>
+
+<!-- CALENDARIO -->
+<div class="sub-panel" id="mp-cal">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn btn-ghost" onclick="calNav(-1)">◀</button>
+      <h2 style="font-size:1.1rem" id="cal-title">Abril 2026</h2>
+      <button class="btn btn-ghost" onclick="calNav(1)">▶</button>
+    </div>
+    <button class="btn btn-purple" onclick="openModal('modalEvent')">+ Evento</button>
+  </div>
+  <div class="card" style="padding:10px">
+    <div class="cal-grid" id="cal-headers"></div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+  <div id="cal-legend" style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;font-size:.78rem;color:var(--text2)">
+    <span><span class="cal-event-dot" style="background:var(--salud)"></span> Salud</span>
+    <span><span class="cal-event-dot" style="background:var(--finanzas)"></span> Finanzas</span>
+    <span><span class="cal-event-dot" style="background:var(--metas)"></span> Meta</span>
+    <span><span class="cal-event-dot" style="background:#a78bfa"></span> Terapia</span>
+    <span><span class="cal-event-dot" style="background:#94a3b8"></span> Otro</span>
+  </div>
+  <div id="cal-day-events" style="margin-top:12px"></div>
+</div>
+
+</div><!-- end sec-metas -->
+
+<!-- ============ SECTION: FINANZAS ============ -->
+<div class="section" id="sec-finanzas">
+<div class="sub-nav">
+  <button class="sub-btn on-finanzas" id="fb-dash" onclick="showSub('finanzas','dash')">📊 Dashboard</button>
+  <button class="sub-btn" id="fb-meses" onclick="showSub('finanzas','meses')">📅 Meses</button>
+  <button class="sub-btn" id="fb-txn" onclick="showSub('finanzas','txn')">💳 Transacciones</button>
+  <button class="sub-btn" id="fb-pres" onclick="showSub('finanzas','pres')">📋 Presupuesto</button>
+  <button class="sub-btn" id="fb-anal" onclick="showSub('finanzas','anal')">🔍 Análisis</button>
+  <button class="sub-btn" id="fb-rep" onclick="showSub('finanzas','rep')">📄 Reporte</button>
+  <button class="sub-btn" id="fb-imp" onclick="showSub('finanzas','imp')">📤 Cargar PDF</button>
+</div>
+
+<!-- DASHBOARD FINANZAS -->
+<div class="sub-panel active" id="fp-dash">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">💰 Resumen Financiero 2026</h2>
+  <div class="alert-item" style="margin-bottom:14px">
+    🚨 <b>Alerta crítica:</b> Ingresos cayeron 56% de Enero ($49,083) a Abril ($21,593) — revisar urgente
+  </div>
+  <div class="grid3" style="margin-bottom:14px">
+    <div class="stat-box"><div class="stat-val" id="fin-avg-ing" style="color:var(--salud)">$0</div><div class="stat-lbl">Ingreso promedio/mes</div></div>
+    <div class="stat-box"><div class="stat-val" id="fin-avg-gas" style="color:var(--red)">$0</div><div class="stat-lbl">Gasto promedio/mes</div></div>
+    <div class="stat-box"><div class="stat-val" id="fin-avg-aho" style="color:var(--finanzas)">0%</div><div class="stat-lbl">Ahorro promedio</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📈 Ingresos vs Gastos por Mes</div>
+    <canvas id="chart-fin" height="180"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">💰 Tendencia de Ahorro (%)</div>
+    <canvas id="chart-ahorro" height="140"></canvas>
+  </div>
+</div>
+
+<!-- MESES EDITABLES -->
+<div class="sub-panel" id="fp-meses">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h2 style="font-size:1.1rem">📅 Datos Mensuales</h2>
+    <button class="btn btn-yellow" onclick="openModal('modalMonth')">+ Agregar Mes</button>
+  </div>
+  <div id="months-list"></div>
+</div>
+
+<!-- ANÁLISIS -->
+<div class="sub-panel" id="fp-anal">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">🔍 Análisis Financiero</h2>
+  <div class="card" style="border-left:4px solid var(--finanzas)">
+    <div class="card-title">📐 Regla 50/30/20 — Promedio 2026</div>
+    <div class="grid3" style="margin-bottom:10px">
+      <div class="stat-box">
+        <div class="stat-val" style="color:var(--salud)">50%</div>
+        <div class="stat-lbl">Necesidades</div>
+        <div class="stat-sub">Meta ideal</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="color:var(--finanzas)">30%</div>
+        <div class="stat-lbl">Deseos</div>
+        <div class="stat-sub">Meta ideal</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="color:#a78bfa">20%</div>
+        <div class="stat-lbl">Ahorro</div>
+        <div class="stat-sub">Meta ideal</div>
+      </div>
+    </div>
+    <div id="rule-analysis"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚠️ Alertas y Recomendaciones</div>
+    <div id="fin-alerts"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎯 Metas Financieras Recomendadas</div>
+    <div style="font-size:.85rem;line-height:1.9;color:var(--text2)">
+      <div>📌 <b style="color:var(--salud)">Fondo de emergencia:</b> 3–6 meses de gastos (~$80,000–160,000 MXN)</div>
+      <div>📌 <b style="color:#3b82f6">Reducir gastos hormiga:</b> Identificar y eliminar gastos &lt;$200 recurrentes</div>
+      <div>📌 <b style="color:#fbbf24">Ahorro mínimo:</b> 10–20% de ingresos cada mes automáticamente</div>
+      <div>📌 <b style="color:#a78bfa">Fondo reubicación:</b> Estimar costo de mudanza y primeros meses en nueva ciudad</div>
+    </div>
+  </div>
+</div>
+
+<!-- CARGAR PDF -->
+<div class="sub-panel" id="fp-imp">
+  <h2 style="margin-bottom:14px;font-size:1.1rem">📤 Cargar Reporte FETpocket</h2>
+  <div class="card" style="border-left:4px solid var(--finanzas);margin-bottom:12px">
+    <div class="card-title">📎 Subir PDF y capturar transacciones</div>
+    <div style="font-size:.85rem;color:var(--text2);margin-bottom:10px">Carga tu reporte mensual de FETpocket. Se mostrará página por página para que puedas capturar las transacciones.</div>
+    <input type="file" id="pdf-upload-input" accept=".pdf" onchange="loadPDF(this)" style="margin-bottom:8px">
+    <div id="pdf-pages-container" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <button class="btn btn-ghost" onclick="pdfPrevPage()">◀ Anterior</button>
+        <span id="pdf-page-info" style="font-size:.85rem;color:var(--text2)">Página 1</span>
+        <button class="btn btn-ghost" onclick="pdfNextPage()">Siguiente ▶</button>
+      </div>
+      <img id="pdf-page-img" style="width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:12px">
+      <div class="card" style="background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.3)">
+        <div class="card-title" style="color:var(--finanzas)">✏️ Capturar transacción de esta página</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label>Fecha</label><input type="date" id="pdf-txn-fecha"></div>
+          <div><label>Mes</label><select id="pdf-txn-mes" style="margin-bottom:0"><option value="Enero 2026">Enero 2026</option><option value="Febrero 2026">Febrero 2026</option><option value="Marzo 2026">Marzo 2026</option></select></div>
+          <div><label>Descripción</label><input id="pdf-txn-desc" placeholder="Ej: Gasolina"></div>
+          <div><label>Categoría</label><input id="pdf-txn-cat" placeholder="Ej: Transporte"></div>
+          <div><label>Tipo</label><select id="pdf-txn-tipo" style="margin-bottom:0"><option value="Gasto">Gasto</option><option value="Ingreso">Ingreso</option></select></div>
+          <div><label>Monto ($MXN)</label><input type="number" id="pdf-txn-monto" placeholder="0.00" step="0.01"></div>
+        </div>
+        <button class="btn btn-yellow" style="width:100%;margin-top:8px" onclick="addTxnFromPDF()">+ Agregar transacción</button>
+        <div id="pdf-txn-feedback" style="font-size:.8rem;color:var(--salud);margin-top:6px;display:none">✅ Transacción agregada</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="border-left:4px solid var(--finanzas)">
+    <div class="card-title">🔔 Recordatorio Mensual</div>
+    <div style="font-size:.85rem;color:var(--text2);line-height:1.7">
+      Cada inicio de mes, descarga tu reporte PDF de FETpocket y pega los datos aquí para mantener el tracker actualizado.
+      <br><br>
+      <b style="color:var(--finanzas)">Pasos:</b><br>
+      1. Abre FETpocket → Reportes → Mes anterior → Exportar PDF<br>
+      2. Copia los datos en el formulario de abajo o usa el JSON importador<br>
+      3. Los datos se agregan automáticamente a tu dashboard
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📝 Agregar datos manualmente</div>
+    <p style="font-size:.8rem;color:var(--text2);margin-bottom:10px">Rellena los datos del mes que quieres agregar al tracker:</p>
+    <label>Mes</label><input id="imp-mes" placeholder="Ej: Mayo 2026">
+    <label>Ingresos totales ($MXN)</label><input type="number" id="imp-ing" placeholder="0.00">
+    <label>Gastos totales ($MXN)</label><input type="number" id="imp-gas" placeholder="0.00">
+    <label>Necesidades ($MXN)</label><input type="number" id="imp-nec" placeholder="0.00">
+    <label>Deseos ($MXN)</label><input type="number" id="imp-des" placeholder="0.00">
+    <label>Ahorro/Inversión ($MXN)</label><input type="number" id="imp-aho" placeholder="0.00">
+    <label>Observaciones del mes</label><textarea id="imp-obs" rows="2" placeholder="Gastos inusuales, ingresos extra, etc."></textarea>
+    <button class="btn btn-yellow" style="width:100%;margin-top:4px" onclick="importManual()">📥 Importar datos</button>
+  </div>
+  <div class="card">
+    <div class="card-title">🔧 Importar desde JSON</div>
+    <p style="font-size:.8rem;color:var(--text2);margin-bottom:8px">Pega el JSON generado por el script leer_fetpocket.py:</p>
+    <textarea id="json-import" rows="6" placeholder='{"month":"Mayo 2026","ingresos":30000,"gastos":22000,"balance":8000,"ahorro":26.7,"alertas":[]}'></textarea>
+    <button class="btn btn-ghost" style="width:100%;margin-top:4px" onclick="importJSON()">📋 Importar JSON</button>
+  </div>
+  <div class="card" style="background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.2)">
+    <div class="card-title" style="color:var(--finanzas)">🐍 Script Python (leer_fetpocket.py)</div>
+    <div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:8px">Guarda este script y ejecútalo para extraer datos de PDFs FETpocket:</div>
+    <div class="prompt-box" style="font-size:.72rem"># leer_fetpocket.py
+# Requiere: pip install pdf2image pytesseract pillow
+# Uso: python leer_fetpocket.py reporte.pdf
+
+import sys, json, re
+from pdf2image import convert_from_path
+
+def extraer_datos(pdf_path):
+    imgs = convert_from_path(pdf_path, dpi=180)
+    # Abrir imagen en Claude o pytesseract para OCR
+    # Resultado: dict con ingresos, gastos, categorias
+    print(f"PDF procesado: {len(imgs)} páginas")
+    print("Pega el JSON resultado en el importador del dashboard")
+
+if __name__ == '__main__':
+    extraer_datos(sys.argv[1])</div>
+    <button class="copy-btn" style="margin-top:6px" onclick="copyText('leer_fetpocket.py')">📋 Copiar script</button>
+  </div>
+</div>
+
+
+<!-- TRANSACCIONES -->
+<div class="sub-panel" id="fp-txn">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <h2 style="font-size:1.1rem">💳 Transacciones</h2>
+    <button class="btn btn-yellow" onclick="openModal('modalTxn')">+ Nueva</button>
+  </div>
+  <!-- Filtros -->
+  <div class="card" style="padding:12px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+      <div>
+        <label>Mes</label>
+        <select id="txn-filter-mes" onchange="renderTxns()">
+          <option value="">Todos</option>
+          <option value="Enero 2026">Enero 2026</option>
+          <option value="Febrero 2026">Febrero 2026</option>
+          <option value="Marzo 2026">Marzo 2026</option>
+        </select>
+      </div>
+      <div>
+        <label>Tipo</label>
+        <select id="txn-filter-tipo" onchange="renderTxns()">
+          <option value="">Todos</option>
+          <option value="Ingreso">Ingresos</option>
+          <option value="Gasto">Gastos</option>
+        </select>
+      </div>
+      <div>
+        <label>Categoría</label>
+        <select id="txn-filter-cat" onchange="renderTxns()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label>Buscar</label>
+        <input id="txn-search" placeholder="Descripción..." oninput="renderTxns()" style="margin-bottom:0">
+      </div>
+    </div>
+  </div>
+  <!-- Resumen rápido -->
+  <div class="grid3" style="margin-bottom:12px" id="txn-summary"></div>
+  <!-- Lista -->
+  <div id="txn-list"></div>
+</div>
+
+<!-- PRESUPUESTO -->
+<div class="sub-panel" id="fp-pres">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <h2 style="font-size:1.1rem">📋 Presupuesto Mensual</h2>
+    <div style="display:flex;gap:8px">
+      <select id="pres-mes-sel" onchange="renderPresupuesto()" style="width:auto;margin-bottom:0">
+        <option value="Enero 2026">Enero 2026</option>
+        <option value="Febrero 2026">Febrero 2026</option>
+        <option value="Marzo 2026">Marzo 2026</option>
+      </select>
+      <button class="btn btn-yellow" onclick="savePres()">💾 Guardar</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title">📐 Regla 50/30/20 — Distribución Real vs Meta</div>
+    <div id="pres-50-30-20"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">💳 Categorías de Gasto — Editar Presupuesto</div>
+    <div id="pres-cats"></div>
+    <button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="addPresupuestoCat()">+ Agregar categoría</button>
+  </div>
+  <div class="card" style="margin-top:10px">
+    <div class="card-title">📊 Real vs Presupuestado</div>
+    <canvas id="chart-pres" height="180"></canvas>
+  </div>
+</div>
+
+<!-- REPORTE -->
+<div class="sub-panel" id="fp-rep">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <h2 style="font-size:1.1rem">📄 Reporte Financiero</h2>
+    <div style="display:flex;gap:8px">
+      <select id="rep-mes-sel" style="width:auto;margin-bottom:0">
+        <option value="Enero 2026">Enero 2026</option>
+        <option value="Febrero 2026">Febrero 2026</option>
+        <option value="Marzo 2026">Marzo 2026</option>
+        <option value="todos">Enero–Marzo 2026</option>
+      </select>
+      <button class="btn btn-yellow" onclick="generarReporte()">📊 Generar</button>
+      <button class="btn btn-ghost" onclick="imprimirReporte()">🖨️ Imprimir</button>
+    </div>
+  </div>
+  <div id="reporte-output"></div>
+</div>
+
+</div><!-- end sec-finanzas -->
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const MENUS = {
+  1: [
+    { dia:'Lunes', al:'Avena con plátano y canela (1 taza avena, 1 plátano, canela)', co:'Pechuga a la plancha + arroz integral + brócoli al vapor', ce:'Sopa de verduras ligera (zanahoria, calabacita, apio)' },
+    { dia:'Martes', al:'2 Huevos revueltos + frijoles charros + tortilla de maíz', co:'Pollo desmenuzado en salsa verde + arroz rojo', ce:'Ensalada de atún (lata) + pepino + jitomate + limón' },
+    { dia:'Miércoles', al:'Yogurt natural + granola casera (avena tostada) + fruta', co:'Caldo de pollo con verduras (papa, zanahoria, ejote, col)', ce:'Quesadilla de frijol al comal (1 tortilla, sin freír)' },
+    { dia:'Jueves', al:'Licuado de leche + 1 huevo + avena + plátano', co:'Milanesa horneada + puré de papa light + ensalada', ce:'Crema de zanahoria light + 1 tostada horneada' },
+    { dia:'Viernes', al:'Hotcakes de avena (2 piezas, sin mantequilla, miel poca)', co:'Arroz a la mexicana + pollo con chipotle (sin crema)', ce:'Sopa de fideo seco (½ porción) + ensalada verde' },
+    { dia:'Sábado', al:'Chilaquiles verdes sin freír (tortilla al comal)', co:'Comida libre / familiar — elegir opción razonable', ce:'Fruta + yogurt natural + granola' },
+    { dia:'Domingo', al:'Huevos a la mexicana + frijoles + tortilla', co:'Arroz con leche light (½ porción) + pollo simple', ce:'Prep de semana 2 · Cena ligera: verduras al vapor' },
+  ],
+  2: [
+    { dia:'Lunes', al:'Avena nocturna (overnight oats) con chia + miel', co:'Pollo al chipotle light + arroz integral + nopales', ce:'Caldo de res ligero (solo caldo + verduras)' },
+    { dia:'Martes', al:'Huevos benedictinos light (sin hollandaise, solo jitomate)', co:'Arroz rojo + pechuga horneada + chayote con limón', ce:'Tostadas de frijol al comal + aguacate (½)' },
+    { dia:'Miércoles', al:'Smoothie plátano + espinaca + leche + 1 cdita avena', co:'Tacos de pollo deshebrado en salsa roja (2 tortillas)', ce:'Ensalada verde + atún + aceite de oliva' },
+    { dia:'Jueves', al:'2 Huevos tibios + pan integral tostado + jitomate', co:'Calabacitas con carne molida magra + tortilla', ce:'Yogurt natural + fruta picada' },
+    { dia:'Viernes', al:'Hotcakes de avena + 1 huevo frito (poco aceite)', co:'Fajitas de pollo a la plancha + tortillas + guacamole', ce:'Sopa de verduras + 1 tostada' },
+    { dia:'Sábado', al:'Enfrijoladas al comal (2 tortillas + frijoles + queso panela)', co:'Comida libre / familiar', ce:'Manzana + yogurt + nueces (8 piezas)' },
+    { dia:'Domingo', al:'Tamales de rajas (2 piezas — ocasional)', co:'Milanesa de pollo horneada + ensalada', ce:'Prep semana 3 · Sopa de fideo ligera' },
+  ],
+  3: [
+    { dia:'Lunes', al:'Hotcakes de avena con plátano (sin mantequilla)', co:'Pollo al chipotle + arroz rojo + brócoli', ce:'Sopa de espinacas con huevo pochado' },
+    { dia:'Martes', al:'Huevos al comal + jitomate asado + tortilla', co:'Arroz mexicano + pollo desmenuzado en salsa', ce:'Yogurt natural + overnight oats (preparado la noche ant.)' },
+    { dia:'Miércoles', al:'Licuado proteico (leche + 1 huevo + avena + plátano)', co:'Caldo de res ligero (caldo + papa + zanahoria)', ce:'Tostadas de frijol al comal + atún' },
+    { dia:'Jueves', al:'Avena nocturna con chia, miel y nueces', co:'Pechuga al chipotle light + arroz', ce:'Sopa de fideo (½ porción) + verduras' },
+    { dia:'Viernes', al:'Chilaquiles verdes sin freír + frijoles', co:'Picadillo ligero (carne, zanahoria, chayote, jitomate)', ce:'Pepino + jitomate + atún + limón y chile' },
+    { dia:'Sábado', al:'Hotcakes de avena (doble para Brandon +150 kcal)', co:'Pollo rostizado casero + ensalada + tortilla', ce:'Fruta variada + yogurt + granola de avena casera' },
+    { dia:'Domingo', al:'Huevos divorciados (salsa roja y verde) + frijoles', co:'Comida libre', ce:'Prep semana 4 · Sopa de pasta ligera' },
+  ],
+  4: [
+    { dia:'Lunes', al:'Nopalitos con huevo al comal + tortilla', co:'Arroz rojo + pollo deshebrado + chayote con limón', ce:'Sopa de verduras light' },
+    { dia:'Martes', al:'Hotcakes de avena + plátano', co:'Calabacitas con carne molida magra + tortilla', ce:'Huevo tibio + tostadas horneadas' },
+    { dia:'Miércoles', al:'Avena cold bowl + yogurt natural', co:'Tacos de frijoles + papa al horno (sin freír)', ce:'Ensalada de atún + espinacas + aceite oliva' },
+    { dia:'Jueves', al:'Smoothie plátano + avena + 2 huevos cocidos', co:'Pollo al chipotle + arroz + ejotes', ce:'Yogurt + plátano' },
+    { dia:'Viernes', al:'Huevos a la mexicana + frijoles + 1 tortilla', co:'Ensalada grande de pollo (frío) + aderezo limón', ce:'Crema de zanahoria light' },
+    { dia:'Sábado', al:'Sincronizadas light (pollo + tortilla sin queso graso)', co:'Pollo al horno + brócoli + puré de papa light', ce:'Manzana asada + yogurt natural' },
+    { dia:'Domingo', al:'Tamales de rajas light (2) — prep casera', co:'Comida libre', ce:'Sopa de pasta ligera + prep semana siguiente' },
+  ]
+};
+
+const GROCERY = [
+  // Proteínas
+  { cat:'🥩 Proteínas', name:'Pechuga de pollo', qty:'1 kg', price:85, unit:'kg' },
+  { cat:'🥩 Proteínas', name:'Carne molida magra', qty:'500 g', price:65, unit:'g' },
+  { cat:'🥩 Proteínas', name:'Atún en lata (4 latas)', qty:'4 pz', price:48, unit:'lata' },
+  { cat:'🥩 Proteínas', name:'Huevos blancos', qty:'30 pz', price:95, unit:'caja' },
+  { cat:'🥩 Proteínas', name:'Queso panela', qty:'250 g', price:42, unit:'g' },
+  // Lácteos
+  { cat:'🥛 Lácteos', name:'Leche semidescremada', qty:'2 L', price:38, unit:'L' },
+  { cat:'🥛 Lácteos', name:'Yogurt natural sin azúcar', qty:'2 pz 900g', price:54, unit:'pz' },
+  // Verduras
+  { cat:'🥦 Verduras', name:'Brócoli', qty:'500 g', price:22, unit:'g' },
+  { cat:'🥦 Verduras', name:'Zanahoria', qty:'1 kg', price:18, unit:'kg' },
+  { cat:'🥦 Verduras', name:'Calabacita', qty:'500 g', price:15, unit:'g' },
+  { cat:'🥦 Verduras', name:'Espinaca', qty:'250 g', price:22, unit:'g' },
+  { cat:'🥦 Verduras', name:'Jitomate', qty:'1 kg', price:20, unit:'kg' },
+  { cat:'🥦 Verduras', name:'Pepino (3 pz)', qty:'3 pz', price:15, unit:'pz' },
+  { cat:'🥦 Verduras', name:'Chayote (4 pz)', qty:'4 pz', price:20, unit:'pz' },
+  { cat:'🥦 Verduras', name:'Nopalitos frescos', qty:'500 g', price:16, unit:'g' },
+  { cat:'🥦 Verduras', name:'Chile serrano / jalapeño', qty:'100 g', price:8, unit:'g' },
+  // Frutas
+  { cat:'🍌 Frutas', name:'Plátano', qty:'1 kg', price:18, unit:'kg' },
+  { cat:'🍌 Frutas', name:'Manzana (4 pz)', qty:'4 pz', price:30, unit:'pz' },
+  { cat:'🍌 Frutas', name:'Limón (bolsa)', qty:'1 bolsa', price:12, unit:'bolsa' },
+  // Granos
+  { cat:'🌾 Granos y despensa', name:'Avena integral (bolsa 1 kg)', qty:'1 kg', price:32, unit:'kg' },
+  { cat:'🌾 Granos y despensa', name:'Arroz blanco', qty:'1 kg', price:22, unit:'kg' },
+  { cat:'🌾 Granos y despensa', name:'Frijoles negros (bolsa)', qty:'500 g', price:18, unit:'g' },
+  { cat:'🌾 Granos y despensa', name:'Tortillas de maíz', qty:'1 kg', price:18, unit:'kg' },
+  { cat:'🌾 Granos y despensa', name:'Fideo delgado', qty:'200 g', price:10, unit:'g' },
+  { cat:'🌾 Granos y despensa', name:'Pan integral (bimbo)', qty:'1 bolsa', price:32, unit:'bolsa' },
+  // Condimentos
+  { cat:'🧂 Condimentos', name:'Aceite de oliva (chico)', qty:'250 ml', price:38, unit:'ml' },
+  { cat:'🧂 Condimentos', name:'Chipotle en adobo (lata)', qty:'1 lata', price:18, unit:'lata' },
+  { cat:'🧂 Condimentos', name:'Caldo de pollo en polvo', qty:'1 caja', price:22, unit:'caja' },
+  { cat:'🧂 Condimentos', name:'Sal, pimienta, comino (surtido)', qty:'surtido', price:20, unit:'surtido' },
+];
+
+const EXERCISES = [
+  { name:'Sentadillas', icon:'🦵', sets:'3 series × 15 reps', desc:'Pies al ancho de hombros, rodillas no pasan los pies. Bajar hasta 90°.', muscles:'Cuádriceps, glúteos, isquiotibiales', yt:'https://www.youtube.com/results?search_query=sentadillas+correctas+principiantes', level:'Básico' },
+  { name:'Flexiones (push-ups)', icon:'💪', sets:'3 series × 10 reps (modificadas si es necesario)', desc:'Cuerpo recto, bajar hasta casi tocar el suelo. Modificar: rodillas en piso.', muscles:'Pecho, tríceps, hombros, core', yt:'https://www.youtube.com/results?search_query=flexiones+correctas+para+principiantes+en+español', level:'Básico' },
+  { name:'Zancadas (lunges)', icon:'🏃', sets:'3 series × 12 reps por pierna', desc:'Paso largo hacia adelante, rodilla trasera cerca del piso. Alternar piernas.', muscles:'Glúteos, cuádriceps, estabilizadores', yt:'https://www.youtube.com/results?search_query=lunges+zancadas+correctas+español', level:'Básico' },
+  { name:'Plancha (plank)', icon:'🧱', sets:'3 series × 30–45 segundos', desc:'Cuerpo recto apoyado en antebrazos y pies. Core siempre contraído.', muscles:'Core, abdomen, espalda baja, hombros', yt:'https://www.youtube.com/results?search_query=plancha+correcta+principiantes+abdomen', level:'Básico' },
+  { name:'Hip thrust con silla', icon:'🍑', sets:'3 series × 15 reps', desc:'Hombros en silla, pies en suelo, elevar caderas contrayendo glúteos.', muscles:'Glúteos, isquiotibiales, core', yt:'https://www.youtube.com/results?search_query=hip+thrust+sin+barra+en+casa+español', level:'Básico' },
+  { name:'Burpees modificados', icon:'⚡', sets:'3 series × 8 reps', desc:'Posición de plancha desde de pie, sin salto al inicio (versión suave).', muscles:'Full body: pecho, pierna, cardio', yt:'https://www.youtube.com/results?search_query=burpees+modificados+principiantes+español', level:'Intermedio' },
+  { name:'Remo con silla / botella', icon:'🏋️', sets:'3 series × 12 reps', desc:'Usar botella de 2L llena. Inclinarse 45°, jalar codo hacia atrás.', muscles:'Espalda, bíceps, hombros', yt:'https://www.youtube.com/results?search_query=remo+con+botella+en+casa+espalda', level:'Básico' },
+  { name:'Caminata activa', icon:'🚶', sets:'20–30 min diarios', desc:'Paso rápido, brazos en movimiento. Ideal después de cenar para digestión.', muscles:'Cardio, piernas, quema de grasa', yt:'https://www.youtube.com/results?search_query=caminata+para+bajar+peso+en+casa', level:'Básico' },
+  { name:'Abdominales crunch', icon:'🫶', sets:'3 series × 15 reps', desc:'Elevar solo hombros del suelo, no jalar el cuello. Lento y controlado.', muscles:'Recto abdominal, core superior', yt:'https://www.youtube.com/results?search_query=abdominales+crunch+correctos+español', level:'Básico' },
+  { name:'Elevaciones de pantorrilla', icon:'🦶', sets:'3 series × 20 reps', desc:'De pie, elevarse en puntillas lentamente. Se puede hacer en escalón.', muscles:'Pantorrillas (gemelos, sóleo)', yt:'https://www.youtube.com/results?search_query=elevacion+pantorrilla+en+casa+ejercicio', level:'Básico' },
+];
+
+const PROMPTS = [
+  { title:'🧾 Prompt Base (contexto completo)', text:`Hola Claude, soy Brandon, 29 años, 119.4 kg, meta 85 kg.
+Mi pareja Itzel tiene 27 años, 117.5 kg, meta 70 kg.
+Vivimos en Ciudad Juárez, Chihuahua. Presupuesto de comida: $700 MXN/semana en Soriana.
+Brandon: trabaja en oficina Mar/Mié/Jue (empresa paga almuerzo 9am y comida 1pm, solo cena en casa).
+Lunes y viernes: home office (3 comidas en casa).
+Brandon: 1,900 kcal/día · Itzel: 1,700 kcal/día
+Plan: sin gym primeras 4 semanas, solo ejercicio en casa 30-40 min.
+Grasa visceral Brandon: 16 (crítico). Prioridad bajar grasa visceral.
+Regla principal: retomamos MAÑANA, nunca esperamos el lunes.` },
+  { title:'🍽️ Generar Menú Nuevo', text:`Necesito un menú para la próxima semana con estas condiciones:
+- Ingredientes Soriana Juárez, máx $700 MXN para dos personas
+- Brandon 1,900 kcal · Itzel 1,700 kcal
+- 3 comidas: almuerzo 9am, comida 1pm, cena 6pm
+- Mar/Mié/Jue Brandon no desayuna en casa (empresa paga almuerzo y comida)
+- Recetas simples, menos de 30 min de preparación
+- Sin frituras. Máximo 1 comida libre el fin de semana
+- Incluir lista de compras con precios estimados en Soriana` },
+  { title:'🆘 Plan de Recuperación', text:`Hoy no seguimos el plan: [describe qué pasó].
+Ayúdame con:
+1. Cómo balancear la siguiente comida (no quiero compensar con hambre)
+2. Qué hacer mañana para retomar normalmente
+3. Un recordatorio motivador sin culpa
+Recuerda: no castigarnos, simplemente retomar.` },
+  { title:'💰 Análisis de Finanzas', text:`Ayúdame a analizar estas finanzas:
+Enero: ingresos $49,083 · gastos $36,428 · ahorro 25.8%
+Febrero: ingresos $44,843 · gastos $26,747 · ahorro 40.4%
+Marzo: ingresos $30,711 · gastos $20,929 · ahorro 31.8%
+Abril: ingresos $21,593 · gastos $16,630 · ahorro 23%
+Preguntas: ¿Por qué bajaron los ingresos? ¿Qué gastos reducir? ¿Cómo ahorrar para la reubicación?
+Regla objetivo: 50% necesidades, 30% deseos, 20% ahorro.` },
+  { title:'📊 Revisión Semanal', text:`Resumen de nuestra semana:
+Brandon: peso actual [X] kg · calorías promedio [X]/día · ejercicio [X] veces
+Itzel: peso actual [X] kg · calorías promedio [X]/día
+Logramos: [qué salió bien]
+Dificultades: [qué fue difícil]
+Por favor: análisis breve, 3 ajustes para la próxima semana, motivación realista.` },
+];
+
+const MONTHLY_DATA_DEFAULT = [
+  { month:'Enero 2026', ingresos:49083.43, gastos:36428.64, balance:12654.79, ahorro:25.8, score:65, nec:0, des:0, aho:12654.79, alertas:['Deseos superan 340% del presupuesto','Gastos hormiga frecuentes: Alimentos + misceláneos'] },
+  { month:'Febrero 2026', ingresos:44843.99, gastos:26747.01, balance:18096.98, ahorro:40.4, score:68, nec:0, des:0, aho:18096.98, alertas:['Excelente ahorro (40.4%) pero Deseos 367% sobre meta','Gastos variables identificados como problema'] },
+  { month:'Marzo 2026', ingresos:30711.44, gastos:20929.98, balance:9781.46, ahorro:31.8, score:65, nec:0, des:0, aho:7455.94, alertas:['Ingreso bajó 31.5% vs febrero','Deseos 229% sobre presupuesto','Ahorro/Inversiones: $7,455.94 (24.3%)'] },
+  { month:'Abril 2026', ingresos:21593.80, gastos:16630.87, balance:4962.93, ahorro:23.0, score:0, nec:0, des:0, aho:4962.93, alertas:['Ingreso más bajo del periodo — ¿es permanente?','Verificar fuentes de ingreso alternativas'] },
+];
+
+const DEFAULT_GOALS = [
+  { id:1, title:'Conseguir empleo para reubicación', cat:'reloc', date:'2026-12-31', steps:['Actualizar CV en español e inglés', 'Aplicar a 5 empresas por semana', 'Preparar LinkedIn en inglés', 'Practicar entrevistas técnicas', 'Investigar ciudades destino'], done:false },
+  { id:2, title:'Plan de reubicación completo', cat:'reloc', date:'2026-09-30', steps:['Definir ciudad destino top 3', 'Calcular costo de vida destino', 'Ahorrar fondo para mudanza', 'Investigar vivienda', 'Planear fecha de mudanza'], done:false },
+  { id:3, title:'Fondo de emergencia $80,000 MXN', cat:'fin', date:'2026-12-31', steps:['Automatizar ahorro mensual', 'Reducir gastos hormiga', 'Abrir cuenta separada de ahorro', 'Depositar bono cuando llegue'], done:false },
+  { id:4, title:'Continuidad en terapia de pareja', cat:'pers', date:'2026-12-31', steps:['Mantener cita mensual mínimo', 'Practicar herramientas en casa', 'Check-in semanal de pareja', 'Revisar avances trimestralmente'], done:false },
+];
+
+const RECOVERY_PLANS = [
+  { title:'🍽️ Comimos en restaurante', steps:['Siguiente comida: normal del menú (no compensar con menos)', 'Hidratación: 2–3 vasos extra de agua hoy', 'Si fue muy pesado: cena extra ligera (ensalada o fruta)', 'Mañana: retomar menú desde el desayuno sin drama', '¡Un restaurante no borra semanas de progreso!'] },
+  { title:'🍕 Comimos de más', steps:['No saltar la siguiente comida — comer normal pero ligero', 'Extra: 20 min de caminata hoy si es posible', 'Hidratación alta: 3L de agua hoy', 'Mañana: menú normal desde el desayuno', 'El cuerpo compensa solo — confía en el proceso'] },
+  { title:'🛋️ No hicimos ejercicio', steps:['No "compensar" con doble sesión mañana — eso es lesión', 'Mañana: retomar la sesión normal programada', 'Hoy: al menos 10 min de caminata suave si es posible', 'El hábito se construye en semanas, no días', '¿Qué impidió el ejercicio? ¿Cómo evitarlo mañana?'] },
+  { title:'🍫 Tuve antojos fuertes', steps:['Identificar: ¿hambre real o estrés/aburrimiento?', 'Si fue hambre real: ajustar porciones del plan esta semana', 'Snack de rescate: fruta + proteína (yogurt, huevo cocido)', 'Beber agua antes del siguiente antojo (esperar 10 min)', 'Tener preparado snack saludable para mañana'] },
+  { title:'🌙 Comí muy tarde', steps:['Esta noche: digestión activa — no acostarse inmediato', 'Mañana: desayuno en hora normal, no saltarlo', 'Cena de mañana: más ligera que usual', 'Estrategia: tener cena lista a las 5:30pm para evitar retraso', 'Preparar la cena la noche anterior si el trabajo da tarde'] },
+  { title:'💥 Día completo fuera del plan', steps:['MAÑANA retomamos — no el próximo lunes', 'Plan de mañana: desayuno normal del menú a la hora correcta', 'No compensar con restricción extrema — eso dispara más antojos', 'Reflexión sin juicio: ¿qué pasó? ¿qué aprendemos?', 'Un día no define el camino. El plan sigue.'] },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let currentSection = 'salud';
+let currentWeek = 1;
+let calYear = 2026, calMonth = 3; // April = index 3
+let monthlyData = [];
+let goals = [];
+let events = [];
+let weightData = { B: [119.40], I: [117.50] };
+let water = 0;
+let gymWeeksSkipped = 0;
+let theraApts = [], theraComs = [], theraSessions = [];
+let currentFilter = 'all';
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  loadFromStorage();
+  showSection('salud');
+  renderMenu(1);
+  renderGrocery();
+  renderExercises();
+  renderWater();
+  renderPrompts();
+  renderGoals();
+  renderCalendar();
+  renderMonths();
+  renderFinDash();
+  renderTherapy();
+  updateHeader();
+  updateGymSaved();
+  renderPresupuesto();
+}
+
+function loadFromStorage() {
+  try {
+    weightData = JSON.parse(localStorage.getItem('wt_v3')) || { B:[119.40], I:[117.50] };
+    water = parseInt(localStorage.getItem('water_v3')) || 0;
+    goals = JSON.parse(localStorage.getItem('goals_v3')) || DEFAULT_GOALS;
+    events = JSON.parse(localStorage.getItem('events_v3')) || [];
+    monthlyData = JSON.parse(localStorage.getItem('finData_v3')) || [...MONTHLY_DATA_DEFAULT];
+    gymWeeksSkipped = parseInt(localStorage.getItem('gymWeeks')) || 0;
+    theraApts = JSON.parse(localStorage.getItem('theraApts')) || [];
+    theraComs = JSON.parse(localStorage.getItem('theraComs')) || [];
+    theraSessions = JSON.parse(localStorage.getItem('theraSess')) || [];
+  } catch(e) {
+    goals = [...DEFAULT_GOALS];
+    monthlyData = [...MONTHLY_DATA_DEFAULT];
+  }
+}
+
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showSection(sec) {
+  currentSection = sec;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sec-btn').forEach(b => {
+    b.classList.remove('active-salud','active-metas','active-finanzas');
+  });
+  const s = document.getElementById('sec-' + sec);
+  const b = document.getElementById('secbtn-' + sec);
+  if(s) s.classList.add('active');
+  if(b) b.classList.add('active-' + sec);
+
+  if(sec === 'salud') { showSub('salud','diag'); }
+  if(sec === 'metas') { showSub('metas','metas'); renderGoals(); renderCalendar(); renderTherapy(); }
+  if(sec === 'finanzas') { showSub('finanzas','dash'); renderFinDash(); renderMonths(); }
+}
+
+function showSub(sec, tab) {
+  const prefixes = { salud:'sp', metas:'mp', finanzas:'fp' };
+  const p = prefixes[sec];
+  document.querySelectorAll(`#sec-${sec} .sub-panel`).forEach(el => el.classList.remove('active'));
+  document.querySelectorAll(`#sec-${sec} .sub-btn`).forEach(b => b.classList.remove('on-salud','on-metas','on-finanzas'));
+  const panel = document.getElementById(`${p}-${tab}`);
+  const btn = document.getElementById(`${sec[0]}b-${tab}`);
+  if(panel) panel.classList.add('active');
+  if(btn) btn.classList.add(`on-${sec}`);
+  if(tab === 'peso') { drawWeightCharts(); }
+  if(tab === 'dash' && sec === 'finanzas') { setTimeout(drawFinCharts, 50); }
+  if(tab === 'txn'  && sec === 'finanzas') { setTimeout(renderTxns, 30); }
+  if(tab === 'pres' && sec === 'finanzas') { setTimeout(renderPresupuesto, 30); }
+  if(tab === 'rep'  && sec === 'finanzas') { setTimeout(generarReporte, 30); }
+}
+
+function showSched(type, btn) {
+  document.querySelectorAll('#sp-hora .rot-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  ['schedOf','schedHo','schedWe'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  const map = { of:'schedOf', ho:'schedHo', we:'schedWe' };
+  const t = document.getElementById(map[type]);
+  if(t) t.style.display = '';
+}
+
+// ============================================================
+// MENU
+// ============================================================
+function setWeek(n, btn) {
+  currentWeek = n;
+  document.querySelectorAll('#sp-menu .rot-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderMenu(n);
+}
+
+function renderMenu(week) {
+  const days = MENUS[week];
+  const colors = {1:'#3b82f6',2:'#10b981',3:'#f59e0b',4:'#ec4899'};
+  const c = colors[week];
+  let html = `<div style="border-left:4px solid ${c};padding-left:12px;margin-bottom:12px;font-size:.82rem;color:var(--text2)">Semana ${week} — Calorías aprox: Brandon ~1,900 kcal · Itzel ~1,700 kcal</div>`;
+  days.forEach(d => {
+    html += `<div class="card" style="border-left:3px solid ${c}">
+      <div style="font-weight:700;color:${c};margin-bottom:8px">${d.dia}</div>
+      <div style="font-size:.83rem;line-height:1.7">
+        <div><span style="color:var(--text2)">☀️ Almuerzo:</span> ${d.al}</div>
+        <div><span style="color:var(--text2)">🍽️ Comida:</span> ${d.co}</div>
+        <div><span style="color:var(--text2)">🌙 Cena:</span> ${d.ce}</div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('menu-display').innerHTML = html;
+}
+
+// ============================================================
+// GROCERY
+// ============================================================
+function renderGrocery() {
+  const checked = JSON.parse(localStorage.getItem('grocery_v3')) || {};
+  let cats = {}, total = 0, totalPossible = 0;
+  GROCERY.forEach((item, i) => {
+    if(!cats[item.cat]) cats[item.cat] = [];
+    cats[item.cat].push({...item, i});
+    totalPossible += item.price;
+  });
+  let html = '', totalChecked = 0, countChecked = 0;
+  Object.entries(cats).forEach(([cat, items]) => {
+    html += `<div style="font-weight:700;color:var(--text2);font-size:.78rem;margin:12px 0 4px;text-transform:uppercase">${cat}</div>`;
+    items.forEach(({name, qty, price, i}) => {
+      const ch = checked[i] || false;
+      if(ch) { totalChecked += price; countChecked++; }
+      html += `<div class="grocery-item">
+        <input type="checkbox" ${ch?'checked':''} onchange="groceryCheck(${i},this)">
+        <span class="grocery-name" style="${ch?'text-decoration:line-through;opacity:.5':''}">${name} <span style="color:var(--text2);font-size:.75rem">(${qty})</span></span>
+        <span class="grocery-price">$${price}</span>
+      </div>`;
+    });
+  });
+  document.getElementById('grocery-list').innerHTML = html;
+  const pct = Math.round((countChecked / GROCERY.length) * 100);
+  document.getElementById('grocery-pct').textContent = pct + '%';
+  document.getElementById('grocery-bar').style.width = pct + '%';
+  document.getElementById('grocery-total').textContent = `$${totalChecked} / $${totalPossible} MXN`;
+}
+
+function groceryCheck(i, cb) {
+  const checked = JSON.parse(localStorage.getItem('grocery_v3')) || {};
+  checked[i] = cb.checked;
+  localStorage.setItem('grocery_v3', JSON.stringify(checked));
+  renderGrocery();
+}
+
+function clearGrocery() {
+  localStorage.removeItem('grocery_v3');
+  renderGrocery();
+}
+
+// ============================================================
+// EXERCISES
+// ============================================================
+function renderExercises() {
+  const levelColor = { 'Básico':'tag-green', 'Intermedio':'tag-yellow', 'Avanzado':'tag-red' };
+  let html = '';
+  EXERCISES.forEach(ex => {
+    html += `<div class="ex-card">
+      <div class="ex-icon">${ex.icon}</div>
+      <div class="ex-info">
+        <h4>${ex.name} <span class="tag ${levelColor[ex.level] || 'tag-blue'}">${ex.level}</span></h4>
+        <p>${ex.desc}</p>
+        <div><span style="color:var(--text2);font-size:.78rem">⏱️ ${ex.sets}</span></div>
+        <div><span style="color:var(--text2);font-size:.78rem">💪 Músculos: ${ex.muscles}</span></div>
+        <a class="yt-link" href="${ex.yt}" target="_blank">▶ Ver video en YouTube</a>
+      </div>
+    </div>`;
+  });
+  document.getElementById('exercise-list').innerHTML = html;
+}
+
+// ============================================================
+// WATER & KCAL
+// ============================================================
+function renderWater() {
+  let html = '';
+  for(let i = 0; i < 8; i++) {
+    const filled = i < water;
+    html += `<button class="water-btn ${filled?'filled':''}" onclick="toggleWater(${i})">💧</button>`;
+  }
+  document.getElementById('water-btns').innerHTML = html;
+  document.getElementById('water-status').textContent = `${water} / 8 vasos (${water*250} ml / 2000 ml)`;
+  localStorage.setItem('water_v3', water);
+}
+
+function toggleWater(i) {
+  water = (water === i + 1) ? i : i + 1;
+  renderWater();
+}
+
+function logKcal() {
+  const b = parseFloat(document.getElementById('kcal-b').value);
+  const it = parseFloat(document.getElementById('kcal-i').value);
+  if(!isNaN(b)) {
+    const diff = b - 1900;
+    document.getElementById('kcal-b-status').innerHTML = diff <= 0
+      ? `<span style="color:var(--salud)">✅ ${Math.abs(diff)} kcal bajo la meta</span>`
+      : `<span style="color:var(--red)">⚠️ ${diff} kcal sobre la meta</span>`;
+  }
+  if(!isNaN(it)) {
+    const diff = it - 1700;
+    document.getElementById('kcal-i-status').innerHTML = diff <= 0
+      ? `<span style="color:var(--salud)">✅ ${Math.abs(diff)} kcal bajo la meta</span>`
+      : `<span style="color:var(--red)">⚠️ ${diff} kcal sobre la meta</span>`;
+  }
+}
+
+function saveNota() {
+  const nota = document.getElementById('nota-dia').value.trim();
+  if(!nota) return;
+  const log = JSON.parse(localStorage.getItem('log_v3')) || [];
+  log.unshift({ date: new Date().toLocaleDateString('es-MX'), nota });
+  if(log.length > 30) log.pop();
+  localStorage.setItem('log_v3', JSON.stringify(log));
+  document.getElementById('nota-dia').value = '';
+  renderLog();
+}
+
+function renderLog() {
+  const log = JSON.parse(localStorage.getItem('log_v3')) || [];
+  let html = log.map(l => `<div style="border-bottom:1px solid var(--border);padding:7px 0"><div style="font-size:.72rem;color:var(--text2)">${l.date}</div><div style="font-size:.82rem">${l.nota}</div></div>`).join('');
+  const el = document.getElementById('log-history');
+  if(el) el.innerHTML = html || '<div style="color:var(--text2);font-size:.82rem">Sin notas aún.</div>';
+}
+
+// ============================================================
+// WEIGHT CHARTS
+// ============================================================
+function addWeight() {
+  const b = parseFloat(document.getElementById('pw-b').value);
+  const it = parseFloat(document.getElementById('pw-i').value);
+  if(!isNaN(b)) weightData.B.push(b);
+  if(!isNaN(it)) weightData.I.push(it);
+  save('wt_v3', weightData);
+  document.getElementById('pw-b').value = '';
+  document.getElementById('pw-i').value = '';
+  drawWeightCharts();
+  updateHeader();
+}
+
+function clearWeights() {
+  if(!confirm('¿Borrar todos los registros de peso?')) return;
+  weightData = { B:[119.40], I:[117.50] };
+  save('wt_v3', weightData);
+  drawWeightCharts();
+  updateHeader();
+}
+
+function drawWeightCharts() {
+  drawChart('chart-b', weightData.B, 124, 85, '#3b82f6', 'Brandon');
+  drawChart('chart-i', weightData.I, 117.5, 70, '#ec4899', 'Itzel');
+  const bCur = weightData.B[weightData.B.length-1];
+  const iCur = weightData.I[weightData.I.length-1];
+  const bDiff = (weightData.B[0] - bCur).toFixed(1);
+  const iDiff = (weightData.I[0] - iCur).toFixed(1);
+  const bProg = (((124-bCur)/(124-85))*100).toFixed(1);
+  const iProg = (((117.5-iCur)/(117.5-70))*100).toFixed(1);
+  const bsEl = document.getElementById('weight-stats-b');
+  const isEl = document.getElementById('weight-stats-i');
+  if(bsEl) bsEl.innerHTML = `Actual: <b style="color:#3b82f6">${bCur} kg</b> · Perdido: <b style="color:var(--salud)">-${bDiff} kg</b> · Progreso: <b>${bProg}%</b> · Semanas: ${weightData.B.length}`;
+  if(isEl) isEl.innerHTML = `Actual: <b style="color:#ec4899">${iCur} kg</b> · Perdido: <b style="color:var(--salud)">-${iDiff} kg</b> · Progreso: <b>${iProg}%</b> · Semanas: ${weightData.I.length}`;
+}
+
+function drawChart(id, data, start, goal, color, label) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 600;
+  const H = 160;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+  const pad = { l:50, r:20, t:15, b:30 };
+  const allVals = [...data, goal, start];
+  const minV = Math.min(...allVals) - 2;
+  const maxV = Math.max(...allVals) + 2;
+  const toX = (i) => pad.l + (i / (Math.max(data.length-1,1))) * (W - pad.l - pad.r);
+  const toY = (v) => pad.t + ((maxV - v) / (maxV - minV)) * (H - pad.t - pad.b);
+
+  // Goal line
+  ctx.strokeStyle = 'rgba(16,185,129,.4)'; ctx.lineWidth = 1; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(pad.l, toY(goal)); ctx.lineTo(W-pad.r, toY(goal)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Area fill
+  if(data.length > 1) {
+    ctx.beginPath(); ctx.moveTo(toX(0), toY(data[0]));
+    data.forEach((v,i) => ctx.lineTo(toX(i), toY(v)));
+    ctx.lineTo(toX(data.length-1), H-pad.b); ctx.lineTo(toX(0), H-pad.b); ctx.closePath();
+    ctx.fillStyle = color + '22'; ctx.fill();
+  }
+
+  // Line
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.beginPath();
+  data.forEach((v,i) => { i===0 ? ctx.moveTo(toX(i), toY(v)) : ctx.lineTo(toX(i), toY(v)); });
+  ctx.stroke();
+
+  // Points
+  data.forEach((v,i) => {
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.arc(toX(i), toY(v), 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath();
+    ctx.arc(toX(i), toY(v), 2, 0, Math.PI*2); ctx.fill();
+    if(data.length <= 8) {
+      ctx.fillStyle = '#94a3b8'; ctx.font = '10px Segoe UI';
+      ctx.fillText(v+'kg', toX(i)-12, toY(v)-8);
+    }
+  });
+
+  // Y axis labels
+  ctx.fillStyle = '#64748b'; ctx.font = '10px Segoe UI';
+  ctx.fillText(goal+'kg 🎯', pad.l - 45, toY(goal)+4);
+  ctx.fillText(label, pad.l, pad.t - 4);
+}
+
+// ============================================================
+// PROMPTS
+// ============================================================
+function renderPrompts() {
+  let html = '';
+  PROMPTS.forEach((p, i) => {
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-weight:600;font-size:.9rem">${p.title}</div>
+        <button class="copy-btn" onclick="copyPrompt(${i})">📋 Copiar</button>
+      </div>
+      <div class="prompt-box" id="prompt-${i}">${p.text}</div>
+    </div>`;
+  });
+  document.getElementById('prompts-list').innerHTML = html;
+}
+
+function copyPrompt(i) {
+  const el = document.getElementById('prompt-' + i);
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = el.previousElementSibling.querySelector('button');
+    btn.textContent = '✅ Copiado'; setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+  });
+}
+
+function copyText(id) {
+  const el = document.getElementById(id) || document.querySelector('.prompt-box');
+  if(el) navigator.clipboard.writeText(el.textContent).catch(()=>{});
+}
+
+// ============================================================
+// GOALS
+// ============================================================
+function renderGoals(filter) {
+  filter = filter || currentFilter;
+  currentFilter = filter;
+  const catColors = { reloc:'#f59e0b', fin:'var(--finanzas)', salud:'var(--salud)', pers:'#a78bfa' };
+  const catLabels = { reloc:'🗺️ Reubicación', fin:'💰 Finanzas', salud:'💪 Salud', pers:'🧠 Personal', all:'Todas' };
+  let filtered = goals.filter(g => filter === 'all' || g.cat === filter);
+  let html = '';
+  if(filtered.length === 0) html = '<div style="color:var(--text2);text-align:center;padding:30px">No hay metas en esta categoría. ¡Agrega una!</div>';
+  filtered.forEach((g, gi) => {
+    const color = catColors[g.cat] || 'var(--metas)';
+    const totalSteps = g.steps.length;
+    const doneSteps = JSON.parse(localStorage.getItem('goalSteps_'+g.id)) || [];
+    const pct = totalSteps > 0 ? Math.round((doneSteps.length / totalSteps) * 100) : 0;
+    html += `<div class="goal-card" style="border-left-color:${color}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="goal-title">${g.title}</div>
+          <div><span class="tag tag-purple">${catLabels[g.cat]}</span>${g.date?`<span style="font-size:.75rem;color:var(--text2);margin-left:6px">📅 ${g.date}</span>`:''}</div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:.72rem;padding:4px 8px" onclick="deleteGoal(${g.id})">✕</button>
+      </div>
+      <div style="margin:8px 0">
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:3px">${pct}% completado</div>
+        <div class="prog-wrap" style="height:8px"><div class="prog-fill" style="background:${color};width:${pct}%"></div></div>
+      </div>
+      <div class="goal-steps">
+        ${g.steps.map((s,si) => {
+          const done = doneSteps.includes(si);
+          return `<div style="margin-bottom:4px;display:flex;align-items:center;gap:6px">
+            <input type="checkbox" ${done?'checked':''} onchange="toggleStep(${g.id},${si},this)" style="width:14px;height:14px;accent-color:${color}">
+            <span style="font-size:.82rem;${done?'text-decoration:line-through;opacity:.5':''}">${s}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('goals-list').innerHTML = html;
+}
+
+function toggleStep(goalId, stepIdx, cb) {
+  const key = 'goalSteps_' + goalId;
+  let done = JSON.parse(localStorage.getItem(key)) || [];
+  if(cb.checked) { if(!done.includes(stepIdx)) done.push(stepIdx); }
+  else { done = done.filter(i => i !== stepIdx); }
+  localStorage.setItem(key, JSON.stringify(done));
+  renderGoals();
+}
+
+function filterGoals(cat, btn) {
+  document.querySelectorAll('#mp-metas .rot-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGoals(cat);
+}
+
+function saveGoal() {
+  const title = document.getElementById('goal-title').value.trim();
+  if(!title) return;
+  const steps = document.getElementById('goal-steps').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const newGoal = {
+    id: Date.now(), title,
+    cat: document.getElementById('goal-cat').value,
+    date: document.getElementById('goal-date').value,
+    steps, done: false
+  };
+  goals.unshift(newGoal);
+  save('goals_v3', goals);
+  closeModal('modalGoal');
+  renderGoals();
+  ['goal-title','goal-steps','goal-date'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteGoal(id) {
+  if(!confirm('¿Eliminar esta meta?')) return;
+  goals = goals.filter(g => g.id !== id);
+  save('goals_v3', goals);
+  renderGoals();
+}
+
+// ============================================================
+// CALENDAR
+// ============================================================
+const CAL_DAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const CAL_MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const EV_COLORS = { salud:'var(--salud)', fin:'var(--finanzas)', meta:'var(--metas)', terapia:'#a78bfa', otro:'#94a3b8' };
+
+function calNav(d) { calMonth += d; if(calMonth < 0){ calMonth=11; calYear--; } if(calMonth > 11){ calMonth=0; calYear++; } renderCalendar(); }
+
+function renderCalendar() {
+  document.getElementById('cal-title').textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
+  const headersEl = document.getElementById('cal-headers');
+  headersEl.innerHTML = CAL_DAYS.map(d=>`<div class="cal-day-hdr">${d}</div>`).join('');
+  const first = new Date(calYear, calMonth, 1).getDay();
+  const days = new Date(calYear, calMonth+1, 0).getDate();
+  const today = new Date();
+  let html = '';
+  for(let i=0;i<first;i++) html += `<div class="cal-day other-month"></div>`;
+  for(let d=1;d<=days;d++) {
+    const isToday = today.getDate()===d && today.getMonth()===calMonth && today.getFullYear()===calYear;
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEvs = events.filter(e=>e.date===dateStr);
+    const dots = dayEvs.map(e=>`<span class="cal-event-dot" style="background:${EV_COLORS[e.type]||'#94a3b8'}"></span>`).join('');
+    html += `<div class="cal-day ${isToday?'today':''}" onclick="showDayEvents('${dateStr}')">
+      <div class="cal-day-num">${d}</div>${dots}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function showDayEvents(dateStr) {
+  const dayEvs = events.filter(e=>e.date===dateStr);
+  const el = document.getElementById('cal-day-events');
+  if(dayEvs.length===0){ el.innerHTML=`<div style="color:var(--text2);font-size:.85rem">Sin eventos el ${dateStr}. <button class="copy-btn" onclick="document.getElementById('ev-date').value='${dateStr}';openModal('modalEvent')">+ Agregar</button></div>`; return; }
+  el.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${dateStr}</div>` +
+    dayEvs.map((e,i)=>`<div class="apt-row">
+      <div><span class="cal-event-dot" style="background:${EV_COLORS[e.type]||'#94a3b8'}"></span> <b>${e.title}</b>${e.note?`<div style="font-size:.78rem;color:var(--text2)">${e.note}</div>`:''}</div>
+      <button class="copy-btn" onclick="deleteEvent('${e.id}')">✕</button>
+    </div>`).join('');
+}
+
+function saveEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  const date = document.getElementById('ev-date').value;
+  if(!title||!date) return;
+  events.push({ id:Date.now()+'', title, date, type:document.getElementById('ev-type').value, note:document.getElementById('ev-note').value });
+  save('events_v3', events);
+  closeModal('modalEvent');
+  renderCalendar();
+  ['ev-title','ev-date','ev-note'].forEach(id=>document.getElementById(id).value='');
+}
+
+function deleteEvent(id) {
+  events = events.filter(e=>e.id!==id);
+  save('events_v3', events);
+  renderCalendar();
+  document.getElementById('cal-day-events').innerHTML='';
+}
+
+// ============================================================
+// THERAPY
+// ============================================================
+function renderTherapy() {
+  const aptEl = document.getElementById('therapy-apts');
+  const comEl = document.getElementById('therapy-coms');
+  const sesEl = document.getElementById('therapy-sessions');
+  if(aptEl) aptEl.innerHTML = theraApts.length ? theraApts.map((a,i)=>`<div class="apt-row"><div><b>${a.desc}</b><div style="font-size:.75rem;color:var(--text2)">${a.date||''}</div></div><button class="copy-btn" onclick="delApt(${i})">✕</button></div>`).join('') : '<div style="color:var(--text2);font-size:.82rem">Sin citas.</div>';
+  if(comEl) comEl.innerHTML = theraComs.length ? theraComs.map((c,i)=>`<div class="apt-row"><div style="font-size:.85rem">${c.desc}</div><button class="copy-btn" onclick="delCom(${i})">✕</button></div>`).join('') : '<div style="color:var(--text2);font-size:.82rem">Sin compromisos.</div>';
+  if(sesEl) sesEl.innerHTML = theraSessions.length ? theraSessions.map((s,i)=>`<div class="card" style="margin-bottom:8px"><div style="font-size:.75rem;color:var(--text2);margin-bottom:4px">${s.date}</div><div style="font-size:.85rem;white-space:pre-wrap">${s.note}</div><button class="copy-btn" style="margin-top:6px" onclick="delSess(${i})">✕ Eliminar</button></div>`).join('') : '<div style="color:var(--text2);font-size:.82rem">Sin notas de sesiones.</div>';
+}
+
+function addApt() { const d=document.getElementById('apt-desc').value.trim(); if(!d) return; theraApts.push({desc:d,date:document.getElementById('apt-date').value}); save('theraApts',theraApts); document.getElementById('apt-desc').value=''; renderTherapy(); }
+function addCom() { const d=document.getElementById('com-desc').value.trim(); if(!d) return; theraComs.push({desc:d}); save('theraComs',theraComs); document.getElementById('com-desc').value=''; renderTherapy(); }
+function addSession() { const n=document.getElementById('ses-note').value.trim(); if(!n) return; theraSessions.unshift({date:document.getElementById('ses-date').value||new Date().toLocaleDateString('es-MX'),note:n}); save('theraSess',theraSessions); document.getElementById('ses-note').value=''; renderTherapy(); }
+function delApt(i){ theraApts.splice(i,1); save('theraApts',theraApts); renderTherapy(); }
+function delCom(i){ theraComs.splice(i,1); save('theraComs',theraComs); renderTherapy(); }
+function delSess(i){ theraSessions.splice(i,1); save('theraSess',theraSessions); renderTherapy(); }
+
+// ============================================================
+// GYM
+// ============================================================
+function calcGymSaved() {
+  const w = parseInt(document.getElementById('gym-weeks').value)||0;
+  const saved = w * (398/4);
+  document.getElementById('gym-calc-result').innerHTML = `${w} semanas sin gym = <b style="color:var(--metas)">$${saved.toFixed(0)} MXN ahorrados</b>`;
+  gymWeeksSkipped = w;
+  localStorage.setItem('gymWeeks', w);
+  updateGymSaved();
+}
+
+function updateGymSaved() {
+  const saved = gymWeeksSkipped * (398/4);
+  const el = document.getElementById('gym-saved');
+  if(el) el.textContent = '$' + saved.toFixed(0);
+}
+
+// ============================================================
+// FINANCE
+// ============================================================
+function renderFinDash() {
+  const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const avgIng = avg(monthlyData.map(m=>m.ingresos));
+  const avgGas = avg(monthlyData.map(m=>m.gastos));
+  const avgAho = avg(monthlyData.map(m=>m.ahorro));
+  const fmt = n => '$' + n.toLocaleString('es-MX', {maximumFractionDigits:0});
+  const ingEl = document.getElementById('fin-avg-ing');
+  const gasEl = document.getElementById('fin-avg-gas');
+  const ahoEl = document.getElementById('fin-avg-aho');
+  if(ingEl) ingEl.textContent = fmt(avgIng);
+  if(gasEl) gasEl.textContent = fmt(avgGas);
+  if(ahoEl) ahoEl.textContent = avgAho.toFixed(1) + '%';
+  setTimeout(drawFinCharts, 60);
+}
+
+function renderMonths() {
+  const fmt = n => '$' + n.toLocaleString('es-MX', {maximumFractionDigits:0});
+  let html = '';
+  monthlyData.forEach((m,mi) => {
+    const isEditing = false;
+    const aho_pct = m.ahorro || ((m.balance/m.ingresos)*100).toFixed(1);
+    const ahoColor = aho_pct >= 20 ? 'var(--salud)' : aho_pct >= 10 ? 'var(--finanzas)' : 'var(--red)';
+    html += `<div class="fin-month-card">
+      <div class="fin-month-hdr">
+        <div style="font-weight:700">${m.month}</div>
+        <div style="display:flex;gap:6px">
+          <button class="copy-btn" onclick="editMonth(${mi})">✏️ Editar</button>
+          <button class="copy-btn" onclick="deleteMonth(${mi})">✕</button>
+        </div>
+      </div>
+      <div class="fin-metric">
+        <div><div class="fin-num" style="color:var(--salud)">${fmt(m.ingresos)}</div><div class="fin-lbl">Ingresos</div></div>
+        <div><div class="fin-num" style="color:var(--red)">${fmt(m.gastos)}</div><div class="fin-lbl">Gastos</div></div>
+        <div><div class="fin-num" style="color:${ahoColor}">${aho_pct}%</div><div class="fin-lbl">Ahorro</div></div>
+      </div>
+      <div style="font-size:.8rem;color:var(--text2);margin-bottom:6px">Balance: <b style="color:var(--salud)">${fmt(m.balance)}</b></div>
+      ${m.alertas.map(a => `<div class="alert-item" style="margin-bottom:4px">${a}</div>`).join('')}
+    </div>`;
+  });
+  const el = document.getElementById('months-list');
+  if(el) el.innerHTML = html;
+
+  // Analysis tab
+  renderAnalysis();
+}
+
+function renderAnalysis() {
+  const fmt = n => '$' + n.toLocaleString('es-MX', {maximumFractionDigits:0});
+  const avgAho = monthlyData.reduce((a,m)=>a+m.ahorro,0)/monthlyData.length;
+  let ruleHtml = '';
+  monthlyData.forEach(m => {
+    const nec50 = m.ingresos * 0.5, des30 = m.ingresos * 0.3, aho20 = m.ingresos * 0.2;
+    ruleHtml += `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:600;margin-bottom:4px">${m.month}</div>
+      <div style="font-size:.8rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div>Necesidades (50%)<br><span style="color:var(--salud)">${fmt(nec50)} meta</span></div>
+        <div>Deseos (30%)<br><span style="color:var(--finanzas)">${fmt(des30)} meta</span></div>
+        <div>Ahorro (20%)<br><span style="color:#a78bfa">${fmt(aho20)} meta</span></div>
+      </div>
+    </div>`;
+  });
+  const ruleEl = document.getElementById('rule-analysis');
+  if(ruleEl) ruleEl.innerHTML = ruleHtml;
+
+  const alerts = [];
+  if(monthlyData.length >= 2) {
+    const first = monthlyData[0].ingresos, last = monthlyData[monthlyData.length-1].ingresos;
+    const drop = ((first-last)/first*100).toFixed(0);
+    if(drop > 0) alerts.push({type:'red', msg:`🚨 Ingresos cayeron ${drop}% de ${monthlyData[0].month} a ${monthlyData[monthlyData.length-1].month}`});
+  }
+  if(avgAho < 20) alerts.push({type:'warn', msg:`⚠️ Ahorro promedio ${avgAho.toFixed(1)}% — bajo la meta del 20%`});
+  else alerts.push({type:'good', msg:`✅ Ahorro promedio ${avgAho.toFixed(1)}% — buena disciplina financiera`});
+  alerts.push({type:'warn', msg:'💡 Identifica gastos hormiga: compras frecuentes de <$200 suman mucho al mes'});
+  alerts.push({type:'blue', msg:'🎯 Meta reubicación: definir costo destino y calcular meses de ahorro necesarios'});
+
+  const alertsEl = document.getElementById('fin-alerts');
+  if(alertsEl) alertsEl.innerHTML = alerts.map(a => `<div class="alert-item ${a.type==='warn'?'alert-warn':a.type==='good'?'alert-good':a.type==='blue'?'alert-good':''}">${a.msg}</div>`).join('');
+}
+
+function editMonth(i) {
+  const m = monthlyData[i];
+  document.getElementById('m-mes').value = m.month;
+  document.getElementById('m-ing').value = m.ingresos;
+  document.getElementById('m-gas').value = m.gastos;
+  document.getElementById('m-nec').value = m.nec || '';
+  document.getElementById('m-des').value = m.des || '';
+  document.getElementById('m-aho').value = m.aho || '';
+  document.getElementById('m-alert').value = m.alertas.join(' | ');
+  monthlyData.splice(i,1);
+  save('finData_v3', monthlyData);
+  openModal('modalMonth');
+}
+
+function deleteMonth(i) {
+  if(!confirm('¿Eliminar este mes?')) return;
+  monthlyData.splice(i,1);
+  save('finData_v3', monthlyData);
+  renderMonths();
+}
+
+function saveMonth() {
+  const mes = document.getElementById('m-mes').value.trim();
+  const ing = parseFloat(document.getElementById('m-ing').value)||0;
+  const gas = parseFloat(document.getElementById('m-gas').value)||0;
+  const nec = parseFloat(document.getElementById('m-nec').value)||0;
+  const des = parseFloat(document.getElementById('m-des').value)||0;
+  const aho_v = parseFloat(document.getElementById('m-aho').value)||0;
+  const alertTxt = document.getElementById('m-alert').value;
+  if(!mes) return;
+  const bal = ing - gas;
+  const ahoPct = ing > 0 ? ((bal/ing)*100).toFixed(1) : 0;
+  monthlyData.push({ month:mes, ingresos:ing, gastos:gas, balance:bal, ahorro:parseFloat(ahoPct), nec, des, aho:aho_v, alertas: alertTxt ? alertTxt.split('|').map(s=>s.trim()).filter(Boolean) : [] });
+  save('finData_v3', monthlyData);
+  closeModal('modalMonth');
+  renderMonths();
+  renderFinDash();
+  ['m-mes','m-ing','m-gas','m-nec','m-des','m-aho','m-alert'].forEach(id=>document.getElementById(id).value='');
+}
+
+function importManual() {
+  const mes = document.getElementById('imp-mes').value.trim();
+  if(!mes) return alert('Ingresa el mes');
+  const ing = parseFloat(document.getElementById('imp-ing').value)||0;
+  const gas = parseFloat(document.getElementById('imp-gas').value)||0;
+  const nec = parseFloat(document.getElementById('imp-nec').value)||0;
+  const des = parseFloat(document.getElementById('imp-des').value)||0;
+  const aho = parseFloat(document.getElementById('imp-aho').value)||0;
+  const obs = document.getElementById('imp-obs').value.trim();
+  const bal = ing - gas;
+  const ahoPct = ing > 0 ? ((bal/ing)*100).toFixed(1) : 0;
+  monthlyData.push({ month:mes, ingresos:ing, gastos:gas, balance:bal, ahorro:parseFloat(ahoPct), nec, des, aho, alertas: obs ? [obs] : [] });
+  save('finData_v3', monthlyData);
+  showSub('finanzas','meses');
+  renderMonths();
+  alert(`✅ ${mes} importado correctamente`);
+}
+
+function importJSON() {
+  try {
+    const data = JSON.parse(document.getElementById('json-import').value);
+    if(!data.month) return alert('JSON inválido: falta "month"');
+    const bal = (data.ingresos||0) - (data.gastos||0);
+    const ahoPct = data.ingresos > 0 ? ((bal/data.ingresos)*100).toFixed(1) : 0;
+    monthlyData.push({ month:data.month, ingresos:data.ingresos||0, gastos:data.gastos||0, balance:data.balance||bal, ahorro:data.ahorro||parseFloat(ahoPct), nec:data.nec||0, des:data.des||0, aho:data.aho||0, alertas:data.alertas||[] });
+    save('finData_v3', monthlyData);
+    document.getElementById('json-import').value='';
+    showSub('finanzas','meses');
+    renderMonths();
+    alert('✅ Datos importados desde JSON');
+  } catch(e) { alert('JSON inválido: ' + e.message); }
+}
+
+// ============================================================
+// FINANCE CHARTS
+// ============================================================
+function drawFinCharts() {
+  drawBarChart('chart-fin', monthlyData.map(m=>m.month.replace(' 2026','')), [
+    { vals: monthlyData.map(m=>m.ingresos), color:'#10b981', label:'Ingresos' },
+    { vals: monthlyData.map(m=>m.gastos), color:'#ef4444', label:'Gastos' },
+  ]);
+  drawLineChart('chart-ahorro', monthlyData.map(m=>m.month.replace(' 2026','')), monthlyData.map(m=>m.ahorro), '#f59e0b', 20);
+}
+
+function drawBarChart(id, labels, datasets) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const W = canvas.offsetWidth || 600;
+  const H = 180;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const pad = {l:60,r:10,t:20,b:35};
+  const n = labels.length;
+  const allVals = datasets.flatMap(d=>d.vals);
+  const maxV = Math.max(...allVals) * 1.1;
+  const barW = ((W-pad.l-pad.r) / n) / (datasets.length+1);
+  const toY = v => pad.t + ((maxV-v)/maxV)*(H-pad.t-pad.b);
+  const fmt = v => '$'+(v/1000).toFixed(0)+'k';
+
+  datasets.forEach((ds, di) => {
+    ds.vals.forEach((v, i) => {
+      const x = pad.l + i*((W-pad.l-pad.r)/n) + di*barW + barW*0.3;
+      const y = toY(v);
+      const bh = H-pad.b - y;
+      ctx.fillStyle = ds.color+'cc';
+      ctx.fillRect(x, y, barW-2, bh);
+    });
+  });
+
+  // X labels
+  ctx.fillStyle = '#64748b'; ctx.font = '10px Segoe UI'; ctx.textAlign='center';
+  labels.forEach((l,i) => {
+    const x = pad.l + i*((W-pad.l-pad.r)/n) + ((W-pad.l-pad.r)/n)/2;
+    ctx.fillText(l, x, H-pad.b+14);
+  });
+
+  // Y labels
+  ctx.textAlign='right';
+  [0, maxV/2, maxV].forEach(v => {
+    const y = toY(v);
+    ctx.fillText(fmt(v), pad.l-4, y+4);
+    ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y); ctx.stroke();
+  });
+
+  // Legend
+  ctx.textAlign='left'; ctx.font='11px Segoe UI';
+  datasets.forEach((ds,i) => {
+    ctx.fillStyle = ds.color; ctx.fillRect(pad.l + i*100, pad.t-12, 10, 10);
+    ctx.fillStyle = '#94a3b8'; ctx.fillText(ds.label, pad.l+14+i*100, pad.t-4);
+  });
+}
+
+function drawLineChart(id, labels, vals, color, goalLine) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const W = canvas.offsetWidth||600;
+  const H = 140;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const pad={l:40,r:10,t:15,b:30};
+  const maxV = Math.max(...vals, goalLine||0)+5;
+  const minV = Math.max(0, Math.min(...vals)-5);
+  const toX = i => pad.l + (i/(Math.max(vals.length-1,1)))*(W-pad.l-pad.r);
+  const toY = v => pad.t + ((maxV-v)/(maxV-minV))*(H-pad.t-pad.b);
+
+  if(goalLine) {
+    ctx.strokeStyle='rgba(16,185,129,.4)'; ctx.lineWidth=1; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(pad.l,toY(goalLine)); ctx.lineTo(W-pad.r,toY(goalLine)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#34d398'; ctx.font='10px Segoe UI'; ctx.textAlign='right';
+    ctx.fillText('Meta '+goalLine+'%', pad.l-2, toY(goalLine)+4);
+  }
+
+  ctx.strokeStyle=color; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  vals.forEach((v,i)=>{ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
+  ctx.stroke();
+
+  vals.forEach((v,i) => {
+    ctx.fillStyle=color; ctx.beginPath(); ctx.arc(toX(i),toY(v),4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#1e293b'; ctx.beginPath(); ctx.arc(toX(i),toY(v),2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#94a3b8'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText(v+'%', toX(i), toY(v)-8);
+  });
+
+  ctx.fillStyle='#64748b'; ctx.font='10px Segoe UI';
+  labels.forEach((l,i) => { ctx.fillText(l, toX(i), H-pad.b+14); });
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); }));
+
+// ============================================================
+// RECOVERY
+// ============================================================
+function showRecov(i) {
+  const p = RECOVERY_PLANS[i];
+  document.getElementById('recov-scenarios').style.display='none';
+  document.getElementById('recov-detail').style.display='';
+  document.getElementById('recov-detail').innerHTML = `
+    <div style="font-weight:700;margin-bottom:12px;font-size:1rem">${p.title}</div>
+    ${p.steps.map(s=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:.85rem">✅ ${s}</div>`).join('')}
+    <button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="document.getElementById('recov-scenarios').style.display='';document.getElementById('recov-detail').style.display='none'">← Volver</button>`;
+}
+
+// ============================================================
+// HEADER UPDATE
+// ============================================================
+function updateHeader() {
+  const bCur = weightData.B[weightData.B.length-1];
+  const iCur = weightData.I[weightData.I.length-1];
+  const startDate = new Date('2026-04-07');
+  const days = Math.max(1, Math.ceil((new Date()-startDate)/(1000*60*60*24)));
+  const streak = parseInt(localStorage.getItem('streak_val'))||0;
+  const bEl = document.getElementById('hdr-bpeso');
+  const iEl = document.getElementById('hdr-ipeso');
+  const dEl = document.getElementById('hdr-dias');
+  const sEl = document.getElementById('hdr-streak');
+  if(bEl) bEl.textContent = bCur + ' kg';
+  if(iEl) iEl.textContent = iCur + ' kg';
+  if(dEl) dEl.textContent = days;
+  if(sEl) sEl.textContent = streak + '🔥';
+  const dEl2 = document.getElementById('d-bpeso');
+  const iEl2 = document.getElementById('d-ipeso');
+  if(dEl2) dEl2.textContent = bCur;
+  if(iEl2) iEl2.textContent = iCur;
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+document.addEventListener('DOMContentLoaded', init);
+window.addEventListener('resize', () => {
+  if(document.getElementById('sp-peso').classList.contains('active')) drawWeightCharts();
+  if(document.getElementById('fp-dash').classList.contains('active')) drawFinCharts();
+});
+
+// ============================================================
+// TRANSACTIONS — PRE-POPULATED FROM FETPOCKET PDFs
+// ============================================================
+const DEFAULT_TRANSACTIONS = [
+  // ── ENERO 2026 ──
+  {id:101,fecha:'2026-01-31',mes:'Enero 2026',desc:'Agua purificada',cat:'Otros Necesarios',tipo:'Gasto',monto:75.00},
+  {id:102,fecha:'2026-01-30',mes:'Enero 2026',desc:'Sueldo Itzel',cat:'Salario',tipo:'Ingreso',monto:5133.00},
+  {id:103,fecha:'2026-01-30',mes:'Enero 2026',desc:'Fondo de inversión',cat:'Inversión',tipo:'Gasto',monto:894.50},
+  {id:104,fecha:'2026-01-30',mes:'Enero 2026',desc:'Salida primo (Bonless Itzel)',cat:'Comida',tipo:'Gasto',monto:600.00},
+  {id:105,fecha:'2026-01-30',mes:'Enero 2026',desc:'Salida amigas Itzel',cat:'Entretenimiento',tipo:'Gasto',monto:330.00},
+  {id:106,fecha:'2026-01-29',mes:'Enero 2026',desc:'Revolut',cat:'Ahorro',tipo:'Ingreso',monto:796.94},
+  {id:107,fecha:'2026-01-29',mes:'Enero 2026',desc:'Psicóloga',cat:'Salud',tipo:'Gasto',monto:500.00},
+  {id:108,fecha:'2026-01-29',mes:'Enero 2026',desc:'Depósito Fondo de Emergencia',cat:'Ahorro',tipo:'Ingreso',monto:825.21},
+  {id:109,fecha:'2026-01-29',mes:'Enero 2026',desc:'Uber trabajo',cat:'Transporte',tipo:'Gasto',monto:111.00},
+  {id:110,fecha:'2026-01-29',mes:'Enero 2026',desc:'Rin dañado',cat:'Reparaciones',tipo:'Gasto',monto:80.00},
+  {id:111,fecha:'2026-01-29',mes:'Enero 2026',desc:'Nómina Brandon',cat:'Salario',tipo:'Ingreso',monto:4600.00},
+  {id:112,fecha:'2026-01-29',mes:'Enero 2026',desc:'Fondo de emergencia',cat:'Ahorro',tipo:'Gasto',monto:1549.62},
+  {id:113,fecha:'2026-01-28',mes:'Enero 2026',desc:'Pantalla Switch',cat:'Entretenimiento',tipo:'Gasto',monto:520.17},
+  {id:114,fecha:'2026-01-28',mes:'Enero 2026',desc:'Escuela SEP',cat:'Educación',tipo:'Gasto',monto:1055.00},
+  {id:115,fecha:'2026-01-28',mes:'Enero 2026',desc:'Uber trabajo',cat:'Transporte',tipo:'Gasto',monto:100.00},
+  {id:116,fecha:'2026-01-28',mes:'Enero 2026',desc:'Llanta ponchada',cat:'Reparaciones',tipo:'Gasto',monto:50.00},
+  {id:117,fecha:'2026-01-28',mes:'Enero 2026',desc:'Elite Gabo',cat:'Comisiones',tipo:'Ingreso',monto:150.00},
+  {id:118,fecha:'2026-01-27',mes:'Enero 2026',desc:'Emprendimiento Brandon Homepod',cat:'Ahorro',tipo:'Ingreso',monto:900.00},
+  {id:119,fecha:'2026-01-27',mes:'Enero 2026',desc:'Espacio para celular',cat:'Otros Necesarios',tipo:'Gasto',monto:49.00},
+  {id:120,fecha:'2026-01-27',mes:'Enero 2026',desc:'Uber trabajo',cat:'Transporte',tipo:'Gasto',monto:102.00},
+  {id:121,fecha:'2026-01-27',mes:'Enero 2026',desc:'Seguro vida mujer',cat:'Seguros',tipo:'Gasto',monto:1714.10},
+  {id:122,fecha:'2026-01-27',mes:'Enero 2026',desc:'Pago cosas Brenda',cat:'Préstamos',tipo:'Gasto',monto:1000.00},
+  {id:123,fecha:'2026-01-27',mes:'Enero 2026',desc:'iPad tablet venta',cat:'Ahorro',tipo:'Ingreso',monto:900.00},
+  {id:124,fecha:'2026-01-27',mes:'Enero 2026',desc:'Arena gatos Soriana',cat:'Otros Necesarios',tipo:'Gasto',monto:133.90},
+  {id:125,fecha:'2026-01-27',mes:'Enero 2026',desc:'Desayuno suegris Alonso cumpleaños',cat:'Regalos',tipo:'Gasto',monto:1055.55},
+  {id:126,fecha:'2026-01-26',mes:'Enero 2026',desc:'Farmacia',cat:'Salud',tipo:'Gasto',monto:160.50},
+  {id:127,fecha:'2026-01-23',mes:'Enero 2026',desc:'Sueldo Itzel',cat:'Salario',tipo:'Ingreso',monto:3516.00},
+  {id:128,fecha:'2026-01-23',mes:'Enero 2026',desc:'Gasolina',cat:'Transporte',tipo:'Gasto',monto:681.32},
+  {id:129,fecha:'2026-01-23',mes:'Enero 2026',desc:'Gomitas mamá y Aisha',cat:'Snacks',tipo:'Gasto',monto:134.00},
+  {id:130,fecha:'2026-01-22',mes:'Enero 2026',desc:'Depósito Fondo de Emergencia',cat:'Ahorro',tipo:'Ingreso',monto:894.50},
+  {id:131,fecha:'2026-01-22',mes:'Enero 2026',desc:'Depósito Salud',cat:'Ahorro',tipo:'Ingreso',monto:250.05},
+  {id:132,fecha:'2026-01-22',mes:'Enero 2026',desc:'Depósito Dientes',cat:'Ahorro',tipo:'Ingreso',monto:375.07},
+  {id:133,fecha:'2026-01-22',mes:'Enero 2026',desc:'Depósito Emprendimiento Brandon',cat:'Ahorro',tipo:'Ingreso',monto:894.50},
+  {id:134,fecha:'2026-01-22',mes:'Enero 2026',desc:'Aseguranza',cat:'Seguros',tipo:'Gasto',monto:1103.72},
+  {id:135,fecha:'2026-01-22',mes:'Enero 2026',desc:'Fondo salud',cat:'Ahorro',tipo:'Gasto',monto:250.05},
+  {id:136,fecha:'2026-01-22',mes:'Enero 2026',desc:'Fondo inversión',cat:'Inversión',tipo:'Gasto',monto:894.50},
+  {id:137,fecha:'2026-01-22',mes:'Enero 2026',desc:'Fondo emergencia',cat:'Ahorro',tipo:'Gasto',monto:894.50},
+  {id:138,fecha:'2026-01-22',mes:'Enero 2026',desc:'Fondo dientes',cat:'Ahorro',tipo:'Gasto',monto:375.07},
+  {id:139,fecha:'2026-01-22',mes:'Enero 2026',desc:'Pago nómina semana 3',cat:'Salario',tipo:'Ingreso',monto:5694.17},
+  {id:140,fecha:'2026-01-22',mes:'Enero 2026',desc:'Uber trabajo',cat:'Transporte',tipo:'Gasto',monto:59.50},
+  {id:141,fecha:'2026-01-21',mes:'Enero 2026',desc:'Uber trabajo',cat:'Transporte',tipo:'Gasto',monto:59.50},
+  {id:142,fecha:'2026-01-20',mes:'Enero 2026',desc:'Uber trabajo',cat:'Transporte',tipo:'Gasto',monto:67.90},
+  {id:143,fecha:'2026-01-19',mes:'Enero 2026',desc:'Gasolina',cat:'Transporte',tipo:'Gasto',monto:400.00},
+  {id:144,fecha:'2026-01-18',mes:'Enero 2026',desc:'Hdd PSN',cat:'Entretenimiento',tipo:'Ingreso',monto:1000.00},
+  {id:145,fecha:'2026-01-18',mes:'Enero 2026',desc:'Internet',cat:'Recibos',tipo:'Gasto',monto:550.00},
+  {id:146,fecha:'2026-01-16',mes:'Enero 2026',desc:'Sueldo Itzel',cat:'Salario',tipo:'Ingreso',monto:5133.00},
+  {id:147,fecha:'2026-01-15',mes:'Enero 2026',desc:'Fondo dientes',cat:'Ahorro',tipo:'Gasto',monto:75.07},
+  {id:148,fecha:'2026-01-15',mes:'Enero 2026',desc:'Fondo emergencia',cat:'Ahorro',tipo:'Gasto',monto:894.50},
+  {id:149,fecha:'2026-01-15',mes:'Enero 2026',desc:'Fondo salud',cat:'Ahorro',tipo:'Gasto',monto:250.04},
+  {id:150,fecha:'2026-01-15',mes:'Enero 2026',desc:'Fondo inversión',cat:'Inversión',tipo:'Gasto',monto:894.50},
+  {id:151,fecha:'2026-01-15',mes:'Enero 2026',desc:'Guardado semana 2',cat:'Ahorro',tipo:'Ingreso',monto:894.50},
+  {id:152,fecha:'2026-01-15',mes:'Enero 2026',desc:'Guardado semanal',cat:'Ahorro',tipo:'Ingreso',monto:375.07},
+  {id:153,fecha:'2026-01-15',mes:'Enero 2026',desc:'Radiografía',cat:'Salud',tipo:'Gasto',monto:300.00},
+  {id:154,fecha:'2026-01-15',mes:'Enero 2026',desc:'Guardado semana 2 (salud)',cat:'Ahorro',tipo:'Ingreso',monto:250.05},
+  // ── FEBRERO 2026 ──
+  {id:201,fecha:'2026-02-28',mes:'Febrero 2026',desc:'Uber eats',cat:'Otros Necesarios',tipo:'Gasto',monto:80.96},
+  {id:202,fecha:'2026-02-28',mes:'Febrero 2026',desc:'Pizza',cat:'Comida Rápida',tipo:'Gasto',monto:180.85},
+  {id:203,fecha:'2026-02-28',mes:'Febrero 2026',desc:'Dollar three maquillaje y Danika',cat:'Otros No Necesarios',tipo:'Gasto',monto:128.90},
+  {id:204,fecha:'2026-02-28',mes:'Febrero 2026',desc:'Burlington vestido',cat:'Ropa',tipo:'Gasto',monto:335.98},
+  {id:205,fecha:'2026-02-28',mes:'Febrero 2026',desc:'Gasolina',cat:'Transporte',tipo:'Gasto',monto:652.44},
+  {id:206,fecha:'2026-02-28',mes:'Febrero 2026',desc:"Sam's comida",cat:'Comida',tipo:'Gasto',monto:280.67},
+  {id:207,fecha:'2026-02-27',mes:'Febrero 2026',desc:'Llanta y repuesto rin',cat:'Reparaciones',tipo:'Gasto',monto:700.00},
+  {id:208,fecha:'2026-02-27',mes:'Febrero 2026',desc:'Papa cupcakes',cat:'Freelance',tipo:'Ingreso',monto:300.00},
+  {id:209,fecha:'2026-02-27',mes:'Febrero 2026',desc:'Nómina Itzel',cat:'Salario',tipo:'Ingreso',monto:5129.00},
+  {id:210,fecha:'2026-02-27',mes:'Febrero 2026',desc:'Salida Itzel de trabajo',cat:'Otros Necesarios',tipo:'Gasto',monto:265.00},
+  {id:211,fecha:'2026-02-27',mes:'Febrero 2026',desc:'Cashback',cat:'Reembolso',tipo:'Ingreso',monto:32.31},
+  {id:212,fecha:'2026-02-27',mes:'Febrero 2026',desc:'Apple espacio',cat:'Otros Necesarios',tipo:'Gasto',monto:49.00},
+  {id:213,fecha:'2026-02-27',mes:'Febrero 2026',desc:'Walmart',cat:'Otros Necesarios',tipo:'Gasto',monto:119.76},
+  {id:214,fecha:'2026-02-26',mes:'Febrero 2026',desc:'Walmart spray para pintar',cat:'Otros Necesarios',tipo:'Gasto',monto:64.00},
+  {id:215,fecha:'2026-02-26',mes:'Febrero 2026',desc:'Medicamento',cat:'Salud',tipo:'Gasto',monto:19.00},
+  {id:216,fecha:'2026-02-26',mes:'Febrero 2026',desc:'Gasolina',cat:'Transporte',tipo:'Gasto',monto:300.00},
+  {id:217,fecha:'2026-02-26',mes:'Febrero 2026',desc:'Papelería',cat:'Otros Necesarios',tipo:'Gasto',monto:17.00},
+  {id:218,fecha:'2026-02-26',mes:'Febrero 2026',desc:'Elite Alonso',cat:'Comisiones',tipo:'Ingreso',monto:150.00},
+  {id:219,fecha:'2026-02-26',mes:'Febrero 2026',desc:'Cerveza',cat:'Snacks',tipo:'Gasto',monto:125.00},
+  {id:220,fecha:'2026-02-26',mes:'Febrero 2026',desc:'Nómina Brandon',cat:'Salario',tipo:'Ingreso',monto:4741.11},
+  {id:221,fecha:'2026-02-25',mes:'Febrero 2026',desc:'Cupcakes Walmart',cat:'Snacks',tipo:'Gasto',monto:242.56},
+  {id:222,fecha:'2026-02-22',mes:'Febrero 2026',desc:'Pago internet',cat:'Recibos',tipo:'Gasto',monto:550.00},
+  {id:223,fecha:'2026-02-22',mes:'Febrero 2026',desc:'Baby shower cobija',cat:'Regalos',tipo:'Gasto',monto:103.92},
+  {id:224,fecha:'2026-02-21',mes:'Febrero 2026',desc:'Tarjeta regalo Richie',cat:'Regalos',tipo:'Gasto',monto:300.00},
+  {id:225,fecha:'2026-02-21',mes:'Febrero 2026',desc:'Papitas',cat:'Snacks',tipo:'Gasto',monto:38.00},
+  {id:226,fecha:'2026-02-21',mes:'Febrero 2026',desc:'Préstamo abue Soriana',cat:'Préstamos',tipo:'Gasto',monto:90.50},
+  {id:227,fecha:'2026-02-21',mes:'Febrero 2026',desc:'Vacuna Modi',cat:'Salud',tipo:'Gasto',monto:350.00},
+  {id:228,fecha:'2026-02-20',mes:'Febrero 2026',desc:'Walmart pastel Aisha',cat:'Regalos',tipo:'Gasto',monto:1280.98},
+  {id:229,fecha:'2026-02-20',mes:'Febrero 2026',desc:'Sueldo Itzel',cat:'Salario',tipo:'Ingreso',monto:5129.00},
+  {id:230,fecha:'2026-02-19',mes:'Febrero 2026',desc:'Nómina Brandon',cat:'Salario',tipo:'Ingreso',monto:4741.11},
+  {id:231,fecha:'2026-02-17',mes:'Febrero 2026',desc:'Cashback',cat:'Reembolso',tipo:'Ingreso',monto:108.99},
+  {id:232,fecha:'2026-02-17',mes:'Febrero 2026',desc:'Pago luz',cat:'Recibos',tipo:'Gasto',monto:1013.00},
+  {id:233,fecha:'2026-02-14',mes:'Febrero 2026',desc:'Papitas',cat:'Snacks',tipo:'Gasto',monto:36.94},
+  {id:234,fecha:'2026-02-14',mes:'Febrero 2026',desc:'Biberones baby shower',cat:'Regalos',tipo:'Gasto',monto:310.61},
+  {id:235,fecha:'2026-02-14',mes:'Febrero 2026',desc:'Aisha dólares',cat:'Freelance',tipo:'Ingreso',monto:154.80},
+  {id:236,fecha:'2026-02-14',mes:'Febrero 2026',desc:'Food King',cat:'Comida Rápida',tipo:'Gasto',monto:357.17},
+  {id:237,fecha:'2026-02-14',mes:'Febrero 2026',desc:'Walmart compras galletas y peluche',cat:'Otros Necesarios',tipo:'Gasto',monto:314.22},
+  {id:238,fecha:'2026-02-12',mes:'Febrero 2026',desc:'Sueldo Itzel',cat:'Salario',tipo:'Ingreso',monto:5129.00},
+  {id:239,fecha:'2026-02-12',mes:'Febrero 2026',desc:'Nómina Brandon',cat:'Salario',tipo:'Ingreso',monto:4741.11},
+  {id:240,fecha:'2026-02-10',mes:'Febrero 2026',desc:'Pago internet',cat:'Recibos',tipo:'Gasto',monto:550.00},
+  {id:241,fecha:'2026-02-08',mes:'Febrero 2026',desc:'Gasolina',cat:'Transporte',tipo:'Gasto',monto:400.00},
+  {id:242,fecha:'2026-02-05',mes:'Febrero 2026',desc:'Sueldo Itzel',cat:'Salario',tipo:'Ingreso',monto:5129.00},
+  {id:243,fecha:'2026-02-05',mes:'Febrero 2026',desc:'Nómina Brandon',cat:'Salario',tipo:'Ingreso',monto:4741.11},
+  {id:244,fecha:'2026-02-03',mes:'Febrero 2026',desc:'Supermercado',cat:'Comida',tipo:'Gasto',monto:650.00},
+  // ── MARZO 2026 ──
+  {id:301,fecha:'2026-03-31',mes:'Marzo 2026',desc:'Compras Walmart',cat:'Otros Necesarios',tipo:'Gasto',monto:7.00},
+  {id:302,fecha:'2026-03-29',mes:'Marzo 2026',desc:'Regalo Aisha',cat:'Regalos',tipo:'Gasto',monto:500.00},
+  {id:303,fecha:'2026-03-29',mes:'Marzo 2026',desc:'Fiesta Kari',cat:'Eventos o Conciertos',tipo:'Gasto',monto:317.00},
+  {id:304,fecha:'2026-03-28',mes:'Marzo 2026',desc:'Regalo Kari',cat:'Regalos',tipo:'Gasto',monto:400.00},
+  {id:305,fecha:'2026-03-27',mes:'Marzo 2026',desc:'Regalo Emilio',cat:'Regalos',tipo:'Gasto',monto:300.00},
+  {id:306,fecha:'2026-03-26',mes:'Marzo 2026',desc:'Nómina chino',cat:'Salario',tipo:'Ingreso',monto:6974.27},
+  {id:307,fecha:'2026-03-26',mes:'Marzo 2026',desc:'Lechera oxxo',cat:'Comida Rápida',tipo:'Gasto',monto:35.36},
+  {id:308,fecha:'2026-03-26',mes:'Marzo 2026',desc:'Fondo de emergencia',cat:'Ahorro',tipo:'Gasto',monto:715.00},
+  {id:309,fecha:'2026-03-26',mes:'Marzo 2026',desc:'Fondo dental',cat:'Ahorro',tipo:'Gasto',monto:200.00},
+  {id:310,fecha:'2026-03-26',mes:'Marzo 2026',desc:'Fondo de inversión',cat:'Inversión',tipo:'Gasto',monto:500.00},
+  {id:311,fecha:'2026-03-25',mes:'Marzo 2026',desc:'Arreglos ropa Itzel',cat:'Ropa',tipo:'Gasto',monto:150.00},
+  {id:312,fecha:'2026-03-24',mes:'Marzo 2026',desc:'Pizza',cat:'Comida Rápida',tipo:'Gasto',monto:124.00},
+  {id:313,fecha:'2026-03-23',mes:'Marzo 2026',desc:'Gasolina',cat:'Transporte',tipo:'Gasto',monto:600.00},
+  {id:314,fecha:'2026-03-23',mes:'Marzo 2026',desc:'Cine Naylin',cat:'Entretenimiento',tipo:'Gasto',monto:282.00},
+  {id:315,fecha:'2026-03-22',mes:'Marzo 2026',desc:'Fiesta suegris comida',cat:'Eventos o Conciertos',tipo:'Gasto',monto:200.00},
+  {id:316,fecha:'2026-03-21',mes:'Marzo 2026',desc:'Papitas y cerveza',cat:'Snacks',tipo:'Gasto',monto:235.00},
+  {id:317,fecha:'2026-03-20',mes:'Marzo 2026',desc:'Mandado',cat:'Otros Necesarios',tipo:'Gasto',monto:22.00},
+  {id:318,fecha:'2026-03-20',mes:'Marzo 2026',desc:'Vacuna Modi',cat:'Salud',tipo:'Gasto',monto:200.00},
+  {id:319,fecha:'2026-03-20',mes:'Marzo 2026',desc:'Internet',cat:'Recibos',tipo:'Gasto',monto:550.00},
+  {id:320,fecha:'2026-03-19',mes:'Marzo 2026',desc:'Donaciones',cat:'Regalos',tipo:'Gasto',monto:50.00},
+  {id:321,fecha:'2026-03-19',mes:'Marzo 2026',desc:'Luz',cat:'Recibos',tipo:'Gasto',monto:100.00},
+  {id:322,fecha:'2026-03-19',mes:'Marzo 2026',desc:'Quita pulgas gatas',cat:'Salud',tipo:'Gasto',monto:240.00},
+  {id:323,fecha:'2026-03-18',mes:'Marzo 2026',desc:'Curso Itzel Galletas',cat:'Educación',tipo:'Gasto',monto:450.00},
+  {id:324,fecha:'2026-03-16',mes:'Marzo 2026',desc:'Medicinas spray y desparasitante',cat:'Salud',tipo:'Gasto',monto:351.00},
+  {id:325,fecha:'2026-03-16',mes:'Marzo 2026',desc:'Gasolina comisión',cat:'Comisiones',tipo:'Ingreso',monto:800.00},
+  {id:326,fecha:'2026-03-16',mes:'Marzo 2026',desc:'Venta extender',cat:'Comisiones',tipo:'Ingreso',monto:400.00},
+  {id:327,fecha:'2026-03-16',mes:'Marzo 2026',desc:'Saldo Itzel',cat:'Otros Necesarios',tipo:'Gasto',monto:199.00},
+  {id:328,fecha:'2026-03-15',mes:'Marzo 2026',desc:'Galletas y nieve Oxxo',cat:'Snacks',tipo:'Gasto',monto:81.00},
+  {id:329,fecha:'2026-03-15',mes:'Marzo 2026',desc:'Pago préstamo Lizeth',cat:'Comisiones',tipo:'Ingreso',monto:400.00},
+  {id:330,fecha:'2026-03-15',mes:'Marzo 2026',desc:'Elite Alonso',cat:'Comisiones',tipo:'Ingreso',monto:150.00},
+  {id:331,fecha:'2026-03-15',mes:'Marzo 2026',desc:'Regalo Naylin',cat:'Regalos',tipo:'Gasto',monto:160.00},
+  {id:332,fecha:'2026-03-15',mes:'Marzo 2026',desc:'Flautas',cat:'Comida',tipo:'Gasto',monto:210.00},
+  {id:333,fecha:'2026-03-15',mes:'Marzo 2026',desc:'Leche de magnesio',cat:'Salud',tipo:'Gasto',monto:51.01},
+  {id:334,fecha:'2026-03-14',mes:'Marzo 2026',desc:'Walmart',cat:'Otros Necesarios',tipo:'Gasto',monto:96.68},
+  {id:335,fecha:'2026-03-14',mes:'Marzo 2026',desc:'Dollar tree',cat:'Otros Necesarios',tipo:'Gasto',monto:28.90},
+  {id:336,fecha:'2026-03-14',mes:'Marzo 2026',desc:'Fresas',cat:'Comida',tipo:'Gasto',monto:120.00},
+  {id:337,fecha:'2026-03-14',mes:'Marzo 2026',desc:'Puentes internacionales',cat:'Transporte',tipo:'Gasto',monto:120.00},
+  {id:338,fecha:'2026-03-14',mes:'Marzo 2026',desc:'Jack in the box',cat:'Comida Rápida',tipo:'Gasto',monto:88.00},
+  {id:339,fecha:'2026-03-13',mes:'Marzo 2026',desc:'Nómina Itzel',cat:'Salario',tipo:'Ingreso',monto:5178.00},
+  {id:340,fecha:'2026-03-13',mes:'Marzo 2026',desc:'Vacuna Modi',cat:'Salud',tipo:'Gasto',monto:350.00},
+  {id:341,fecha:'2026-03-13',mes:'Marzo 2026',desc:'Elite Gabo',cat:'Comisiones',tipo:'Ingreso',monto:150.10},
+  {id:342,fecha:'2026-03-13',mes:'Marzo 2026',desc:'Fresas con crema',cat:'Snacks',tipo:'Gasto',monto:80.00},
+  {id:343,fecha:'2026-03-12',mes:'Marzo 2026',desc:'Tax down',cat:'Otros Necesarios',tipo:'Gasto',monto:411.75},
+  {id:344,fecha:'2026-03-12',mes:'Marzo 2026',desc:'Salario Brandon',cat:'Salario',tipo:'Ingreso',monto:4739.19},
+  {id:345,fecha:'2026-03-11',mes:'Marzo 2026',desc:'Elite Reyna brother',cat:'Comisiones',tipo:'Ingreso',monto:550.10},
+  {id:346,fecha:'2026-03-10',mes:'Marzo 2026',desc:'Nómina Itzel',cat:'Salario',tipo:'Ingreso',monto:5178.00},
+  {id:347,fecha:'2026-03-10',mes:'Marzo 2026',desc:'Pago internet',cat:'Recibos',tipo:'Gasto',monto:550.00},
+  {id:348,fecha:'2026-03-09',mes:'Marzo 2026',desc:'Gasolina',cat:'Transporte',tipo:'Gasto',monto:400.00},
+  {id:349,fecha:'2026-03-07',mes:'Marzo 2026',desc:'Ahorro semanal',cat:'Ahorro',tipo:'Gasto',monto:715.00},
+  {id:350,fecha:'2026-03-06',mes:'Marzo 2026',desc:'Nómina Brandon',cat:'Salario',tipo:'Ingreso',monto:4739.19},
+  {id:351,fecha:'2026-03-05',mes:'Marzo 2026',desc:'Supermercado Soriana',cat:'Comida',tipo:'Gasto',monto:680.00},
+  {id:352,fecha:'2026-03-03',mes:'Marzo 2026',desc:'Uber trabajo',cat:'Transporte',tipo:'Gasto',monto:85.00},
+  {id:353,fecha:'2026-03-01',mes:'Marzo 2026',desc:'Aseguranza',cat:'Seguros',tipo:'Gasto',monto:1103.72},
+];
+
+let transactions = JSON.parse(localStorage.getItem('txns_v1')) || DEFAULT_TRANSACTIONS;
+let nextTxnId = transactions.length ? Math.max(...transactions.map(t=>t.id))+1 : 400;
+
+function saveTxns() { try{localStorage.setItem('txns_v1',JSON.stringify(transactions));}catch(e){} }
+
+// ============================================================
+// RENDER TRANSACTIONS
+// ============================================================
+function renderTxns() {
+  const mes   = document.getElementById('txn-filter-mes')?.value||'';
+  const tipo  = document.getElementById('txn-filter-tipo')?.value||'';
+  const cat   = document.getElementById('txn-filter-cat')?.value||'';
+  const srch  = (document.getElementById('txn-search')?.value||'').toLowerCase();
+
+  let filtered = transactions.filter(t=>{
+    if(mes  && t.mes!==mes)   return false;
+    if(tipo && t.tipo!==tipo) return false;
+    if(cat  && t.cat!==cat)   return false;
+    if(srch && !t.desc.toLowerCase().includes(srch) && !t.cat.toLowerCase().includes(srch)) return false;
+    return true;
+  }).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+
+  // Update category dropdown
+  const cats = [...new Set(transactions.map(t=>t.cat))].sort();
+  const catSel = document.getElementById('txn-filter-cat');
+  if(catSel){ const cur=catSel.value; catSel.innerHTML='<option value="">Todas</option>'+cats.map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join(''); }
+
+  const fmt = n=>'$'+n.toLocaleString('es-MX',{maximumFractionDigits:0});
+  const ing = filtered.filter(t=>t.tipo==='Ingreso').reduce((a,t)=>a+t.monto,0);
+  const gas = filtered.filter(t=>t.tipo==='Gasto').reduce((a,t)=>a+t.monto,0);
+  const bal = ing-gas;
+
+  const summEl=document.getElementById('txn-summary');
+  if(summEl) summEl.innerHTML=`
+    <div class="card" style="text-align:center;border-left:3px solid var(--salud)"><div class="fin-num" style="color:var(--salud)">${fmt(ing)}</div><div class="fin-lbl">Ingresos</div></div>
+    <div class="card" style="text-align:center;border-left:3px solid var(--red)"><div class="fin-num" style="color:var(--red)">${fmt(gas)}</div><div class="fin-lbl">Gastos</div></div>
+    <div class="card" style="text-align:center;border-left:3px solid var(--finanzas)"><div class="fin-num" style="color:${bal>=0?'var(--salud)':'var(--red)'}">${fmt(bal)}</div><div class="fin-lbl">Balance</div></div>`;
+
+  const listEl=document.getElementById('txn-list');
+  if(!listEl) return;
+  if(!filtered.length){ listEl.innerHTML='<div class="card" style="text-align:center;color:var(--text2);padding:20px">Sin transacciones con estos filtros</div>'; return; }
+
+  let html='', lastDate='';
+  filtered.forEach(t=>{
+    if(t.fecha!==lastDate){
+      html+=`<div style="font-size:.73rem;color:var(--text2);padding:8px 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${fmtDate(t.fecha)}</div>`;
+      lastDate=t.fecha;
+    }
+    const isIng=t.tipo==='Ingreso';
+    html+=`<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;margin-bottom:5px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.87rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc}</div>
+        <div style="font-size:.73rem;color:var(--text2)">${t.cat}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <span style="font-size:.95rem;font-weight:700;color:${isIng?'var(--salud)':'var(--red)'}">${isIng?'+':'-'}${fmt(t.monto)}</span>
+        <button class="copy-btn" onclick="editTxn(${t.id})" title="Editar">✏️</button>
+        <button class="copy-btn" onclick="deleteTxn(${t.id})" title="Eliminar">✕</button>
+      </div>
+    </div>`;
+  });
+  listEl.innerHTML=html;
+}
+
+function fmtDate(s){
+  if(!s) return '';
+  const d=new Date(s+'T12:00:00');
+  return d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+}
+
+function editTxn(id){
+  const t=transactions.find(x=>x.id===id); if(!t) return;
+  document.getElementById('txn-edit-id').value=id;
+  document.getElementById('txn-modal-title').textContent='Editar Transacción';
+  document.getElementById('txn-fecha').value=t.fecha;
+  document.getElementById('txn-mes').value=t.mes;
+  document.getElementById('txn-desc').value=t.desc;
+  document.getElementById('txn-cat').value=t.cat;
+  document.getElementById('txn-tipo').value=t.tipo;
+  document.getElementById('txn-monto').value=t.monto;
+  openModal('modalTxn');
+}
+
+function deleteTxn(id){
+  if(!confirm('¿Eliminar esta transacción?')) return;
+  transactions=transactions.filter(t=>t.id!==id);
+  saveTxns(); renderTxns();
+}
+
+function saveTxn(){
+  const editId=parseInt(document.getElementById('txn-edit-id').value)||0;
+  const fecha =document.getElementById('txn-fecha').value;
+  const mes   =document.getElementById('txn-mes').value;
+  const desc  =document.getElementById('txn-desc').value.trim();
+  const cat   =document.getElementById('txn-cat').value.trim();
+  const tipo  =document.getElementById('txn-tipo').value;
+  const monto =parseFloat(document.getElementById('txn-monto').value)||0;
+  if(!desc||!monto){ alert('Completa descripción y monto'); return; }
+  if(editId){
+    const idx=transactions.findIndex(t=>t.id===editId);
+    if(idx>=0) transactions[idx]={id:editId,fecha,mes,desc,cat,tipo,monto};
+  } else {
+    transactions.push({id:nextTxnId++,fecha,mes,desc,cat,tipo,monto});
+  }
+  saveTxns();
+  closeModal('modalTxn');
+  document.getElementById('txn-edit-id').value='';
+  document.getElementById('txn-modal-title').textContent='Nueva Transacción';
+  renderTxns();
+}
+
+// ============================================================
+// PRESUPUESTO
+// ============================================================
+const DEFAULT_PRESUPUESTO = {
+  'Enero 2026':[
+    {cat:'Transporte',tipo:'gasto',presupuesto:3000,real:1800},
+    {cat:'Alimentos / Comida',tipo:'gasto',presupuesto:5000,real:4000},
+    {cat:'Salud',tipo:'gasto',presupuesto:2000,real:960},
+    {cat:'Recibos (Internet/Luz)',tipo:'gasto',presupuesto:2000,real:550},
+    {cat:'Seguros',tipo:'gasto',presupuesto:2000,real:2818},
+    {cat:'Educación / Colegio',tipo:'gasto',presupuesto:1500,real:1055},
+    {cat:'Regalos / Eventos',tipo:'gasto',presupuesto:2000,real:1189},
+    {cat:'Entretenimiento',tipo:'gasto',presupuesto:3000,real:850},
+    {cat:'Ropa / Personal',tipo:'gasto',presupuesto:1500,real:0},
+    {cat:'Ahorro / Inversión',tipo:'gasto',presupuesto:9816,real:9816},
+    {cat:'Otros / Varios',tipo:'gasto',presupuesto:2000,real:5400},
+  ],
+  'Febrero 2026':[
+    {cat:'Transporte',tipo:'gasto',presupuesto:3000,real:1652},
+    {cat:'Alimentos / Comida',tipo:'gasto',presupuesto:5000,real:2500},
+    {cat:'Salud',tipo:'gasto',presupuesto:2000,real:369},
+    {cat:'Recibos (Internet/Luz)',tipo:'gasto',presupuesto:2500,real:1563},
+    {cat:'Seguros',tipo:'gasto',presupuesto:2000,real:0},
+    {cat:'Regalos / Eventos',tipo:'gasto',presupuesto:2000,real:1995},
+    {cat:'Entretenimiento / Deseos',tipo:'gasto',presupuesto:5000,real:13674},
+    {cat:'Ropa / Personal',tipo:'gasto',presupuesto:1500,real:336},
+    {cat:'Reparaciones',tipo:'gasto',presupuesto:1000,real:700},
+    {cat:'Ahorro / Inversión',tipo:'gasto',presupuesto:8969,real:5114},
+    {cat:'Otros / Varios',tipo:'gasto',presupuesto:2000,real:854},
+  ],
+  'Marzo 2026':[
+    {cat:'Transporte',tipo:'gasto',presupuesto:3000,real:1205},
+    {cat:'Alimentos / Comida',tipo:'gasto',presupuesto:5000,real:1950},
+    {cat:'Salud',tipo:'gasto',presupuesto:2000,real:1192},
+    {cat:'Recibos (Internet/Luz)',tipo:'gasto',presupuesto:2000,real:1200},
+    {cat:'Seguros',tipo:'gasto',presupuesto:1500,real:1104},
+    {cat:'Regalos / Eventos',tipo:'gasto',presupuesto:2000,real:2227},
+    {cat:'Entretenimiento / Snacks',tipo:'gasto',presupuesto:2000,real:1080},
+    {cat:'Educación',tipo:'gasto',presupuesto:1000,real:450},
+    {cat:'Ropa / Personal',tipo:'gasto',presupuesto:1000,real:150},
+    {cat:'Ahorro / Inversión',tipo:'gasto',presupuesto:6142,real:7455},
+    {cat:'Otros / Varios',tipo:'gasto',presupuesto:2000,real:1116},
+  ],
+};
+
+let presupuesto = JSON.parse(localStorage.getItem('pres_v1')) || JSON.parse(JSON.stringify(DEFAULT_PRESUPUESTO));
+
+function savePres(){
+  const mes=document.getElementById('pres-mes-sel')?.value;
+  if(!mes||!presupuesto[mes]) return;
+  const gastos=presupuesto[mes].filter(c=>c.tipo==='gasto');
+  gastos.forEach((_,i)=>{
+    const pEl=document.getElementById(`pc-${i}-p`); const rEl=document.getElementById(`pc-${i}-r`);
+    if(pEl) gastos[i].presupuesto=parseFloat(pEl.value)||0;
+    if(rEl) gastos[i].real=parseFloat(rEl.value)||0;
+  });
+  try{localStorage.setItem('pres_v1',JSON.stringify(presupuesto));}catch(e){}
+  renderPresupuesto();
+  alert('✅ Presupuesto guardado');
+}
+
+function addPresupuestoCat(){
+  const mes=document.getElementById('pres-mes-sel')?.value; if(!mes) return;
+  const nombre=prompt('Nombre de la categoría:'); if(!nombre) return;
+  if(!presupuesto[mes]) presupuesto[mes]=[];
+  presupuesto[mes].push({cat:nombre,tipo:'gasto',presupuesto:0,real:0});
+  renderPresupuesto();
+}
+
+function renderPresupuesto(){
+  const mes=document.getElementById('pres-mes-sel')?.value; if(!mes) return;
+  if(!presupuesto[mes]) presupuesto[mes]=JSON.parse(JSON.stringify(DEFAULT_PRESUPUESTO['Marzo 2026']));
+  const cats=presupuesto[mes];
+  const fmt=n=>'$'+n.toLocaleString('es-MX',{maximumFractionDigits:0});
+  const md=monthlyData.find(m=>m.month===mes);
+
+  // 50/30/20
+  const presEl50=document.getElementById('pres-50-30-20');
+  if(presEl50&&md){
+    const ing=md.ingresos;
+    const gastos=cats.filter(c=>c.tipo==='gasto');
+    const totP=gastos.reduce((a,c)=>a+(c.presupuesto||0),0);
+    const totR=gastos.reduce((a,c)=>a+(c.real||0),0);
+    presEl50.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+        <div style="text-align:center"><div style="font-size:.72rem;color:var(--text2)">50% Nec. Meta</div><div style="font-weight:700;font-size:1rem;color:var(--salud)">${fmt(ing*.5)}</div></div>
+        <div style="text-align:center"><div style="font-size:.72rem;color:var(--text2)">30% Des. Meta</div><div style="font-weight:700;font-size:1rem;color:var(--finanzas)">${fmt(ing*.3)}</div></div>
+        <div style="text-align:center"><div style="font-size:.72rem;color:var(--text2)">20% Aho. Meta</div><div style="font-weight:700;font-size:1rem;color:#a78bfa">${fmt(ing*.2)}</div></div>
+      </div>
+      <div style="font-size:.8rem;color:var(--text2)">Presupuestado: <b>${fmt(totP)}</b> &nbsp;·&nbsp; Real: <b style="color:${totR>totP?'var(--red)':'var(--salud)'}">${fmt(totR)}</b></div>`;
+  }
+
+  // Category editor
+  const catsEl=document.getElementById('pres-cats');
+  if(!catsEl) return;
+  const gastos=cats.filter(c=>c.tipo==='gasto');
+  let html='';
+  gastos.forEach((c,i)=>{
+    const pct=c.presupuesto>0?Math.min(100,(c.real/c.presupuesto)*100):0;
+    const over=c.real>c.presupuesto&&c.presupuesto>0;
+    html+=`<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:.87rem;font-weight:600">${c.cat}</span>
+        <span style="font-size:.75rem;color:var(--text2)">${fmt(c.real)} / ${fmt(c.presupuesto)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <div><label style="font-size:.72rem">Presupuesto</label><input type="number" id="pc-${i}-p" value="${c.presupuesto}" step="100" style="margin-bottom:0;font-size:.85rem"></div>
+        <div><label style="font-size:.72rem">Real gastado</label><input type="number" id="pc-${i}-r" value="${c.real}" step="100" style="margin-bottom:0;font-size:.85rem"></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:4px;height:6px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pct,100)}%;background:${over?'var(--red)':'var(--salud)'};transition:width .3s"></div>
+      </div>
+      ${over?`<div style="font-size:.72rem;color:var(--red);margin-top:2px">⚠️ Excedido en ${fmt(c.real-c.presupuesto)}</div>`:''}
+    </div>`;
+  });
+  catsEl.innerHTML=html;
+
+  // Chart
+  if(gastos.length){
+    drawBarChart('chart-pres',gastos.map(c=>c.cat.substring(0,11)),[
+      {vals:gastos.map(c=>c.presupuesto||0),color:'rgba(99,102,241,.65)',label:'Presupuesto'},
+      {vals:gastos.map(c=>c.real||0),color:'rgba(239,68,68,.65)',label:'Real'},
+    ]);
+  }
+}
+
+// ============================================================
+// REPORTE
+// ============================================================
+function generarReporte(){
+  const mes=document.getElementById('rep-mes-sel')?.value;
+  const fmt2=n=>'$'+n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt0=n=>'$'+n.toLocaleString('es-MX',{maximumFractionDigits:0});
+  const meses=mes==='todos'?monthlyData:monthlyData.filter(m=>m.month===mes);
+  let html='';
+
+  meses.forEach(m=>{
+    const txM=transactions.filter(t=>t.mes===m.month);
+    const ing=txM.filter(t=>t.tipo==='Ingreso').reduce((a,t)=>a+t.monto,0)||m.ingresos;
+    const gas=txM.filter(t=>t.tipo==='Gasto').reduce((a,t)=>a+t.monto,0)||m.gastos;
+    const bal=ing-gas;
+    const ahoPct=ing>0?((bal/ing)*100).toFixed(1):0;
+    const porCat={};
+    txM.filter(t=>t.tipo==='Gasto').forEach(t=>{ porCat[t.cat]=(porCat[t.cat]||0)+t.monto; });
+    const catList=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
+    const ahoColor=ahoPct>=20?'var(--salud)':ahoPct>=10?'var(--finanzas)':'var(--red)';
+    html+=`<div class="card" style="margin-bottom:16px;border-left:4px solid var(--finanzas)">
+      <h3 style="font-size:1.05rem;margin-bottom:12px;color:var(--finanzas)">📊 ${m.month}</h3>
+      <div class="grid3" style="margin-bottom:12px">
+        <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:var(--salud)">${fmt0(ing)}</div><div style="font-size:.72rem;color:var(--text2)">Ingresos</div></div>
+        <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt0(gas)}</div><div style="font-size:.72rem;color:var(--text2)">Gastos</div></div>
+        <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:${bal>=0?'var(--salud)':'var(--red)'}">${fmt0(bal)}</div><div style="font-size:.72rem;color:var(--text2)">Balance</div></div>
+      </div>
+      <div style="padding:8px;background:rgba(245,158,11,.08);border-radius:8px;margin-bottom:10px">
+        <div style="font-size:.85rem">Tasa de ahorro: <b style="color:${ahoColor}">${ahoPct}%</b></div>
+        ${m.alertas.map(a=>`<div style="font-size:.78rem;color:var(--text2);margin-top:3px">• ${a}</div>`).join('')}
+      </div>
+      ${catList.length?`<div style="font-size:.83rem;font-weight:600;margin-bottom:6px">Gastos por categoría:</div>
+      ${catList.map(([c,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:.81rem"><span>${c}</span><span style="color:var(--red);font-weight:600">${fmt2(v)}</span></div>`).join('')}`
+      :`<div style="font-size:.8rem;color:var(--text2)">Sin transacciones detalladas. Agrega desde la pestaña 💳 Transacciones.</div>`}
+    </div>`;
+  });
+
+  if(mes==='todos'&&monthlyData.length>1){
+    const totI=monthlyData.reduce((a,m)=>a+m.ingresos,0);
+    const totG=monthlyData.reduce((a,m)=>a+m.gastos,0);
+    const totB=totI-totG;
+    const avgA=(monthlyData.reduce((a,m)=>a+m.ahorro,0)/monthlyData.length).toFixed(1);
+    html+=`<div class="card" style="border-left:4px solid var(--salud)">
+      <h3 style="font-size:1.05rem;margin-bottom:12px;color:var(--salud)">📈 Resumen del Periodo</h3>
+      <div class="grid3">
+        <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:var(--salud)">${fmt0(totI)}</div><div style="font-size:.72rem;color:var(--text2)">Total Ingresos</div></div>
+        <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt0(totG)}</div><div style="font-size:.72rem;color:var(--text2)">Total Gastos</div></div>
+        <div style="text-align:center"><div style="font-size:1.1rem;font-weight:700;color:var(--finanzas)">${fmt0(totB)}</div><div style="font-size:.72rem;color:var(--text2)">Balance Total</div></div>
+      </div>
+      <div style="margin-top:10px;font-size:.85rem;color:var(--text2)">Ahorro promedio: <b style="color:var(--salud)">${avgA}%</b></div>
+    </div>`;
+  }
+
+  const out=document.getElementById('reporte-output');
+  if(out) out.innerHTML=html||'<div class="card" style="text-align:center;color:var(--text2);padding:20px">Selecciona un mes para generar el reporte</div>';
+}
+
+function imprimirReporte(){
+  generarReporte();
+  setTimeout(()=>window.print(),300);
+}
+
+// ============================================================
+// PDF VIEWER (manual capture)
+// ============================================================
+let pdfPages=[], currentPdfPage=0;
+
+function loadPDF(input){
+  const file=input.files[0]; if(!file) return;
+  // Browser can't decode encrypted/image PDFs — offer manual entry
+  const container=document.getElementById('pdf-pages-container');
+  if(container){
+    container.style.display='';
+    document.getElementById('pdf-page-info').textContent='PDF cargado — usa el formulario abajo para capturar';
+    document.getElementById('pdf-page-img').style.display='none';
+  }
+  alert('Los PDFs de FETpocket son imágenes y no se pueden leer automáticamente en el navegador.\n\nUsa el formulario de abajo para capturar cada transacción manualmente, o usa el formulario "Agregar datos manualmente" para ingresar los totales del mes.');
+}
+
+function pdfPrevPage(){ if(currentPdfPage>0){ currentPdfPage--; updatePdfView(); } }
+function pdfNextPage(){ if(currentPdfPage<pdfPages.length-1){ currentPdfPage++; updatePdfView(); } }
+function updatePdfView(){
+  document.getElementById('pdf-page-info').textContent=`Página ${currentPdfPage+1} de ${pdfPages.length}`;
+  document.getElementById('pdf-page-img').src=pdfPages[currentPdfPage];
+}
+
+function addTxnFromPDF(){
+  const fecha=document.getElementById('pdf-txn-fecha').value;
+  const mes  =document.getElementById('pdf-txn-mes').value;
+  const desc =document.getElementById('pdf-txn-desc').value.trim();
+  const cat  =document.getElementById('pdf-txn-cat').value.trim();
+  const tipo =document.getElementById('pdf-txn-tipo').value;
+  const monto=parseFloat(document.getElementById('pdf-txn-monto').value)||0;
+  if(!desc||!monto){ alert('Ingresa descripción y monto'); return; }
+  transactions.push({id:nextTxnId++,fecha,mes,desc,cat,tipo,monto});
+  saveTxns();
+  const fb=document.getElementById('pdf-txn-feedback');
+  if(fb){ fb.style.display=''; setTimeout(()=>fb.style.display='none',2000); }
+  ['pdf-txn-desc','pdf-txn-cat','pdf-txn-monto'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+}
+</script>
+</body>
+</html>
