@@ -13,6 +13,7 @@ import { getSummary, getMonthlyReport, formatMXN } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { TOOLTIP_STYLE, MONTH_NAMES } from '../lib/constants'
 import { fmt } from '../lib/utils'
+import { AvisoError } from '../components/AvisoError'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -205,18 +206,45 @@ export default function Reports() {
   const [year, setYear]         = useState(new Date().getFullYear())
   const [tab, setTab]           = useState<'overview'|'waterfall'|'pdfs'>('overview')
   const [filterTipo, setFilterTipo] = useState('todos')
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
+    setErrorCarga(null)
     const userId = window.Clerk?.user?.id
-    await Promise.all([
-      getSummary().then(s => setSummary(s.data)),
-      getMonthlyReport(year).then(m => setMonthly(m.data)),
-      userId
-        ? supabase.from('pdf_reportes').select('*').eq('user_id', userId).order('anio', { ascending: false }).order('mes', { ascending: false }).then(r => setPdfs(r.data ?? []))
-        : Promise.resolve(),
-    ])
-    setLoading(false)
+    // Sin try/finally esta pagina no fallaba: se colgaba. getSummary lanza si
+    // cualquiera de sus cuatro consultas devuelve error, el await de arriba
+    // reventaba, y setLoading(false) nunca corria. El spinner giraba para
+    // siempre y parecia "no abre" en vez de "no se pudo leer".
+    //
+    // allSettled y no all: que la tabla pdf_reportes no exista no debe impedir
+    // ver el resumen del negocio, que es lo que viene a ver uno aqui.
+    try {
+      const [res, mes, pdf] = await Promise.allSettled([
+        getSummary(),
+        getMonthlyReport(year),
+        userId
+          ? supabase.from('pdf_reportes').select('*').eq('user_id', userId)
+              .order('anio', { ascending: false }).order('mes', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+      ])
+
+      if (res.status === 'fulfilled') setSummary(res.value.data)
+      if (mes.status === 'fulfilled') setMonthly(mes.value.data)
+      if (pdf.status === 'fulfilled') setPdfs((pdf.value.data ?? []) as PdfReporte[])
+
+      const fallos = [res, mes].filter(r => r.status === 'rejected') as PromiseRejectedResult[]
+      if (fallos.length) {
+        const m = fallos.map(f => f.reason?.message ?? String(f.reason)).join(' · ')
+        console.error('[Reportes] no se pudieron cargar los datos', fallos)
+        setErrorCarga(m)
+      }
+    } catch (e) {
+      console.error('[Reportes] fallo inesperado', e)
+      setErrorCarga(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
   }, [year])
 
   useEffect(() => { loadAll() }, [loadAll])
@@ -282,6 +310,8 @@ export default function Reports() {
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
+
+      <AvisoError mensaje={errorCarga} onReintentar={loadAll} />
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">

@@ -114,6 +114,14 @@ export class LimiteDeError extends Component<Props, Estado> {
             </div>
           </div>
 
+          {/* El mensaje a la vista, no escondido: cuando algo falla lo
+              primero que hace falta es saber QUE fallo, y pedirle a alguien
+              que despliegue un acordeon para contarlo cuesta un viaje entero. */}
+          <p className="text-xs font-mono mt-3 px-3 py-2 rounded-lg break-words"
+             style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+            {error.name}: {error.message}
+          </p>
+
           <div className="flex gap-2 mt-4 flex-wrap">
             <button onClick={() => this.setState({ error: null })} className="btn-primary text-sm">
               <RotateCcw size={14} /> Reintentar
@@ -129,13 +137,15 @@ export class LimiteDeError extends Component<Props, Estado> {
             </button>
           </div>
 
-          <details className="mt-4">
-            <summary className="text-xs text-dim cursor-pointer">Detalle técnico</summary>
-            <pre className="text-xs mt-2 p-2 rounded-lg overflow-x-auto whitespace-pre-wrap break-words"
-                 style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-              {error.name}: {error.message}
-            </pre>
-          </details>
+          {error.stack && (
+            <details className="mt-4">
+              <summary className="text-xs text-dim cursor-pointer">Dónde ocurrió</summary>
+              <pre className="text-xs mt-2 p-2 rounded-lg overflow-x-auto whitespace-pre-wrap break-words"
+                   style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                {error.stack.split('\n').slice(0, 8).join('\n')}
+              </pre>
+            </details>
+          )}
         </div>
       </div>
     )

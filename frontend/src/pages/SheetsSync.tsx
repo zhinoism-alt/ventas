@@ -207,9 +207,13 @@ function DataPreview({ configId }: { configId: number }) {
   useEffect(() => {
     getRows(configId, 30)
       .then(r => {
-        setRows(r.rows)
-        if (r.rows.length > 0) setHeaders(Object.keys(r.rows[0].datos))
+        setRows(r.rows ?? [])
+        // Object.keys(undefined) revienta: una fila sin `datos` tiraba la
+        // promesa y dejaba la vista vacia sin decir por que.
+        const primera = r.rows?.[0]?.datos
+        if (primera) setHeaders(Object.keys(primera))
       })
+      .catch(e => console.error('[SheetsSync] no se pudo leer la vista previa', e))
       .finally(() => setLoading(false))
   }, [configId])
 
