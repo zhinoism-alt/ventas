@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ShieldCheck, AlertTriangle, TrendingUp, Home, Landmark } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { SimuladorPPR, SimuladorInfonavit } from './Simuladores'
 
 /* ═══════════════════════════════════════════════════════════════════════
    Rendimiento real, PPR, AFORE e INFONAVIT.
@@ -339,7 +340,7 @@ export function Patrimonio() {
           <Par k="Rendimiento garantizado" v={pct(num(perfil.ppr_rend_garantizado))} />
         </dl>
 
-        <ProyeccionPPR perfil={perfil} udi={udi} marg={marg} />
+
 
         <p className="text-xs text-dim mt-4 leading-relaxed">
           El costo del seguro no es dinero perdido: paga la cobertura por fallecimiento y los anexos.
@@ -347,6 +348,27 @@ export function Patrimonio() {
           se ve en el saldo. Contra eso juega la deducción del Art. 151, que sí es dinero de vuelta.
         </p>
       </div>
+
+      <SimuladorPPR p={{
+        saldoUdi: num(perfil.ppr_saldo_udi),
+        primaAnualUdi: num(perfil.ppr_prima_anual_udi),
+        sumaAseguradaUdi: num(perfil.ppr_suma_asegurada_udi),
+        anioActual: num(perfil.ppr_anio_poliza),
+        aniosPago: num(perfil.ppr_anios_pago),
+        aniosTotal: num(perfil.ppr_anios_total),
+        costoAnualObservado: num(perfil.ppr_costo_anual_udi),
+        factores: (perfil.ppr_factores ?? '').split(',').map(f => num(f)).filter(f => f > 0),
+        udi,
+      }} />
+
+      <SimuladorInfonavit p={{
+        credito: num(perfil.infonavit_credito),
+        tasaAnual: num(perfil.infonavit_tasa),
+        retencion: num(perfil.infonavit_retencion),
+        patron: num(perfil.infonavit_patron),
+        fpp: num(perfil.infonavit_fpp),
+        mesesOriginal: num(perfil.infonavit_meses),
+      }} />
 
       {/* ═══ AFORE E INFONAVIT ═══ */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -397,123 +419,6 @@ export function Patrimonio() {
       <p className="text-xs text-dim text-center max-w-2xl mx-auto">
         Esto es aritmética sobre tus propios documentos, no asesoría financiera.
         Para decidir qué hacer con un PPR o un crédito hipotecario, consulta a un asesor certificado.
-      </p>
-    </div>
-  )
-}
-
-function ProyeccionPPR({ perfil, udi, marg }: { perfil: Perfil; udi: number; marg: number }) {
-  const pagos = num(perfil.ppr_anios_pago)
-  const total = num(perfil.ppr_anios_total)
-  const rendimientos = [
-    { nombre: 'Mínimo garantizado', r: num(perfil.ppr_rend_garantizado) / 100 },
-    { nombre: 'Al ritmo observado', r: num(perfil.ppr_rend_observado) / 100 },
-  ]
-  // La duda que decide todo: tras el ultimo pago, sigue saliendo el costo del
-  // seguro del fondo? Mientras no este confirmado se muestran las dos ramas.
-  const hipotesis = perfil.ppr_costo_tras_pagos === null
-    ? [false, true]
-    : [perfil.ppr_costo_tras_pagos]
-
-  const referencia = proyectaPPR(perfil, rendimientos[1].r, false)
-  if (!referencia) return null
-  const aportado = referencia.aportadoTotal
-
-  return (
-    <div className="rounded-xl p-4 mt-5" style={{ background: 'var(--surface-2)' }}>
-      <p className="text-xs uppercase tracking-wider text-muted mb-1">
-        Proyección hasta los 65
-      </p>
-      <p className="text-xs text-dim mb-4 max-w-2xl">
-        Pagas {pagos} años pero la póliza cubre {total}, hasta{' '}
-        {perfil.ppr_vencimiento
-          ? new Date(perfil.ppr_vencimiento).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
-          : 'el vencimiento'}. Todo en UDI, que ya está protegido de la inflación:
-        una UDI de 2062 compra lo mismo que una de hoy.
-      </p>
-
-      {perfil.ppr_modelo_confiable === false && (
-        <div className="rounded-lg p-3 mb-4 flex items-start gap-2"
-             style={{ background: 'var(--red-soft)' }}>
-          <AlertTriangle size={14} style={{ color: 'var(--red)' }} className="flex-shrink-0 mt-0.5" />
-          <div className="text-xs" style={{ color: 'var(--red)' }}>
-            <strong>Esta proyección no es confiable.</strong> {perfil.ppr_modelo_nota}
-          </div>
-        </div>
-      )}
-
-      {perfil.ppr_costo_tras_pagos === null && (
-        <div className="rounded-lg p-3 mb-4 flex items-start gap-2"
-             style={{ background: 'var(--yellow-soft)' }}>
-          <AlertTriangle size={14} style={{ color: 'var(--yellow)' }} className="flex-shrink-0 mt-0.5" />
-          <div className="text-xs" style={{ color: 'var(--yellow)' }}>
-            <strong>Falta confirmar con la aseguradora:</strong> después del pago {pagos},
-            ¿se sigue descontando el costo del seguro del fondo? Las dos respuestas dan
-            resultados opuestos, así que abajo se muestran ambas.
-          </div>
-        </div>
-      )}
-
-      <div className="scroll-x mb-4">
-        <table className="w-full text-sm" style={{ minWidth: 520 }}>
-          <thead>
-            <tr className="text-dim text-xs">
-              <th className="text-left font-medium pb-2">Hipótesis</th>
-              <th className="text-right font-medium pb-2">Rendimiento</th>
-              <th className="text-right font-medium pb-2">Al último pago</th>
-              <th className="text-right font-medium pb-2">A los 65</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hipotesis.map(costo => rendimientos.map(rend => {
-              const pr = proyectaPPR(perfil, rend.r, costo)
-              if (!pr) return null
-              const muere = pr.seAgota !== null
-              return (
-                <tr key={`${costo}-${rend.nombre}`} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td className="py-2 text-body text-xs">
-                    {costo ? 'El costo sigue saliendo del fondo' : 'Póliza saldada, sin costo'}
-                  </td>
-                  <td className="py-2 text-right font-mono text-xs text-dim">
-                    {rend.nombre} · {pct(rend.r * 100)}
-                  </td>
-                  <td className="py-2 text-right font-mono text-body">
-                    {pr.saldoAlUltimoPago.toLocaleString('es-MX', { maximumFractionDigits: 0 })}
-                  </td>
-                  <td className="py-2 text-right font-mono font-semibold"
-                      style={{ color: muere ? 'var(--red)' : 'var(--green)' }}>
-                    {muere
-                      ? `se agota en el año ${pr.seAgota}`
-                      : `${pr.saldoFinal.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI`}
-                  </td>
-                </tr>
-              )
-            }))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-        <Tile k="Habrás aportado" v={`${aportado.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI`}
-              sub={`${mxn(aportado * udi)} de hoy`} tono="warn" />
-        <Tile k="ISR recuperado" v={mxn(aportado * udi * marg)} sub="deducción acumulada" tono="ok" />
-        <Tile k="Cobertura mientras tanto"
-              v={mxn(num(perfil.ppr_suma_asegurada_udi) * udi)} sub={`durante ${total} años`} />
-      </div>
-
-      <p className="text-xs text-dim leading-relaxed">
-        Opción de liquidación de tu póliza: <strong className="text-body">{perfil.ppr_liquidacion}</strong>.
-        Recibes el saldo, no una renta mensual — el factor de rentas de las condiciones generales
-        es la opción por defecto del producto, no la que quedó en tu carátula.
-      </p>
-      {perfil.ppr_cargo_rescate && (
-        <p className="text-xs mt-2" style={{ color: 'var(--yellow)' }}>
-          Cargo por rescate anticipado: {perfil.ppr_cargo_rescate}.
-        </p>
-      )}
-      <p className="text-xs text-dim mt-2">
-        Modelo con los factores de mortalidad de tu póliza, no la cifra garantizada.
-        {perfil.ppr_aseguradora} puede darte la proyección oficial.
       </p>
     </div>
   )
