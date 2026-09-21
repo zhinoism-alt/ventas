@@ -1283,7 +1283,14 @@ function Modal({ titulo, children, onClose, onGuardar, onBorrar, saving, aviso }
   // Sin cierre al hacer clic en el fondo, a proposito: el formulario es largo,
   // el fondo queda expuesto alrededor, y un clic en el margen -- o un arrastre
   // al seleccionar texto que termine fuera -- borraba todo lo capturado sin
-  // avisar. Para salir estan la X y Cancelar, que son gestos deliberados.
+  // avisar. Para salir estan la X, Cancelar y Escape, gestos deliberados los
+  // tres.
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [onClose])
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
       style={{ background: 'rgba(20,22,26,.55)' }}>

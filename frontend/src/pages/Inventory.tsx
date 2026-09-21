@@ -74,6 +74,19 @@ export default function Inventory() {
 
   useEffect(() => { load() }, [search, filterStatus])
 
+  // Escape cierra el modal abierto. Antes la unica salida del formulario de
+  // articulo era picar fuera, que lo cerraba perdiendo lo capturado, o el
+  // boton de abajo.
+  useEffect(() => {
+    if (!showModal && !showSellModal && !showFBModal) return
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setShowModal(false); setShowSellModal(false); setShowFBModal(false)
+    }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [showModal, showSellModal, showFBModal])
+
   const openAdd = () => {
     setEditing(null); setForm({ ...EMPTY_FORM }); setFormError(''); setShowModal(true)
   }
@@ -352,7 +365,7 @@ export default function Inventory() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
+        <div className="modal-overlay">
           <div className="w-full max-w-lg rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)', maxHeight: '92vh', overflowY: 'auto' }}>
             <div className="p-5">
               <h2 className="text-lg font-bold text-strong mb-5">{editing ? 'Editar artículo' : 'Agregar artículo'}</h2>
@@ -488,7 +501,7 @@ export default function Inventory() {
 
       {/* Sell Modal */}
       {showSellModal && selected && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSellModal(false)}>
+        <div className="modal-overlay">
           <div className="w-full max-w-sm rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
               <h2 className="text-lg font-bold text-strong mb-1">Registrar venta</h2>

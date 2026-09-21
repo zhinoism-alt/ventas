@@ -178,6 +178,12 @@ body {
 }
 
 /* ── Modal ──────────────────────────────────────────────────────────────── */
+/* La capa rueda; la tarjeta se centra sola.
+   Antes era `align-items: center` sin overflow: un formulario mas alto que la
+   pantalla se desbordaba por arriba y por abajo sin forma de alcanzarlo, asi
+   que el boton de guardar quedaba inaccesible. El truco es `margin: auto` en
+   el hijo: centra cuando cabe y deja rodar cuando no, sin el recorte de arriba
+   que produce `align-items: center` con overflow. */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -185,10 +191,14 @@ body {
   backdrop-filter: blur(8px);
   z-index: 50;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 1rem;
 }
+.modal-overlay > * { margin: auto; }
 :root[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,.7); }
 
 /* ── Botones ────────────────────────────────────────────────────────────── */

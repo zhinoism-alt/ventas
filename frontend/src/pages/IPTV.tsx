@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import {
   Plus, Trash2, Edit2, Users, CreditCard, Tv, TrendingUp,
-  MessageCircle, Copy, Check, AlertTriangle, RefreshCw
+  MessageCircle, Copy, Check, AlertTriangle, RefreshCw, X
 } from 'lucide-react'
 import {
   getIPTVStats, getIPTVPackages, createIPTVPackage, deleteIPTVPackage,
@@ -82,6 +82,20 @@ export default function IPTV() {
   }
 
   useEffect(() => { loadAll() }, [])
+
+  // Escape cierra el modal abierto. Sin esto la unica salida era el boton de
+  // Cancelar, que en un formulario largo queda debajo de la pantalla.
+  useEffect(() => {
+    const abierto = showPkgModal || showClientModal || showSubModal || !!editingSub
+    if (!abierto) return
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setShowPkgModal(false); setShowClientModal(false)
+      setShowSubModal(false); setEditingSub(null)
+    }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [showPkgModal, showClientModal, showSubModal, editingSub])
 
   const handlePkgSave = async () => {
     if (!pkgForm.credits || !pkgForm.price_paid) return alert('Créditos y precio son requeridos')
@@ -678,10 +692,16 @@ export default function IPTV() {
 
       {/* ── MODALS ── */}
       {showPkgModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPkgModal(false)}>
+        <div className="modal-overlay" >
           <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-strong mb-5">Registrar compra de créditos</h2>
+              <div className="flex items-center justify-between gap-2 mb-5">
+                <h2 className="text-lg font-bold text-strong">Registrar compra de créditos</h2>
+                <button onClick={() => setShowPkgModal(false)} title="Cerrar"
+                  className="text-muted hover:text-strong p-1 rounded-lg">
+                  <X size={18} />
+                </button>
+              </div>
               <div className="space-y-3">
                 <div>
                   <label>Conexiones por crédito</label>
@@ -730,10 +750,16 @@ export default function IPTV() {
       )}
 
       {showClientModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClientModal(false)}>
+        <div className="modal-overlay" >
           <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-strong mb-5">{editingClient ? 'Editar cliente' : 'Nuevo cliente'}</h2>
+              <div className="flex items-center justify-between gap-2 mb-5">
+                <h2 className="text-lg font-bold text-strong">{editingClient ? 'Editar cliente' : 'Nuevo cliente'}</h2>
+                <button onClick={() => setShowClientModal(false)} title="Cerrar"
+                  className="text-muted hover:text-strong p-1 rounded-lg">
+                  <X size={18} />
+                </button>
+              </div>
               <div className="space-y-3">
                 <div><label>Nombre *</label><input className="input" value={clientForm.name} onChange={e => setClientForm(f => ({ ...f, name: e.target.value }))} /></div>
                 <div><label>Teléfono (WhatsApp)</label><input className="input" type="tel" value={clientForm.phone} onChange={e => setClientForm(f => ({ ...f, phone: e.target.value }))} placeholder="+52 xxx xxx xxxx" /></div>
@@ -758,10 +784,16 @@ export default function IPTV() {
       )}
 
       {showSubModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSubModal(false)}>
+        <div className="modal-overlay" >
           <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
-              <h2 className="text-lg font-bold text-strong mb-5">Nueva suscripción</h2>
+              <div className="flex items-center justify-between gap-2 mb-5">
+                <h2 className="text-lg font-bold text-strong">Nueva suscripción</h2>
+                <button onClick={() => setShowSubModal(false)} title="Cerrar"
+                  className="text-muted hover:text-strong p-1 rounded-lg">
+                  <X size={18} />
+                </button>
+              </div>
               <div className="space-y-3">
                 <div>
                   <label>Cliente *</label>
@@ -893,7 +925,7 @@ export default function IPTV() {
       )}
       {/* ── MODAL: EDITAR SUSCRIPCIÓN ── */}
       {editingSub && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditingSub(null)}>
+        <div className="modal-overlay" >
           <div className="w-full max-w-sm rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-hi)' }}>
             <div className="p-5">
               <h2 className="text-lg font-bold text-strong mb-1">Editar suscripción</h2>
