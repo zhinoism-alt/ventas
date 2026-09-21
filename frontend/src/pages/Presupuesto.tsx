@@ -6,7 +6,7 @@ import {
 import {
   RefreshCw, ExternalLink, CheckCircle2, Link2,
   Loader2, Settings2, Calendar, Users, Download, TrendingDown, TrendingUp,
-  Plus, X, Store,
+  Plus, X, Store, ArrowRightLeft,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { TOOLTIP_STYLE } from '../lib/constants'
@@ -50,7 +50,33 @@ interface IngresoExtra {
   concepto: string
   monto: number
   tipo: 'variable' | 'fijo'
+  periodicidad: 'semanal' | 'quincenal' | 'mensual'
+  recurrente: boolean
   nota: string
+}
+
+/**
+ * Un mes no tiene cuatro semanas, tiene 4.333 (52 / 12). Con 4 fijas se
+ * pierden 2,960 al ano sobre un bono de 740 semanales.
+ */
+const A_MENSUAL: Record<IngresoExtra['periodicidad'], number> = {
+  semanal: 52 / 12,
+  quincenal: 2,
+  mensual: 1,
+}
+const mensualiza = (o: IngresoExtra) => Number(o.monto) * A_MENSUAL[o.periodicidad]
+
+const PERIODO_ETIQUETA: Record<IngresoExtra['periodicidad'], string> = {
+  semanal: 'a la semana',
+  quincenal: 'por quincena',
+  mensual: 'al mes',
+}
+
+/** Un ingreso aplica a un mes si es de ese mes, o si es recurrente y ya empezo. */
+function aplicaEn(o: IngresoExtra, anio: number, mes: number): boolean {
+  const cuando = o.anio * 100 + o.mes
+  const objetivo = anio * 100 + mes
+  return o.recurrente ? cuando <= objetivo : cuando === objetivo
 }
 
 interface MesGuardado {
@@ -96,7 +122,10 @@ export default function Presupuesto() {
   // Ingresos propios que la hoja no registra: ventas, IPTV, lo que caiga.
   const [otros, setOtros] = useState<IngresoExtra[]>([])
   const [altaOtro, setAltaOtro] = useState(false)
-  const bOtro = useDraft('presupuesto-ingreso', { concepto: '', monto: '', tipo: 'variable' as 'variable' | 'fijo', nota: '' })
+  const bOtro = useDraft('presupuesto-ingreso', {
+    concepto: '', monto: '', tipo: 'variable' as 'variable' | 'fijo',
+    periodicidad: 'mensual' as IngresoExtra['periodicidad'], recurrente: false, nota: '',
+  })
   const [errorOtro, setErrorOtro] = useState<string | null>(null)
   const [guardandoOtro, setGuardandoOtro] = useState(false)
 
@@ -223,7 +252,8 @@ export default function Presupuesto() {
     try {
       const { error: err } = await supabase.from('presupuesto_ingresos').insert({
         anio: Math.floor(sel / 100), mes: sel % 100,
-        concepto: f.concepto.trim(), monto: Number(f.monto), tipo: f.tipo, nota: f.nota,
+        concepto: f.concepto.trim(), monto: Number(f.monto), tipo: f.tipo,
+        periodicidad: f.periodicidad, recurrente: f.recurrente, nota: f.nota,
       })
       if (err) { setErrorOtro(`No se guardo: ${err.message}`); return }
       bOtro.limpiar()
@@ -270,10 +300,24 @@ export default function Presupuesto() {
   const d = mesSel?.datos ?? null
 
   const otrosDelMes = useMemo(
-    () => otros.filter(o => o.anio === Math.floor(sel / 100) && o.mes === sel % 100),
+    () => otros.filter(o => aplicaEn(o, Math.floor(sel / 100), sel % 100)),
     [otros, sel],
   )
-  const totalOtros = otrosDelMes.reduce((t, o) => t + Number(o.monto), 0)
+  const totalOtros = otrosDelMes.reduce((t, o) => t + mensualiza(o), 0)
+
+  // Lo que sobro el mes pasado y se paso a este. No es ingreso nuevo: si se
+  // sumara al ingreso, los porcentajes contra las metas saldrian inflados.
+  const vieneDeAntes = useMemo(() => {
+    const anio = Math.floor(sel / 100), mes = sel % 100
+    const prevMes = mes === 1 ? 12 : mes - 1
+    const prevAnio = mes === 1 ? anio - 1 : anio
+    const prev = meses.find(m => m.anio === prevAnio && m.mes === prevMes)
+    if (!prev) return null
+    const ing = (prev.datos.ingresoPrincipal ?? 0)
+      + otros.filter(o => aplicaEn(o, prevAnio, prevMes)).reduce((t, o) => t + mensualiza(o), 0)
+    const sobro = ing - prev.datos.totalNecesarios - prev.datos.totalNoNecesarios
+    return { mes: MESES[prevMes - 1], monto: sobro }
+  }, [meses, otros, sel])
 
   const ingresoNomina = d?.ingresoPrincipal ?? 0
   const hayExtra = (d?.ingresoExtra.length ?? 0) > 0
@@ -305,8 +349,8 @@ export default function Presupuesto() {
     .sort((a, b) => claveMes(a.anio, a.mes) - claveMes(b.anio, b.mes))
     .map(m => {
       const propios = otros
-        .filter(o => o.anio === m.anio && o.mes === m.mes)
-        .reduce((t, o) => t + Number(o.monto), 0)
+        .filter(o => aplicaEn(o, m.anio, m.mes))
+        .reduce((t, o) => t + mensualiza(o), 0)
       const ing = (m.datos.ingresoPrincipal ?? 0) + propios
         + (excluidos.has('extra') ? 0 : m.datos.totalExtra)
       return {
@@ -463,10 +507,12 @@ export default function Presupuesto() {
               {otrosDelMes.map(o => (
                 <FuenteIngreso key={o.id}
                   nombre={o.concepto}
-                  nota={o.nota || (o.tipo === 'variable' ? 'Entra de vez en cuando' : 'Se repite cada mes')}
-                  monto={Number(o.monto)}
+                  nota={o.periodicidad === 'mensual'
+                    ? (o.nota || (o.tipo === 'variable' ? 'Entra de vez en cuando' : 'Cada mes'))
+                    : `${fmt(Number(o.monto))} ${PERIODO_ETIQUETA[o.periodicidad]} · ${(A_MENSUAL[o.periodicidad]).toFixed(3)} veces al mes`}
+                  monto={mensualiza(o)}
                   incluido
-                  etiqueta={o.tipo === 'variable' ? 'variable' : 'fijo'}
+                  etiqueta={o.tipo === 'variable' ? 'variable' : undefined}
                   onQuitar={() => quitaOtro(o.id)}
                 />
               ))}
@@ -510,14 +556,32 @@ export default function Presupuesto() {
                       onChange={e => bOtro.campo('monto', e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-xs text-muted mb-1 block">Tipo</label>
-                    <select className="input w-full" value={bOtro.valor.tipo}
-                      onChange={e => bOtro.campo('tipo', e.target.value as 'variable' | 'fijo')}>
-                      <option value="variable">Entra a veces</option>
-                      <option value="fijo">Cada mes</option>
+                    <label className="text-xs text-muted mb-1 block">Cada cuánto</label>
+                    <select className="input w-full" value={bOtro.valor.periodicidad}
+                      onChange={e => bOtro.campo('periodicidad', e.target.value as IngresoExtra['periodicidad'])}>
+                      <option value="mensual">Al mes</option>
+                      <option value="quincenal">Por quincena</option>
+                      <option value="semanal">A la semana</option>
                     </select>
                   </div>
                 </div>
+                <div className="flex gap-4 mt-3 flex-wrap">
+                  <label className="flex items-center gap-2 text-sm text-body cursor-pointer">
+                    <input type="checkbox" checked={bOtro.valor.tipo === 'variable'}
+                      onChange={e => bOtro.campo('tipo', e.target.checked ? 'variable' : 'fijo')} />
+                    Entra a veces, no lo des por seguro
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-body cursor-pointer">
+                    <input type="checkbox" checked={bOtro.valor.recurrente}
+                      onChange={e => bOtro.campo('recurrente', e.target.checked)} />
+                    Se repite todos los meses desde éste
+                  </label>
+                </div>
+                {bOtro.valor.monto && bOtro.valor.periodicidad !== 'mensual' && (
+                  <p className="text-xs mt-2 font-mono accent">
+                    = {fmt(Number(bOtro.valor.monto) * A_MENSUAL[bOtro.valor.periodicidad])} al mes
+                  </p>
+                )}
                 <AvisoForm mensaje={errorOtro} />
                 <BorradorRecuperado b={bOtro} />
                 <div className="flex gap-2 mt-3">
@@ -530,7 +594,9 @@ export default function Presupuesto() {
                 <p className="text-xs text-dim mt-2 max-w-xl">
                   «Entra a veces» se cuenta en el mes pero se marca aparte: presupuestar
                   gastos fijos contra un ingreso irregular es justo como se rompe un
-                  presupuesto.
+                  presupuesto. Lo semanal se convierte multiplicando por 4.333
+                  (52&nbsp;semanas ÷ 12&nbsp;meses), no por 4: con cuatro fijas se pierden
+                  unos 3,000 al año.
                 </p>
               </div>
             )}
@@ -552,6 +618,23 @@ export default function Presupuesto() {
                   sub={sobra >= 0 ? 'ingreso menos gastos' : 'estás gastando de más'}
                   tono={sobra >= 0 ? 'ok' : 'bad'} />
           </div>
+
+          {vieneDeAntes && (
+            <div className="card flex items-center gap-3 py-3 flex-wrap">
+              <ArrowRightLeft size={15} className="accent flex-shrink-0" />
+              <p className="text-sm text-body flex-1 min-w-0">
+                De {vieneDeAntes.mes} {vieneDeAntes.monto >= 0 ? 'te sobraron' : 'te faltaron'}{' '}
+                <strong className="font-mono"
+                        style={{ color: vieneDeAntes.monto >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                  {fmt(Math.abs(vieneDeAntes.monto))}
+                </strong>
+                {vieneDeAntes.monto >= 0 ? ', que pasaste a este mes.' : '.'}
+              </p>
+              <span className="text-sm font-mono text-strong">
+                Con eso: {fmt(sobra + vieneDeAntes.monto)}
+              </span>
+            </div>
+          )}
 
           {/* ── Solo con su ingreso ── */}
           {soloPropio && (

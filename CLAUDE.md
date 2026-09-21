@@ -137,9 +137,22 @@ Confirmado por Brandon, no es suposición:
   `variable`, aparte de la nómina: presupuestar gastos fijos contra un ingreso
   que entra a veces es justo como se rompe un presupuesto.
 
-Hay una cosa sin resolver: su ingreso principal fue $37,044 en enero y desde
-abril anda en $21–27k, aunque su SBC del IMSS dice $37,050 mensuales. **Pregunta
-antes de sacar conclusiones de esa diferencia.**
+**La hoja es correcta.** Si te llama la atencion que su ingreso ahi sea de
+$21–27k cuando su SBC del IMSS es de $37,050: no hay contradiccion. El SBC es
+bruto e integrado (incluye aguinaldo, prima y vales prorrateados); la hoja
+registra el neto en efectivo. Son cifras distintas y no se comparan.
+
+Otros datos que el confirmo:
+
+- **Abril 2026: aumento de sueldo del 4%.**
+- **Vales de despensa: $740 semanales**, que la hoja **no** incluye. Son
+  $3,206.67 al mes (740 × 52 ÷ 12), cerca del 13% de su ingreso. Estan
+  sembrados en `presupuesto_ingresos` como recurrentes desde enero 2026;
+  verifica el mes de inicio con el si importa.
+- Hace **tiempo extra**, asi que el ingreso varia hacia arriba.
+- **Lo que sobra un mes lo pasa al siguiente.** La pagina lo muestra como
+  arrastre, no lo suma al ingreso: hacerlo inflaria los porcentajes contra las
+  metas del 55/10/10/10/5.
 
 ---
 
