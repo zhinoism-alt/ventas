@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   PiggyBank, Plus, TrendingUp, Target, Trash2,
   ChevronDown, ChevronUp, ArrowUpCircle, ArrowDownCircle,
-  Wallet, Percent, Edit2, Check, X,
+  Wallet, Percent, Edit2, Check, X, AlertCircle,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { AvisoError } from '../components/AvisoError'
@@ -35,6 +35,18 @@ interface Movimiento {
   fecha: string
 }
 
+/** Lo minimo de finanzas_perfil para poder descontar impuestos e inflacion. */
+interface Supuestos {
+  isr_retencion_pct: number
+  inflacion_pct: number
+}
+
+/** Una cuenta de Patrimonio, solo para detectar dinero capturado dos veces. */
+interface CuentaPatrimonio {
+  institucion: string | null
+  saldo: number
+}
+
 interface Fondo {
   id: number
   nombre: string
@@ -56,6 +68,11 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
       <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
     </div>
   )
+}
+
+const num2 = (v: unknown): number => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
+  return Number.isFinite(n) ? n : 0
 }
 
 const ICONOS = ['💰', '🛡️', '📈', '🏦', '🎯', '🏠', '✈️', '🚗', '💻', '📱', '💍', '🏖️', '📚', '💎']
@@ -99,6 +116,8 @@ export default function Ahorros() {
   }
 
   // — General —
+  const [supuestos, setSupuestos]   = useState<Supuestos | null>(null)
+  const [cuentasPat, setCuentasPat] = useState<CuentaPatrimonio[]>([])
   const [loading, setLoading]       = useState(true)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [saving, setSaving]         = useState(false)
@@ -112,14 +131,20 @@ export default function Ahorros() {
     // El finally es obligatorio: si una consulta rechaza (base pausada,
     // red caída), sin él el spinner se queda girando para siempre.
     try {
-      const [{ data: a }, { data: m }, { data: f }] = await Promise.all([
+      const [{ data: a }, { data: m }, { data: f }, { data: sup }, { data: cp }] = await Promise.all([
         supabase.from('ahorros').select('*').eq('activo', true).order('created_at', { ascending: false }),
         supabase.from('ahorros_movimientos').select('*').order('fecha', { ascending: false }),
         supabase.from('fondos_ahorro').select('*').eq('activo', true).order('created_at', { ascending: false }),
+        // Los mismos supuestos que usa Patrimonio: si cada pestana inventara
+        // los suyos, el mismo dinero daria dos numeros distintos.
+        supabase.from('finanzas_perfil').select('isr_retencion_pct,inflacion_pct').eq('id', 1).maybeSingle(),
+        supabase.from('ahorros_cuentas').select('institucion,saldo').eq('activo', true),
       ])
       setAhorros(a ?? [])
       setMovimientos(m ?? [])
       setFondos(f ?? [])
+      setSupuestos((sup as Supuestos) ?? null)
+      setCuentasPat((cp ?? []) as CuentaPatrimonio[])
     } catch (e) {
       console.error('[Ahorros] no se pudieron cargar los datos', e)
       setErrorCarga(e instanceof Error ? e.message : String(e))
@@ -255,6 +280,22 @@ export default function Ahorros() {
   const totalGeneral   = totalFondos + totalAcumulado
   const gananciasAnualesEstimadas = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
 
+  // La tasa que anuncia el banco no es lo que ganas. El ISR se retiene sobre el
+  // CAPITAL (0.90% en 2026, LIF art. 24) tengas rendimiento o no, y la
+  // inflacion se lleva el resto. Esta pestana mostraba el bruto y Patrimonio el
+  // real: el mismo dinero con dos cifras distintas, y la optimista al frente.
+  const isrPct  = num2(supuestos?.isr_retencion_pct) / 100
+  const inflPct = num2(supuestos?.inflacion_pct) / 100
+  const isrFondos  = totalFondos * isrPct
+  const inflFondos = totalFondos * inflPct
+  const gananciaReal = gananciasAnualesEstimadas - isrFondos - inflFondos
+  const haySupuestos = !!supuestos
+
+  // Aviso de doble captura: el saldo de Patrimonio contra el de esta pestana.
+  const totalPatrimonio = cuentasPat.reduce((t, c) => t + num2(c.saldo), 0)
+  const saldosRepetidos = cuentasPat.filter(c =>
+    fondos.some(f => Math.abs(f.saldo - num2(c.saldo)) < 0.01))
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
@@ -294,9 +335,15 @@ export default function Ahorros() {
           <p className="text-xs text-muted mt-1">{fondos.length} apartado{fondos.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-muted mb-1">Rend. Anual Est.</p>
-          <p className="text-xl font-bold text-yellow-400">{fmt(gananciasAnualesEstimadas)}</p>
-          <p className="text-xs text-muted mt-1">suma de fondos</p>
+          <p className="text-xs text-muted mb-1">Rendimiento real</p>
+          <p className="text-xl font-bold" style={{ color: gananciaReal >= 0 ? 'var(--green)' : 'var(--red)' }}>
+            {haySupuestos ? fmt(gananciaReal) : fmt(gananciasAnualesEstimadas)}
+          </p>
+          <p className="text-xs text-muted mt-1">
+            {haySupuestos
+              ? `${fmt(gananciasAnualesEstimadas)} menos ISR e inflación`
+              : 'sin descontar impuestos'}
+          </p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted mb-1">Metas — Progreso</p>
@@ -327,6 +374,26 @@ export default function Ahorros() {
 
       {tab === 'fondos' && (
         <div className="space-y-4">
+
+          {/* El mismo dinero capturado en dos tablas da dos patrimonios
+              distintos, y no hay forma de saber cual creer. Mejor decirlo. */}
+          {!!saldosRepetidos.length && (
+            <div className="card flex items-start gap-3 py-3"
+                 style={{ background: 'var(--yellow-soft)', borderColor: 'var(--yellow)' }}>
+              <AlertCircle size={16} style={{ color: 'var(--yellow)' }} className="mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium" style={{ color: 'var(--yellow)' }}>
+                  Este dinero está capturado dos veces
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--yellow)' }}>
+                  {saldosRepetidos.map(c => c.institucion).filter(Boolean).join(' y ')} aparecen
+                  aquí como fondos y también en Patrimonio como cuentas, con el mismo saldo.
+                  Aquí suman {fmt(totalFondos)} y allá {fmt(totalPatrimonio)}: son listas
+                  distintas del mismo dinero, así que ninguna es tu patrimonio completo.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Form nuevo fondo */}
           {showFondoForm && (
@@ -543,14 +610,24 @@ export default function Ahorros() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
                   style={{ background: 'var(--green-soft)' }}>📊</div>
-                <div>
-                  <p className="text-xs text-muted">Proyección total en 12 meses</p>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted">Proyección a 12 meses</p>
                   <p className="text-xl font-bold text-green-400">
-                    {fmt(fondos.reduce((s, f) => s + f.saldo + f.saldo * (f.rendimiento / 100), 0))}
+                    {fmt(totalFondos + (haySupuestos ? gananciaReal : gananciasAnualesEstimadas))}
                   </p>
-                  <p className="text-xs text-dim">
-                    +{fmt(gananciasAnualesEstimadas)} de rendimientos sobre {fmt(totalFondos)}
-                  </p>
+                  {haySupuestos ? (
+                    <p className="text-xs text-dim">
+                      En pesos de hoy. El banco pagaría {fmt(gananciasAnualesEstimadas)},
+                      pero el ISR se lleva {fmt(isrFondos)} y la inflación {fmt(inflFondos)}:
+                      te quedan <strong className="text-body">{fmt(gananciaReal)}</strong> de
+                      poder adquisitivo real.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-dim">
+                      +{fmt(gananciasAnualesEstimadas)} sobre {fmt(totalFondos)}, sin descontar
+                      impuestos ni inflación.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
