@@ -366,7 +366,7 @@ label {
 }
 
 /* ── Utilidades semánticas ──────────────────────────────────────────────────
-   Reemplazan a text-slate-*/bg-slate-* de Tailwind, que están congeladas en
+   Reemplazan a las text-slate y bg-slate de Tailwind, que están congeladas en
    un solo tema. Estas siguen al token y funcionan en claro y en oscuro.     */
 .text-strong { color: var(--text); }
 .text-body   { color: var(--text-body); }

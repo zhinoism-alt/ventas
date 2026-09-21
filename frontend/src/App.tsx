@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ClerkProvider } from '@clerk/clerk-react'
 import { navLinkClass } from './lib/utils'
 import {
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
+import { LimiteDeError } from './components/LimiteDeError'
 
 // Cargadas bajo demanda: el bundle era un solo chunk de 1.6 MB, y nadie
 // abre las doce paginas en una sesion.
@@ -56,6 +57,7 @@ function Layout() {
   const [menuUsuario, setMenuUsuario] = useState(false)
   const { tema, setTema } = useTema()
   const location = useLocation()
+  const navegar = useNavigate()
 
   // Cerrar sidebar al cambiar de ruta
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
@@ -214,15 +216,20 @@ function Layout() {
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Barra superior mobile */}
+        {/* El boton de menu y el titulo viven fuera de las rutas y ahora
+            sobreviven a que una pagina falle: el limite de error esta dentro
+            del <main>. Antes se caia todo junto y solo quedaba recargar. */}
         <header className="md:hidden flex items-center gap-3 p-4"
           style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border)' }}>
-          <button onClick={() => setSidebarOpen(true)} className="text-muted">
+          <button onClick={() => setSidebarOpen(true)} className="text-muted"
+                  aria-label="Abrir menú">
             <Menu size={20} />
           </button>
-          <span className="font-bold text-strong text-sm">VentasPro</span>
+          <NavLink to="/" className="font-bold text-strong text-sm">VentasPro</NavLink>
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">
+          <LimiteDeError claveReinicio={location.pathname} onIrAlInicio={() => navegar('/')}>
           <Suspense fallback={
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin w-8 h-8 border-2 rounded-full"
@@ -245,6 +252,7 @@ function Layout() {
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
+          </LimiteDeError>
         </main>
       </div>
     </div>

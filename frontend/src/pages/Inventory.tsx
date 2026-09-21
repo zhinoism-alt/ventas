@@ -8,6 +8,7 @@ import { CONDITIONS, COND_LABELS, COND_COLORS, STATUS_COLORS } from '../lib/cons
 import { safeFloat, calcProfit, profitClass, fmt } from '../lib/utils'
 import { useRescate } from '../lib/useDraft'
 import { AvisoRescate } from '../components/FormAvisos'
+import { AvisoError } from '../components/AvisoError'
 
 interface Product {
   id: number; name: string; brand: string; category: string; color: string
@@ -41,6 +42,7 @@ export default function Inventory() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [sortBy, setSortBy] = useState('default')
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
 
   // Si la pagina se vuelve a montar con el modal abierto (revalidacion de
   // sesion, recarga, la pestana descartada en el movil), el modal se cierra y
@@ -49,15 +51,25 @@ export default function Inventory() {
     showModal ? { form, editandoId: editing?.id ?? null } : null)
 
   const load = async () => {
-    const [p, s, r] = await Promise.all([
-      getProducts({ status: filterStatus, search }),
-      getProductStats(),
-      getExchangeRate(),
-    ])
-    setProducts(p.data)
-    setStats(s.data)
-    setRate(r.data.usd_to_mxn || 17.5)
-    setLoading(false)
+    // El finally es obligatorio: estas consultas van al backend de Node, que
+    // hoy no esta desplegado. Sin el, una que rechace deja el spinner girando
+    // para siempre y la seccion parece colgada en vez de rota.
+    setErrorCarga(null)
+    try {
+      const [p, s, r] = await Promise.all([
+        getProducts({ status: filterStatus, search }),
+        getProductStats(),
+        getExchangeRate(),
+      ])
+      setProducts(p.data)
+      setStats(s.data)
+      setRate(r.data.usd_to_mxn || 17.5)
+    } catch (e) {
+      console.error('[Inventario] no se pudieron cargar los datos', e)
+      setErrorCarga(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [search, filterStatus])
@@ -178,6 +190,8 @@ export default function Inventory() {
         </div>
         <button onClick={openAdd} className="btn-primary"><Plus size={16} />Agregar artículo</button>
       </div>
+
+      <AvisoError mensaje={errorCarga} onReintentar={() => { setLoading(true); load() }} />
 
       {rescate && !showModal && (
         <AvisoRescate

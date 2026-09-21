@@ -18,6 +18,7 @@ import { TOOLTIP_STYLE, PANEL_PRICES, SELL_PRICES, formatMonth } from '../lib/co
 import { safeDiv, fmt, profitClass } from '../lib/utils'
 import { useRescate } from '../lib/useDraft'
 import { AvisoRescate } from '../components/FormAvisos'
+import { AvisoError } from '../components/AvisoError'
 
 export default function IPTV() {
   const [tab, setTab] = useState('overview')
@@ -57,16 +58,27 @@ export default function IPTV() {
   const rPkg    = useRescate('iptv-paquete',      showPkgModal    ? pkgForm    : null)
   const rClient = useRescate('iptv-cliente',      showClientModal ? clientForm : null)
   const rSub    = useRescate('iptv-suscripcion',  showSubModal    ? subForm    : null)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
 
   const loadAll = async () => {
-    const [s, p, c, sb, pr, r, ex] = await Promise.all([
-      getIPTVStats(), getIPTVPackages(), getIPTVClients(),
-      getIPTVSubscriptions(), getIPTVPricing(),
-      getPreviewRenewals(7), getExchangeRate()
-    ])
-    setStats(s.data); setPackages(p.data); setClients(c.data)
-    setSubs(sb.data); setPricing(pr.data); setRenewals(r.data)
-    setRate(ex.data.usd_to_mxn); setLoading(false)
+    // Siete consultas al backend de Node, que hoy no esta desplegado. Sin el
+    // finally, que una sola rechace dejaba la seccion girando indefinidamente.
+    setErrorCarga(null)
+    try {
+      const [s, p, c, sb, pr, r, ex] = await Promise.all([
+        getIPTVStats(), getIPTVPackages(), getIPTVClients(),
+        getIPTVSubscriptions(), getIPTVPricing(),
+        getPreviewRenewals(7), getExchangeRate()
+      ])
+      setStats(s.data); setPackages(p.data); setClients(c.data)
+      setSubs(sb.data); setPricing(pr.data); setRenewals(r.data)
+      setRate(ex.data.usd_to_mxn)
+    } catch (e) {
+      console.error('[IPTV] no se pudieron cargar los datos', e)
+      setErrorCarga(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { loadAll() }, [])
@@ -201,6 +213,8 @@ export default function IPTV() {
           <p className="text-muted text-sm mt-0.5">Control de créditos, clientes y suscripciones</p>
         </div>
       </div>
+
+      <AvisoError mensaje={errorCarga} onReintentar={() => { setLoading(true); loadAll() }} />
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap p-1 rounded-lg" style={{ background: 'var(--bg)' }}>

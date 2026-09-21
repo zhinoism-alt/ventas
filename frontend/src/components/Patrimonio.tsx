@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { SimuladorPPR, SimuladorInfonavit } from './Simuladores'
 import { Horizonte } from './Horizonte'
 import { AforeProyeccion, proyectaAfore } from './Afore'
+import { EditorCampos, BotonEditar, type Campo, type Valores } from './EditorCampos'
 
 /* ═══════════════════════════════════════════════════════════════════════
    Rendimiento real, PPR, AFORE e INFONAVIT.
@@ -96,6 +97,79 @@ const mxn2 = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0)
 const pct = (n: number) => `${(n || 0).toFixed(2)}%`
 
+/* Que se puede editar en cada seccion. Todo esto venia sembrado por migracion
+   y era intocable desde la aplicacion: cuando el banco movia su tasa o se
+   acababa una promocion, el numero se quedaba viejo y los calculos seguian
+   corriendo sobre el. */
+
+const CAMPOS_CUENTA: Campo[] = [
+  { clave: 'institucion', etiqueta: 'Institución', tipo: 'texto' },
+  { clave: 'nombre', etiqueta: 'Nombre de la cuenta', tipo: 'texto' },
+  { clave: 'tipo', etiqueta: 'Tipo', tipo: 'opciones', opciones: [
+      { valor: 'banco', texto: 'Banco (cubre IPAB, 400,000 UDI)' },
+      { valor: 'sofipo', texto: 'SOFIPO (cubre su fondo, 25,000 UDI)' },
+      { valor: 'cetes', texto: 'CETES' },
+      { valor: 'otro', texto: 'Otro' },
+    ], ayuda: 'Decide de cuánto es tu seguro de depósitos' },
+  { clave: 'saldo', etiqueta: 'Saldo', tipo: 'dinero' },
+  { clave: 'tasa_promo', etiqueta: 'Tasa promocional', tipo: 'porcentaje' },
+  { clave: 'tope_promo', etiqueta: 'Hasta qué monto', tipo: 'dinero',
+    ayuda: '0 si la tasa aplica a todo el saldo' },
+  { clave: 'tasa_base', etiqueta: 'Tasa sobre el excedente', tipo: 'porcentaje' },
+  { clave: 'notas', etiqueta: 'Notas', tipo: 'texto' },
+]
+
+const CAMPOS_REAL: Campo[] = [
+  { clave: 'isr_retencion_pct', etiqueta: 'Retención de ISR', tipo: 'porcentaje',
+    ayuda: '0.90% en 2026 (LIF art. 24). Sobre el capital, no el interés' },
+  { clave: 'inflacion_pct', etiqueta: 'Inflación actual', tipo: 'porcentaje' },
+  { clave: 'inflacion_esperada', etiqueta: 'Inflación esperada a futuro', tipo: 'porcentaje',
+    ayuda: 'Con esta crece el UDI en las proyecciones' },
+  { clave: 'udi', etiqueta: 'Valor del UDI hoy', tipo: 'numero', paso: '0.000001' },
+]
+
+const CAMPOS_PPR: Campo[] = [
+  { clave: 'ppr_saldo_udi', etiqueta: 'Saldo', tipo: 'numero', ayuda: 'En UDI, como lo dice tu estado de cuenta' },
+  { clave: 'ppr_prima_anual_udi', etiqueta: 'Prima anual', tipo: 'numero', ayuda: 'En UDI' },
+  { clave: 'ppr_costo_anual_udi', etiqueta: 'Costo del seguro al año', tipo: 'numero', ayuda: 'En UDI' },
+  { clave: 'ppr_suma_asegurada_udi', etiqueta: 'Suma asegurada', tipo: 'numero', ayuda: 'En UDI' },
+  { clave: 'ppr_rend_garantizado', etiqueta: 'Rendimiento garantizado', tipo: 'porcentaje' },
+  { clave: 'ppr_rend_observado', etiqueta: 'Rendimiento observado', tipo: 'porcentaje' },
+  { clave: 'ppr_anio_poliza', etiqueta: 'Año de póliza en curso', tipo: 'numero' },
+  { clave: 'ppr_anios_pago', etiqueta: 'Años que tú pagas', tipo: 'numero' },
+  { clave: 'ppr_anios_total', etiqueta: 'Años hasta el vencimiento', tipo: 'numero' },
+  { clave: 'ppr_inicio', etiqueta: 'Primer pago', tipo: 'fecha' },
+]
+
+const CAMPOS_AFORE: Campo[] = [
+  { clave: 'afore_nombre', etiqueta: 'AFORE', tipo: 'texto' },
+  { clave: 'afore_retiro', etiqueta: 'Subcuenta de retiro', tipo: 'dinero' },
+  { clave: 'afore_vivienda', etiqueta: 'Subcuenta de vivienda', tipo: 'dinero' },
+  { clave: 'afore_corte', etiqueta: 'Fecha de corte', tipo: 'fecha' },
+  { clave: 'afore_rendimiento_12m', etiqueta: 'Rendimiento 12 meses', tipo: 'dinero' },
+  { clave: 'afore_comisiones_12m', etiqueta: 'Comisiones 12 meses', tipo: 'dinero' },
+  { clave: 'afore_sbc_diario', etiqueta: 'Salario base de cotización diario', tipo: 'dinero',
+    ayuda: 'El que dice tu constancia del IMSS' },
+  { clave: 'afore_tasa_aportacion', etiqueta: 'Aportación total', tipo: 'porcentaje',
+    ayuda: '10.638% en 2026; sube por escalones hasta 2030' },
+  { clave: 'afore_rendimiento_real', etiqueta: 'Rendimiento real esperado', tipo: 'porcentaje' },
+  { clave: 'afore_semanas', etiqueta: 'Semanas cotizadas', tipo: 'numero' },
+  { clave: 'afore_semanas_meta', etiqueta: 'Semanas necesarias', tipo: 'numero' },
+  { clave: 'afore_semanas_corte', etiqueta: 'Corte de las semanas', tipo: 'fecha' },
+  { clave: 'fi_edad_actual', etiqueta: 'Tu edad', tipo: 'numero' },
+  { clave: 'edad_retiro', etiqueta: 'Edad de retiro', tipo: 'numero' },
+]
+
+const CAMPOS_INFONAVIT: Campo[] = [
+  { clave: 'infonavit_credito', etiqueta: 'Monto del crédito', tipo: 'dinero' },
+  { clave: 'infonavit_tasa', etiqueta: 'Tasa', tipo: 'porcentaje' },
+  { clave: 'infonavit_cat', etiqueta: 'CAT', tipo: 'porcentaje' },
+  { clave: 'infonavit_meses', etiqueta: 'Plazo en meses', tipo: 'numero' },
+  { clave: 'infonavit_retencion', etiqueta: 'Sale de tu nómina al mes', tipo: 'dinero' },
+  { clave: 'infonavit_patron', etiqueta: 'Aporta tu patrón al mes', tipo: 'dinero' },
+  { clave: 'infonavit_fpp', etiqueta: 'Factor de pago', tipo: 'numero', paso: '0.0001' },
+]
+
 /** Cobertura del seguro de depositos, que NO es la misma segun el tipo. */
 function cobertura(tipo: string, udi: number) {
   if (tipo === 'sofipo') return { udis: 25000, monto: 25000 * udi, quien: 'Fondo de Protección de SOFIPOs' }
@@ -161,6 +235,49 @@ export function Patrimonio() {
   const [perfil, setPerfil]   = useState<Perfil | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
+  // Que seccion esta abierta para editar: 'real' | 'ppr' | 'afore' |
+  // 'infonavit' | 'cuenta:<id>'. Solo una a la vez, para no perder cambios.
+  const [editando, setEditando] = useState<string | null>(null)
+
+  /** Guarda en finanzas_perfil. Devuelve el mensaje de error, o null si fue bien. */
+  async function guardaPerfil(cambios: Valores): Promise<string | null> {
+    const { error: err } = await supabase.from('finanzas_perfil')
+      .update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', 1)
+    if (err) return `No se guardó: ${err.message}`
+    setEditando(null)
+    await load()
+    return null
+  }
+
+  /** Guarda una cuenta de ahorro. */
+  async function guardaCuenta(id: number, cambios: Valores): Promise<string | null> {
+    if (!String(cambios.institucion ?? '').trim() && !String(cambios.nombre ?? '').trim())
+      return 'Ponle al menos una institución o un nombre.'
+    const { error: err } = await supabase.from('ahorros_cuentas')
+      .update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', id)
+    if (err) return `No se guardó: ${err.message}`
+    setEditando(null)
+    await load()
+    return null
+  }
+
+  /** Agrega una cuenta vacia y la abre para editar. */
+  async function nuevaCuenta() {
+    const { data, error: err } = await supabase.from('ahorros_cuentas')
+      .insert({ nombre: 'Cuenta nueva', institucion: '', tipo: 'banco',
+                saldo: 0, tasa_promo: 0, tope_promo: 0, tasa_base: 0 })
+      .select().single()
+    if (err) { setError(err.message); return }
+    await load()
+    if (data) setEditando(`cuenta:${data.id}`)
+  }
+
+  async function borraCuenta(id: number) {
+    if (!confirm('¿Quitar esta cuenta del patrimonio?')) return
+    await supabase.from('ahorros_cuentas').update({ activo: false }).eq('id', id)
+    setEditando(null)
+    await load()
+  }
 
   async function load() {
     setError(null)
@@ -260,13 +377,22 @@ export function Patrimonio() {
       <div className="card">
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp size={17} className="accent" />
-          <h2 className="text-strong font-semibold">Qué ganas de verdad</h2>
+          <h2 className="text-strong font-semibold flex-1">Qué ganas de verdad</h2>
+          <BotonEditar activo={editando === 'real'}
+            onClick={() => setEditando(editando === 'real' ? null : 'real')}
+            titulo="Editar ISR, inflación y UDI" />
         </div>
         <p className="text-xs text-dim mb-4 max-w-2xl">
           La tasa del banco menos el ISR menos la inflación. El ISR se retiene sobre el
           capital ({pct(num(perfil.isr_retencion_pct))} anual), no sobre el interés, así que se
           cobra tengas rendimiento o no.
         </p>
+
+        {editando === 'real' && (
+          <EditorCampos titulo="Supuestos del cálculo" campos={CAMPOS_REAL}
+            valores={perfil as unknown as Valores}
+            onGuardar={guardaPerfil} onCancelar={() => setEditando(null)} />
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
           <Tile k="Capital" v={mxn(capital)} sub={`${cuentas.length} cuentas`} />
@@ -275,6 +401,10 @@ export function Patrimonio() {
                 sub={`ISR ${mxn(isr)} · inflación ${mxn(costoInf)}`} />
           <Tile k="Rendimiento REAL" v={pct(capital ? real / capital * 100 : 0)}
                 sub={`${mxn(real)} de poder adquisitivo`} tono={real > 0 ? 'ok' : 'bad'} />
+        </div>
+
+        <div className="flex justify-end mb-3">
+          <button onClick={nuevaCuenta} className="btn-secondary text-xs">+ Agregar cuenta</button>
         </div>
 
         <div className="space-y-3">
@@ -293,8 +423,26 @@ export function Patrimonio() {
                       {c.tipo}
                     </span>
                   </div>
-                  <span className="font-mono text-strong">{mxn2(saldo)}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-strong">{mxn2(saldo)}</span>
+                    <BotonEditar activo={editando === `cuenta:${c.id}`}
+                      onClick={() => setEditando(editando === `cuenta:${c.id}` ? null : `cuenta:${c.id}`)}
+                      titulo="Editar saldo, tasa y tope" />
+                  </div>
                 </div>
+
+                {editando === `cuenta:${c.id}` && (
+                  <>
+                    <EditorCampos titulo={`Editar ${c.institucion || c.nombre}`} campos={CAMPOS_CUENTA}
+                      valores={c as unknown as Valores}
+                      onGuardar={cambios => guardaCuenta(c.id, cambios)}
+                      onCancelar={() => setEditando(null)} />
+                    <button onClick={() => borraCuenta(c.id)}
+                      className="btn-secondary text-xs mb-3" style={{ color: 'var(--red)' }}>
+                      Quitar esta cuenta
+                    </button>
+                  </>
+                )}
 
                 <dl className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <Par k="Tasa" v={`${pct(num(c.tasa_promo))}${tope > 0 ? ` hasta ${mxn(tope)}` : ''}`} />
@@ -344,12 +492,21 @@ export function Patrimonio() {
       <div className="card">
         <div className="flex items-center gap-2 mb-1">
           <Landmark size={17} className="accent" />
-          <h2 className="text-strong font-semibold">PPR — {perfil.ppr_producto}</h2>
+          <h2 className="text-strong font-semibold flex-1">PPR — {perfil.ppr_producto}</h2>
+          <BotonEditar activo={editando === 'ppr'}
+            onClick={() => setEditando(editando === 'ppr' ? null : 'ppr')}
+            titulo="Editar saldo, prima y rendimiento" />
         </div>
         <p className="text-xs text-dim mb-4">
           Póliza {perfil.ppr_poliza} · {meses} pagos desde{' '}
           {inicio?.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
         </p>
+
+        {editando === 'ppr' && (
+          <EditorCampos titulo="Datos de tu estado de cuenta" campos={CAMPOS_PPR}
+            valores={perfil as unknown as Valores}
+            onGuardar={guardaPerfil} onCancelar={() => setEditando(null)} />
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Tile k="Aportado" v={`${aportado.toLocaleString('es-MX', { maximumFractionDigits: 0 })} UDI`}
@@ -422,8 +579,16 @@ export function Patrimonio() {
         <div className="card">
           <div className="flex items-center gap-2 mb-3">
             <Landmark size={17} className="accent" />
-            <h2 className="text-strong font-semibold">AFORE {perfil.afore_nombre}</h2>
+            <h2 className="text-strong font-semibold flex-1">AFORE {perfil.afore_nombre}</h2>
+            <BotonEditar activo={editando === 'afore'}
+              onClick={() => setEditando(editando === 'afore' ? null : 'afore')}
+              titulo="Editar saldos, SBC y semanas" />
           </div>
+          {editando === 'afore' && (
+            <EditorCampos titulo="Datos de tu AFORE y del IMSS" campos={CAMPOS_AFORE}
+              valores={perfil as unknown as Valores}
+              onGuardar={guardaPerfil} onCancelar={() => setEditando(null)} />
+          )}
           <p className="text-2xl font-bold text-strong font-mono mb-1">
             {mxn(num(perfil.afore_retiro) + num(perfil.afore_vivienda))}
           </p>
@@ -443,8 +608,16 @@ export function Patrimonio() {
         <div className="card">
           <div className="flex items-center gap-2 mb-3">
             <Home size={17} className="accent" />
-            <h2 className="text-strong font-semibold">INFONAVIT</h2>
+            <h2 className="text-strong font-semibold flex-1">INFONAVIT</h2>
+            <BotonEditar activo={editando === 'infonavit'}
+              onClick={() => setEditando(editando === 'infonavit' ? null : 'infonavit')}
+              titulo="Editar crédito, tasa y plazo" />
           </div>
+          {editando === 'infonavit' && (
+            <EditorCampos titulo="Datos de tu crédito" campos={CAMPOS_INFONAVIT}
+              valores={perfil as unknown as Valores}
+              onGuardar={guardaPerfil} onCancelar={() => setEditando(null)} />
+          )}
           <p className="text-2xl font-bold text-strong font-mono mb-1">{mxn(credito)}</p>
           <p className="text-xs text-dim mb-4">
             de crédito · {pct(num(perfil.infonavit_tasa))} de tasa · CAT {pct(num(perfil.infonavit_cat))}

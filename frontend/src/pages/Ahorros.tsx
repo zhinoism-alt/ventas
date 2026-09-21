@@ -83,8 +83,20 @@ export default function Ahorros() {
   const bFondo = useDraft('ahorros-fondo', { nombre: '', saldo: '', rendimiento: '', descripcion: '', color: 'var(--green)', icono: '💰' })
   const fondoForm = bFondo.valor
   const setFondoForm = bFondo.set
+  // Antes solo se podia tocar el saldo. El rendimiento, el nombre y el resto
+  // quedaban congelados desde el alta, que es justo lo que cambia cuando el
+  // banco mueve su tasa o se acaba una promocion.
   const [editFondo, setEditFondo]   = useState<Fondo | null>(null)
-  const [editSaldo, setEditSaldo]   = useState('')
+  const [editForm, setEditForm]     = useState({ nombre: '', saldo: '', rendimiento: '', descripcion: '', color: '', icono: '' })
+
+  const abrirEdicionFondo = (f: Fondo) => {
+    setErrorForm(null)
+    setEditFondo(f)
+    setEditForm({
+      nombre: f.nombre, saldo: String(f.saldo), rendimiento: String(f.rendimiento),
+      descripcion: f.descripcion ?? '', color: f.color, icono: f.icono,
+    })
+  }
 
   // — General —
   const [loading, setLoading]       = useState(true)
@@ -148,15 +160,31 @@ export default function Ahorros() {
     }
   }
 
-  const actualizarSaldoFondo = async (fondo: Fondo) => {
-    const nuevoSaldo = Number(editSaldo)
-    if (isNaN(nuevoSaldo)) return
-    await supabase.from('fondos_ahorro')
-      .update({ saldo: nuevoSaldo, updated_at: new Date().toISOString() })
-      .eq('id', fondo.id)
-    setEditFondo(null)
-    setEditSaldo('')
-    load()
+  const guardarFondo = async (fondo: Fondo) => {
+    if (!editForm.nombre.trim()) return setErrorForm('El fondo necesita un nombre.')
+    const saldo = Number(editForm.saldo)
+    if (!Number.isFinite(saldo)) return setErrorForm('El saldo no es un numero.')
+    const rendimiento = Number(editForm.rendimiento) || 0
+    setErrorForm(null)
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('fondos_ahorro').update({
+        nombre:      editForm.nombre.trim(),
+        saldo,
+        rendimiento,
+        descripcion: editForm.descripcion,
+        color:       editForm.color,
+        icono:       editForm.icono,
+        updated_at:  new Date().toISOString(),
+      }).eq('id', fondo.id)
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      setEditFondo(null)
+      load()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const deleteFondo = async (id: number) => {
@@ -400,9 +428,9 @@ export default function Ahorros() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => { setEditFondo(f); setEditSaldo(String(f.saldo)) }}
+                          <button onClick={() => abrirEdicionFondo(f)}
                             className="text-dim hover:text-blue-400 p-1.5 rounded-lg transition-colors"
-                            title="Actualizar saldo">
+                            title="Editar este fondo">
                             <Edit2 size={13} />
                           </button>
                           <button onClick={() => deleteFondo(f.id)}
@@ -415,21 +443,61 @@ export default function Ahorros() {
                       {/* Saldo */}
                       <div className="mt-4">
                         {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <input className="input flex-1 text-lg font-bold" type="number"
-                              value={editSaldo}
-                              onChange={e => setEditSaldo(e.target.value)}
-                              autoFocus
-                              onKeyDown={e => e.key === 'Enter' && actualizarSaldoFondo(f)} />
-                            <button onClick={() => actualizarSaldoFondo(f)}
-                              className="p-2 rounded-lg bg-green-500 hover:bg-green-400 text-strong">
-                              <Check size={14} />
-                            </button>
-                            <button onClick={() => setEditFondo(null)}
-                              className="p-2 rounded-lg text-muted hover:text-strong"
-                              style={{ background: 'var(--surface-2)' }}>
-                              <X size={14} />
-                            </button>
+                          <div className="rounded-xl p-3 space-y-3" style={{ background: 'var(--surface-2)' }}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-muted mb-1 block">Nombre *</label>
+                                <input className="input w-full" value={editForm.nombre} autoFocus
+                                  onChange={e => setEditForm(v => ({ ...v, nombre: e.target.value }))} />
+                              </div>
+                              <div>
+                                <label className="text-xs text-muted mb-1 block">Saldo actual *</label>
+                                <input className="input w-full font-bold" type="number" value={editForm.saldo}
+                                  onChange={e => setEditForm(v => ({ ...v, saldo: e.target.value }))}
+                                  onKeyDown={e => e.key === 'Enter' && guardarFondo(f)} />
+                              </div>
+                              <div>
+                                <label className="text-xs text-muted mb-1 block">Rendimiento anual (%)</label>
+                                <input className="input w-full" type="number" step="0.01" value={editForm.rendimiento}
+                                  onChange={e => setEditForm(v => ({ ...v, rendimiento: e.target.value }))} />
+                                <p className="text-xs text-dim mt-1">Cámbialo cuando el banco mueva su tasa</p>
+                              </div>
+                              <div>
+                                <label className="text-xs text-muted mb-1 block">Descripción</label>
+                                <input className="input w-full" value={editForm.descripcion}
+                                  placeholder="CETES, cuenta Mifel…"
+                                  onChange={e => setEditForm(v => ({ ...v, descripcion: e.target.value }))} />
+                              </div>
+                            </div>
+                            <div className="flex gap-3 flex-wrap items-end">
+                              <div className="flex-1" style={{ minWidth: 180 }}>
+                                <label className="text-xs text-muted mb-1 block">Ícono</label>
+                                <div className="flex gap-1.5 flex-wrap">
+                                  {ICONOS.map(ic => (
+                                    <button key={ic} onClick={() => setEditForm(v => ({ ...v, icono: ic }))}
+                                      className={`text-lg p-1 rounded-lg transition-all ${editForm.icono === ic ? 'ring-2 ring-green-500' : ''}`}
+                                      style={{ background: 'var(--bg-card)' }}>{ic}</button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs text-muted mb-1 block">Color</label>
+                                <input type="color" className="w-20 h-9 rounded-lg cursor-pointer"
+                                  value={editForm.color.startsWith('#') ? editForm.color : '#22c55e'}
+                                  onChange={e => setEditForm(v => ({ ...v, color: e.target.value }))} />
+                              </div>
+                            </div>
+                            <AvisoForm mensaje={errorForm} />
+                            <div className="flex gap-2">
+                              <button onClick={() => guardarFondo(f)} disabled={saving}
+                                className="btn-primary text-sm">
+                                <Check size={14} /> {saving ? 'Guardando…' : 'Guardar cambios'}
+                              </button>
+                              <button onClick={() => { setErrorForm(null); setEditFondo(null) }}
+                                className="btn-secondary text-sm">
+                                <X size={14} /> Cancelar
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <p className="text-2xl font-bold text-strong">{fmt(f.saldo)}</p>

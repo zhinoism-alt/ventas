@@ -47,7 +47,7 @@ export default function Login() {
         />
 
         <p className="text-center text-xs text-faint mt-6">
-          zhinoism.online &bull; Uso privado
+          VentasPro &bull; Uso privado
         </p>
       </div>
     </div>
