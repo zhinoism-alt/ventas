@@ -26,6 +26,7 @@ export interface ParamsHorizonte {
   liquido: number        // cuentas de banco
   pprUdi: number         // bloqueado hasta 65
   aforeRetiro: number    // bloqueado hasta 65
+  aforeRetiroProyectado: number  // lo que sera a los 65 con aportaciones y rendimiento
   aforeVivienda: number  // solo para vivienda
   gastoMensual: number
   tasaRetiro: number
@@ -98,7 +99,7 @@ export function Horizonte({ p }: { p: ParamsHorizonte }) {
   // ── Libertad financiera ──────────────────────────────────────────────
   const objetivo = swr > 0 ? gasto * 12 / (swr / 100) : Infinity
   const pprMxn = p.pprUdi * p.udiHoy
-  const disponible = p.liquido + (incluyeBloqueado ? pprMxn + p.aforeRetiro : 0)
+  const disponible = p.liquido + (incluyeBloqueado ? pprMxn + p.aforeRetiroProyectado : 0)
   const anios = aniosParaLibertad(disponible, aporte * 12, rend / 100, objetivo)
   const edadMeta = p.edadActual + anios
 
@@ -260,7 +261,9 @@ export function Horizonte({ p }: { p: ParamsHorizonte }) {
           <div className="space-y-2">
             <Fila k="Cuentas de banco" v={p.liquido} nota="disponible ya" />
             <Fila k="PPR (Imagina Ser)" v={pprMxn} nota="bloqueado hasta los 65" bloqueado />
-            <Fila k="AFORE — retiro" v={p.aforeRetiro} nota="bloqueado hasta los 65" bloqueado />
+            <Fila k="AFORE — retiro (hoy)" v={p.aforeRetiro} nota="bloqueado hasta los 65" bloqueado />
+            <Fila k="AFORE — proyectada a los 65" v={p.aforeRetiroProyectado}
+                  nota="con aportaciones y rendimiento" bloqueado />
             <Fila k="AFORE — vivienda" v={p.aforeVivienda} nota="solo para vivienda" bloqueado />
           </div>
           <label className="flex items-center gap-2 text-sm text-body mt-3 cursor-pointer">

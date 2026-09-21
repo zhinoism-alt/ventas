@@ -3,6 +3,7 @@ import { ShieldCheck, AlertTriangle, TrendingUp, Home, Landmark } from 'lucide-r
 import { supabase } from '../lib/supabase'
 import { SimuladorPPR, SimuladorInfonavit } from './Simuladores'
 import { Horizonte } from './Horizonte'
+import { AforeProyeccion, proyectaAfore } from './Afore'
 
 /* ═══════════════════════════════════════════════════════════════════════
    Rendimiento real, PPR, AFORE e INFONAVIT.
@@ -62,6 +63,13 @@ interface Perfil {
   fi_rendimiento_real: number
   fi_edad_actual: number
   inflacion_esperada: number
+  afore_sbc_diario: number
+  afore_tasa_aportacion: number
+  afore_rendimiento_real: number
+  afore_semanas: number
+  afore_semanas_meta: number
+  afore_semanas_corte: string | null
+  edad_retiro: number
   afore_nombre: string | null
   afore_retiro: number
   afore_vivienda: number
@@ -223,6 +231,20 @@ export function Patrimonio() {
   const costoSeg = aportado - saldoPpr
   const dedAnual = num(perfil.ppr_prima_anual_udi) * udi * marg
 
+  const paramsAfore = {
+    saldoRetiro: num(perfil.afore_retiro),
+    saldoVivienda: num(perfil.afore_vivienda),
+    sbcDiario: num(perfil.afore_sbc_diario),
+    tasaAportacion: num(perfil.afore_tasa_aportacion),
+    rendimientoReal: num(perfil.afore_rendimiento_real),
+    edadActual: num(perfil.fi_edad_actual),
+    edadRetiro: num(perfil.edad_retiro),
+    semanas: num(perfil.afore_semanas),
+    semanasMeta: num(perfil.afore_semanas_meta),
+    semanasCorte: perfil.afore_semanas_corte,
+    nombre: perfil.afore_nombre,
+  }
+
   // ── INFONAVIT ──────────────────────────────────────────────────────
   const mesesInf = num(perfil.infonavit_meses)
   const pagoMes  = num(perfil.infonavit_retencion) + num(perfil.infonavit_fpp)
@@ -369,11 +391,14 @@ export function Patrimonio() {
         inflacionEsperada: num(perfil.inflacion_esperada),
       }} />
 
+      <AforeProyeccion p={paramsAfore} />
+
       <Horizonte p={{
         udiHoy: udi,
         liquido: capital,
         pprUdi: num(perfil.ppr_saldo_udi),
         aforeRetiro: num(perfil.afore_retiro),
+        aforeRetiroProyectado: proyectaAfore(paramsAfore).saldoFinal,
         aforeVivienda: num(perfil.afore_vivienda),
         gastoMensual: num(perfil.fi_gasto_mensual),
         tasaRetiro: num(perfil.fi_tasa_retiro),
