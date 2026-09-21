@@ -386,6 +386,19 @@ label {
 
 .accent      { color: var(--accent); }
 
+/* Tablas anchas dentro de una tarjeta: que ruede la tabla, no la pagina.
+   Sin esto, una tabla de cuatro columnas de dinero en un telefono empuja el
+   ancho del body y toda la interfaz se desplaza de lado. */
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.scroll-x::-webkit-scrollbar        { height: 6px; }
+.scroll-x::-webkit-scrollbar-track  { background: transparent; }
+.scroll-x::-webkit-scrollbar-thumb  { background: var(--border-hi); border-radius: 3px; }
+
 /* ── Misc ───────────────────────────────────────────────────────────────── */
 .card-glow { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-soft); }
 .table-row-hover:hover { background: var(--surface-2); }

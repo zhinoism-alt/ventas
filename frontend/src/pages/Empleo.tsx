@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Briefcase, Plus, Trash2, ExternalLink, GraduationCap, Award,
-  SlidersHorizontal, X, AlertTriangle, Info,
+  SlidersHorizontal, X, AlertTriangle, Info, RotateCcw
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -302,6 +302,24 @@ export default function Empleo() {
   const [borrador, setBorrador] = useState<Perfil | null>(null)
   const [avisoForm, setAvisoForm] = useState<string | null>(null)
 
+  // El formulario de vacante vive en un modal, y un modal desmontado no deja
+  // rastro. Si la pagina se vuelve a montar a media captura (revalidacion de
+  // sesion, recarga, cambio de pestana en el movil) lo escrito se iba. Ahora se
+  // espeja en localStorage mientras esta abierto y se ofrece retomarlo.
+  const [rescate, setRescate] = useState<(Omit<Vacante, 'id'> & { id?: number }) | null>(() => {
+    try {
+      const crudo = localStorage.getItem('vp-borrador:empleo-vacante')
+      return crudo ? JSON.parse(crudo) : null
+    } catch { return null }
+  })
+
+  useEffect(() => {
+    try {
+      if (formVac) localStorage.setItem('vp-borrador:empleo-vacante', JSON.stringify(formVac))
+      else localStorage.removeItem('vp-borrador:empleo-vacante')
+    } catch { /* sin almacenamiento: el formulario funciona igual */ }
+  }, [formVac])
+
   // El finally es obligatorio: sin él, una consulta que rechaza (red caída,
   // Supabase sin responder) deja el spinner girando para siempre.
   async function load() {
@@ -361,14 +379,24 @@ export default function Empleo() {
     }
     setAvisoForm(null)
     setSaving(true)
-    const { id, ...campos } = formVac
-    if (id) {
-      await supabase.from('empleo_vacantes')
-        .update({ ...campos, updated_at: new Date().toISOString() }).eq('id', id)
-    } else {
-      await supabase.from('empleo_vacantes').insert(campos)
+    try {
+      const { id, ...campos } = formVac
+      // Antes nadie miraba el error: si la insercion fallaba, el modal se
+      // cerraba igual y parecia guardado.
+      const { error } = id
+        ? await supabase.from('empleo_vacantes')
+            .update({ ...campos, updated_at: new Date().toISOString() }).eq('id', id)
+        : await supabase.from('empleo_vacantes').insert(campos)
+      if (error) { setAvisoForm(`No se guardo: ${error.message}`); return }
+      setFormVac(null)
+      setRescate(null)
+      try { localStorage.removeItem('vp-borrador:empleo-vacante') } catch { /* ignorar */ }
+      await load()
+    } catch (e) {
+      setAvisoForm(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
     }
-    setSaving(false); setFormVac(null); await load()
   }
 
   async function borrarVacante(id: number) {
@@ -510,6 +538,23 @@ export default function Empleo() {
           </button>
         )}
       </div>
+
+      {rescate && !formVac && tab === 'vacantes' && (
+        <div className="card flex items-center gap-3 py-3 flex-wrap"
+             style={{ background: 'var(--cyan-soft)', borderColor: 'var(--cyan)' }}>
+          <RotateCcw size={15} style={{ color: 'var(--cyan)' }} />
+          <p className="text-sm flex-1" style={{ color: 'var(--cyan)' }}>
+            Dejaste una vacante a medio llenar{rescate.puesto ? `: ${rescate.puesto}` : ''}.
+          </p>
+          <button className="btn-secondary text-xs"
+            onClick={() => { setAvisoForm(null); setFormVac({ ...rescate }) }}>Retomarla</button>
+          <button className="btn-secondary text-xs"
+            onClick={() => {
+              setRescate(null)
+              try { localStorage.removeItem('vp-borrador:empleo-vacante') } catch { /* ignorar */ }
+            }}>Descartar</button>
+        </div>
+      )}
 
       {/* ── Resumen ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

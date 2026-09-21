@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Leaf, Plus, CheckCircle2, Circle, Trash2, Flame, Bell, BellOff, Star } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { AvisoError } from '../components/AvisoError'
+import { useDraft } from '../lib/useDraft'
+import { AvisoForm, BorradorRecuperado } from '../components/FormAvisos'
 
 interface Habito {
   id: number
@@ -65,8 +67,13 @@ export default function Bienestar() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [today] = useState(new Date().toISOString().split('T')[0])
-  const [form, setForm] = useState({ nombre: '', descripcion: '', categoria: 'salud' as Habito['categoria'], frecuencia: 'diario' as Habito['frecuencia'], icono: '💪', color: 'var(--green)' })
-  const [remForm, setRemForm] = useState({ titulo: '', descripcion: '', tipo: 'general' as Recordatorio['tipo'], fecha_hora: '', repetir: 'nunca' as Recordatorio['repetir'], importante: false, color: 'var(--accent)' })
+  const bHabito = useDraft('bienestar-habito', { nombre: '', descripcion: '', categoria: 'salud' as Habito['categoria'], frecuencia: 'diario' as Habito['frecuencia'], icono: '💪', color: 'var(--green)' })
+  const form = bHabito.valor
+  const setForm = bHabito.set
+  const bRem = useDraft('bienestar-recordatorio', { titulo: '', descripcion: '', tipo: 'general' as Recordatorio['tipo'], fecha_hora: '', repetir: 'nunca' as Recordatorio['repetir'], importante: false, color: 'var(--accent)' })
+  const remForm = bRem.valor
+  const setRemForm = bRem.set
+  const [errorForm, setErrorForm] = useState<string | null>(null)
 
   const load = async () => {
     setErrorCarga(null)
@@ -107,13 +114,20 @@ export default function Bienestar() {
   }
 
   const createHabito = async () => {
-    if (!form.nombre) return
+    if (!form.nombre.trim()) return setErrorForm('Falta el nombre del habito.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('habitos').insert(form)
-    setForm({ nombre: '', descripcion: '', categoria: 'salud', frecuencia: 'diario', icono: '💪', color: 'var(--green)' })
-    setShowForm(false)
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('habitos').insert({ ...form, nombre: form.nombre.trim() })
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bHabito.limpiar()
+      setShowForm(false)
+      load()
+    } catch (err) {
+      setErrorForm(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const deleteHabito = async (id: number) => {
@@ -122,13 +136,21 @@ export default function Bienestar() {
   }
 
   const createRecordatorio = async () => {
-    if (!remForm.titulo || !remForm.fecha_hora) return
+    if (!remForm.titulo.trim()) return setErrorForm('Falta el titulo del recordatorio.')
+    if (!remForm.fecha_hora)    return setErrorForm('Falta la fecha y hora.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('recordatorios').insert(remForm)
-    setRemForm({ titulo: '', descripcion: '', tipo: 'general', fecha_hora: '', repetir: 'nunca', importante: false, color: 'var(--accent)' })
-    setShowForm(false)
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('recordatorios').insert({ ...remForm, titulo: remForm.titulo.trim() })
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bRem.limpiar()
+      setShowForm(false)
+      load()
+    } catch (err) {
+      setErrorForm(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const completeRecordatorio = async (id: number) => {
@@ -240,6 +262,8 @@ export default function Bienestar() {
               </div>
             </div>
           </div>
+          <AvisoForm mensaje={errorForm} />
+          <BorradorRecuperado b={bHabito} />
           <div className="flex gap-3 mt-4">
             <button onClick={createHabito} disabled={saving}
               className="px-4 py-2 rounded-lg text-sm font-medium text-strong" style={{ background: 'var(--green)' }}>
@@ -287,6 +311,8 @@ export default function Bienestar() {
               <label htmlFor="imp" className="text-sm text-body">Marcar como importante</label>
             </div>
           </div>
+          <AvisoForm mensaje={errorForm} />
+          <BorradorRecuperado b={bRem} />
           <div className="flex gap-3 mt-4">
             <button onClick={createRecordatorio} disabled={saving}
               className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: 'var(--accent)' }}>

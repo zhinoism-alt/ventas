@@ -8,6 +8,8 @@ import { supabase } from '../lib/supabase'
 import { AvisoError } from '../components/AvisoError'
 import { Patrimonio } from '../components/Patrimonio'
 import { fmt } from '../lib/utils'
+import { useDraft } from '../lib/useDraft'
+import { AvisoForm, BorradorRecuperado } from '../components/FormAvisos'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -69,12 +71,18 @@ export default function Ahorros() {
   const [movForm, setMovForm]       = useState<{ id: number | null; tipo: 'deposito' | 'retiro'; monto: string; nota: string }>({
     id: null, tipo: 'deposito', monto: '', nota: '',
   })
-  const [metaForm, setMetaForm]     = useState({ nombre: '', meta: '', descripcion: '', fecha_meta: '', color: 'var(--accent)', icono: '🎯' })
+  // Borrador: lo escrito sobrevive a un remonte, a una recarga o a un Cancelar
+  // por error. Antes cualquiera de las tres cosas lo borraba sin aviso.
+  const bMeta = useDraft('ahorros-meta', { nombre: '', meta: '', descripcion: '', fecha_meta: '', color: 'var(--accent)', icono: '🎯' })
+  const metaForm = bMeta.valor
+  const setMetaForm = bMeta.set
 
   // — Fondos —
   const [fondos, setFondos]         = useState<Fondo[]>([])
   const [showFondoForm, setShowFondoForm] = useState(false)
-  const [fondoForm, setFondoForm]   = useState({ nombre: '', saldo: '', rendimiento: '', descripcion: '', color: 'var(--green)', icono: '💰' })
+  const bFondo = useDraft('ahorros-fondo', { nombre: '', saldo: '', rendimiento: '', descripcion: '', color: 'var(--green)', icono: '💰' })
+  const fondoForm = bFondo.valor
+  const setFondoForm = bFondo.set
   const [editFondo, setEditFondo]   = useState<Fondo | null>(null)
   const [editSaldo, setEditSaldo]   = useState('')
 
@@ -82,6 +90,7 @@ export default function Ahorros() {
   const [loading, setLoading]       = useState(true)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [saving, setSaving]         = useState(false)
+  const [errorForm, setErrorForm]   = useState<string | null>(null)
   const [tab, setTab]               = useState<'fondos' | 'metas' | 'patrimonio'>('fondos')
 
   // ── Carga de datos ──────────────────────────────────────────────────────────
@@ -112,20 +121,31 @@ export default function Ahorros() {
   // ── Fondos: CRUD ────────────────────────────────────────────────────────────
 
   const createFondo = async () => {
-    if (!fondoForm.nombre || !fondoForm.saldo) return
+    // Antes esto era un `return` mudo: el boton no hacia nada y no habia manera
+    // de saber por que.
+    if (!fondoForm.nombre.trim()) return setErrorForm('Falta el nombre del fondo.')
+    if (!fondoForm.saldo)         return setErrorForm('Falta el saldo actual.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('fondos_ahorro').insert({
-      nombre:      fondoForm.nombre,
-      saldo:       Number(fondoForm.saldo),
-      rendimiento: Number(fondoForm.rendimiento) || 0,
-      descripcion: fondoForm.descripcion,
-      color:       fondoForm.color,
-      icono:       fondoForm.icono,
-    })
-    setFondoForm({ nombre: '', saldo: '', rendimiento: '', descripcion: '', color: 'var(--green)', icono: '💰' })
-    setShowFondoForm(false)
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('fondos_ahorro').insert({
+        nombre:      fondoForm.nombre.trim(),
+        saldo:       Number(fondoForm.saldo),
+        rendimiento: Number(fondoForm.rendimiento) || 0,
+        descripcion: fondoForm.descripcion,
+        color:       fondoForm.color,
+        icono:       fondoForm.icono,
+      })
+      // Si falla, el formulario se queda abierto y con todo lo escrito dentro.
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bFondo.limpiar()
+      setShowFondoForm(false)
+      load()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const actualizarSaldoFondo = async (fondo: Fondo) => {
@@ -148,24 +168,34 @@ export default function Ahorros() {
   // ── Metas: CRUD ─────────────────────────────────────────────────────────────
 
   const createAhorro = async () => {
-    if (!metaForm.nombre || !metaForm.meta) return
+    if (!metaForm.nombre.trim()) return setErrorForm('Falta el nombre de la meta.')
+    if (!metaForm.meta)          return setErrorForm('Falta cuanto quieres juntar.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('ahorros').insert({
-      nombre:     metaForm.nombre,
-      meta:       Number(metaForm.meta),
-      descripcion: metaForm.descripcion,
-      fecha_meta: metaForm.fecha_meta || null,
-      color:      metaForm.color,
-      icono:      metaForm.icono,
-    })
-    setMetaForm({ nombre: '', meta: '', descripcion: '', fecha_meta: '', color: 'var(--accent)', icono: '🎯' })
-    setShowMetaForm(false)
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('ahorros').insert({
+        nombre:      metaForm.nombre.trim(),
+        meta:        Number(metaForm.meta),
+        descripcion: metaForm.descripcion,
+        fecha_meta:  metaForm.fecha_meta || null,
+        color:       metaForm.color,
+        icono:       metaForm.icono,
+      })
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bMeta.limpiar()
+      setShowMetaForm(false)
+      load()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const agregarMovimiento = async () => {
-    if (!movForm.id || !movForm.monto) return
+    if (!movForm.id) return
+    if (!movForm.monto) return setErrorForm('Escribe el monto del movimiento.')
+    setErrorForm(null)
     setSaving(true)
     const monto = Number(movForm.monto)
     await supabase.from('ahorros_movimientos').insert({
@@ -319,13 +349,15 @@ export default function Ahorros() {
                     onChange={e => setFondoForm(f => ({ ...f, color: e.target.value }))} />
                 </div>
               </div>
+              <AvisoForm mensaje={errorForm} />
+              <BorradorRecuperado b={bFondo} />
               <div className="flex gap-3 mt-4">
                 <button onClick={createFondo} disabled={saving}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-strong"
                   style={{ background: 'var(--green)' }}>
                   {saving ? 'Guardando…' : 'Crear Fondo'}
                 </button>
-                <button onClick={() => setShowFondoForm(false)}
+                <button onClick={() => { setErrorForm(null); setShowFondoForm(false) }}
                   className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong">
                   Cancelar
                 </button>
@@ -510,13 +542,15 @@ export default function Ahorros() {
                     onChange={e => setMetaForm(f => ({ ...f, color: e.target.value }))} />
                 </div>
               </div>
+              <AvisoForm mensaje={errorForm} />
+              <BorradorRecuperado b={bMeta} />
               <div className="flex gap-3 mt-4">
                 <button onClick={createAhorro} disabled={saving}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-white"
                   style={{ background: 'var(--accent)' }}>
                   {saving ? 'Guardando…' : 'Crear Meta'}
                 </button>
-                <button onClick={() => setShowMetaForm(false)}
+                <button onClick={() => { setErrorForm(null); setShowMetaForm(false) }}
                   className="px-4 py-2 rounded-lg text-sm text-muted hover:text-strong">
                   Cancelar
                 </button>

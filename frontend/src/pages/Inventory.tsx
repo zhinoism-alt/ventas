@@ -6,6 +6,8 @@ import {
 } from '../lib/api'
 import { CONDITIONS, COND_LABELS, COND_COLORS, STATUS_COLORS } from '../lib/constants'
 import { safeFloat, calcProfit, profitClass, fmt } from '../lib/utils'
+import { useRescate } from '../lib/useDraft'
+import { AvisoRescate } from '../components/FormAvisos'
 
 interface Product {
   id: number; name: string; brand: string; category: string; color: string
@@ -39,6 +41,12 @@ export default function Inventory() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [sortBy, setSortBy] = useState('default')
+
+  // Si la pagina se vuelve a montar con el modal abierto (revalidacion de
+  // sesion, recarga, la pestana descartada en el movil), el modal se cierra y
+  // lo capturado se perdia. Ahora se espeja mientras esta abierto.
+  const { rescate, descartar } = useRescate('inventario-articulo',
+    showModal ? { form, editandoId: editing?.id ?? null } : null)
 
   const load = async () => {
     const [p, s, r] = await Promise.all([
@@ -170,6 +178,18 @@ export default function Inventory() {
         </div>
         <button onClick={openAdd} className="btn-primary"><Plus size={16} />Agregar artículo</button>
       </div>
+
+      {rescate && !showModal && (
+        <AvisoRescate
+          que={rescate.form?.name ? `"${rescate.form.name}"` : 'un artículo'}
+          onRetomar={() => {
+            setEditing(null)
+            setForm(rescate.form)
+            setFormError('')
+            setShowModal(true)
+          }}
+          onDescartar={descartar} />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Truck, Plus, CheckCircle2, Circle, Trash2, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { AvisoError } from '../components/AvisoError'
+import { useDraft } from '../lib/useDraft'
+import { AvisoForm, BorradorRecuperado } from '../components/FormAvisos'
 import { fmt } from '../lib/utils'
 
 interface Tarea {
@@ -40,9 +42,14 @@ export default function Mudanza() {
   const [tab, setTab] = useState<'tareas' | 'presupuesto'>('tareas')
   const [showForm, setShowForm] = useState(false)
   const [catFilter, setCatFilter] = useState('todas')
-  const [form, setForm] = useState({ titulo: '', descripcion: '', categoria: 'general', prioridad: 'media' as 'alta' | 'media' | 'baja', fecha_limite: '', costo: '', notas: '' })
-  const [presForm, setPresForm] = useState({ concepto: '', monto_est: '', monto_real: '', categoria: 'general', notas: '' })
+  const bTarea = useDraft('mudanza-tarea', { titulo: '', descripcion: '', categoria: 'general', prioridad: 'media' as 'alta' | 'media' | 'baja', fecha_limite: '', costo: '', notas: '' })
+  const form = bTarea.valor
+  const setForm = bTarea.set
+  const bPres = useDraft('mudanza-presupuesto', { concepto: '', monto_est: '', monto_real: '', categoria: 'general', notas: '' })
+  const presForm = bPres.valor
+  const setPresForm = bPres.set
   const [saving, setSaving] = useState(false)
+  const [errorForm, setErrorForm] = useState<string | null>(null)
 
   const load = async () => {
     setErrorCarga(null)
@@ -71,29 +78,43 @@ export default function Mudanza() {
   }
 
   const createTarea = async () => {
-    if (!form.titulo) return
+    if (!form.titulo.trim()) return setErrorForm('Falta el titulo de la tarea.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('mudanza_tareas').insert({
-      titulo: form.titulo, descripcion: form.descripcion, categoria: form.categoria,
-      prioridad: form.prioridad, fecha_limite: form.fecha_limite || null,
-      costo: Number(form.costo) || 0, notas: form.notas
-    })
-    setForm({ titulo: '', descripcion: '', categoria: 'general', prioridad: 'media', fecha_limite: '', costo: '', notas: '' })
-    setShowForm(false)
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('mudanza_tareas').insert({
+        titulo: form.titulo.trim(), descripcion: form.descripcion, categoria: form.categoria,
+        prioridad: form.prioridad, fecha_limite: form.fecha_limite || null,
+        costo: Number(form.costo) || 0, notas: form.notas
+      })
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bTarea.limpiar()
+      setShowForm(false)
+      load()
+    } catch (err) {
+      setErrorForm(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const createPresupuesto = async () => {
-    if (!presForm.concepto) return
+    if (!presForm.concepto.trim()) return setErrorForm('Falta el concepto.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('mudanza_presupuesto').insert({
-      concepto: presForm.concepto, monto_est: Number(presForm.monto_est) || 0,
-      monto_real: Number(presForm.monto_real) || 0, categoria: presForm.categoria, notas: presForm.notas
-    })
-    setPresForm({ concepto: '', monto_est: '', monto_real: '', categoria: 'general', notas: '' })
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('mudanza_presupuesto').insert({
+        concepto: presForm.concepto.trim(), monto_est: Number(presForm.monto_est) || 0,
+        monto_real: Number(presForm.monto_real) || 0, categoria: presForm.categoria, notas: presForm.notas
+      })
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bPres.limpiar()
+      load()
+    } catch (err) {
+      setErrorForm(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const deleteTarea = async (id: number) => {
@@ -208,6 +229,8 @@ export default function Mudanza() {
               <input className="input w-full" type="number" placeholder="0" value={form.costo} onChange={e => setForm(f => ({ ...f, costo: e.target.value }))} />
             </div>
           </div>
+          <AvisoForm mensaje={errorForm} />
+          <BorradorRecuperado b={bTarea} />
           <div className="flex gap-3 mt-4">
             <button onClick={createTarea} disabled={saving}
               className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: 'var(--accent)' }}>
@@ -306,6 +329,8 @@ export default function Mudanza() {
               <div>
                 <input className="input w-full" type="number" placeholder="Real" value={presForm.monto_real} onChange={e => setPresForm(f => ({ ...f, monto_real: e.target.value }))} />
               </div>
+              <AvisoForm mensaje={errorForm} />
+              <BorradorRecuperado b={bPres} />
               <div>
                 <button onClick={createPresupuesto} disabled={saving}
                   className="w-full px-3 py-2 rounded-lg text-sm font-medium text-white" style={{ background: 'var(--accent)' }}>

@@ -16,6 +16,8 @@ import {
 } from '../lib/api'
 import { TOOLTIP_STYLE, PANEL_PRICES, SELL_PRICES, formatMonth } from '../lib/constants'
 import { safeDiv, fmt, profitClass } from '../lib/utils'
+import { useRescate } from '../lib/useDraft'
+import { AvisoRescate } from '../components/FormAvisos'
 
 export default function IPTV() {
   const [tab, setTab] = useState('overview')
@@ -49,6 +51,12 @@ export default function IPTV() {
     start_date: new Date().toISOString().split('T')[0], notes: '',
   })
   const [editSubForm, setEditSubForm] = useState({ price_charged: '', price_currency: 'MXN', costo_token: '', start_date: '', end_date: '', status: 'activo', notes: '' })
+
+  // Los tres formularios de alta viven en modales; un remonte los cerraba y se
+  // llevaba lo capturado. Se espeja mientras estan abiertos.
+  const rPkg    = useRescate('iptv-paquete',      showPkgModal    ? pkgForm    : null)
+  const rClient = useRescate('iptv-cliente',      showClientModal ? clientForm : null)
+  const rSub    = useRescate('iptv-suscripcion',  showSubModal    ? subForm    : null)
 
   const loadAll = async () => {
     const [s, p, c, sb, pr, r, ex] = await Promise.all([
@@ -274,6 +282,11 @@ export default function IPTV() {
             </button>
           </div>
 
+          {rPkg.rescate && !showPkgModal && (
+            <AvisoRescate que="un paquete" onDescartar={rPkg.descartar}
+              onRetomar={() => { setPkgForm(rPkg.rescate!); setShowPkgModal(true) }} />
+          )}
+
           {/* Balance cards */}
           <div className="grid grid-cols-2 gap-4">
             {[{ conn: 1, data: balance1 }, { conn: 2, data: balance2 }].map(({ conn, data }) => (
@@ -366,6 +379,12 @@ export default function IPTV() {
               <Plus size={14} />Agregar cliente
             </button>
           </div>
+
+          {rClient.rescate && !showClientModal && (
+            <AvisoRescate que={rClient.rescate.name ? `"${rClient.rescate.name}"` : 'un cliente'}
+              onDescartar={rClient.descartar}
+              onRetomar={() => { setEditingClient(null); setClientForm(rClient.rescate!); setShowClientModal(true) }} />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {clients.map(c => (
               <div key={c.id} className="card">
@@ -425,6 +444,11 @@ export default function IPTV() {
               </button>
             </div>
           </div>
+
+          {rSub.rescate && !showSubModal && (
+            <AvisoRescate que="una suscripción" onDescartar={rSub.descartar}
+              onRetomar={() => { setSubForm(rSub.rescate!); setShowSubModal(true) }} />
+          )}
           <div className="space-y-2">
             {filteredSubs.map(sub => {
               const daysLeft     = Math.ceil((new Date(sub.end_date).getTime() - Date.now()) / 86400000)

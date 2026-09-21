@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Heart, Plus, Trash2, Users, Target, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { AvisoError } from '../components/AvisoError'
+import { useDraft } from '../lib/useDraft'
+import { AvisoForm, BorradorRecuperado } from '../components/FormAvisos'
 import { fmt } from '../lib/utils'
 
 interface Gasto {
@@ -39,11 +41,16 @@ export default function Pareja() {
   const [mes, setMes] = useState(new Date().toISOString().slice(0, 7))
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({
+  const bGasto = useDraft('pareja-gasto', {
     concepto: '', monto: '', pagado_por: 'brandon' as 'brandon' | 'pareja' | 'ambos',
     categoria: 'general', dividir: true, porcentaje_brandon: '50', fecha: new Date().toISOString().split('T')[0], notas: ''
   })
-  const [metaForm, setMetaForm] = useState({ nombre: '', descripcion: '', tipo: 'relacion' as 'financiera' | 'relacion' | 'bienestar' | 'otro', fecha_meta: '' })
+  const form = bGasto.valor
+  const setForm = bGasto.set
+  const bMeta = useDraft('pareja-meta', { nombre: '', descripcion: '', tipo: 'relacion' as 'financiera' | 'relacion' | 'bienestar' | 'otro', fecha_meta: '' })
+  const metaForm = bMeta.valor
+  const setMetaForm = bMeta.set
+  const [errorForm, setErrorForm] = useState<string | null>(null)
 
   const load = async () => {
     setErrorCarga(null)
@@ -67,30 +74,45 @@ export default function Pareja() {
   useEffect(() => { load() }, [mes])
 
   const createGasto = async () => {
-    if (!form.concepto || !form.monto) return
+    if (!form.concepto.trim()) return setErrorForm('Falta el concepto del gasto.')
+    if (!form.monto)           return setErrorForm('Falta el monto.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('pareja_gastos').insert({
-      concepto: form.concepto, monto: Number(form.monto), pagado_por: form.pagado_por,
-      categoria: form.categoria, dividir: form.dividir,
-      porcentaje_brandon: Number(form.porcentaje_brandon),
-      fecha: form.fecha, mes, notas: form.notas
-    })
-    setForm({ concepto: '', monto: '', pagado_por: 'brandon', categoria: 'general', dividir: true, porcentaje_brandon: '50', fecha: new Date().toISOString().split('T')[0], notas: '' })
-    setShowForm(false)
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('pareja_gastos').insert({
+        concepto: form.concepto.trim(), monto: Number(form.monto), pagado_por: form.pagado_por,
+        categoria: form.categoria, dividir: form.dividir,
+        porcentaje_brandon: Number(form.porcentaje_brandon),
+        fecha: form.fecha, mes, notas: form.notas
+      })
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bGasto.limpiar()
+      setShowForm(false)
+      load()
+    } catch (err) {
+      setErrorForm(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const createMeta = async () => {
-    if (!metaForm.nombre) return
+    if (!metaForm.nombre.trim()) return setErrorForm('Falta el nombre de la meta.')
+    setErrorForm(null)
     setSaving(true)
-    await supabase.from('pareja_metas').insert({
-      nombre: metaForm.nombre, descripcion: metaForm.descripcion,
-      tipo: metaForm.tipo, fecha_meta: metaForm.fecha_meta || null
-    })
-    setMetaForm({ nombre: '', descripcion: '', tipo: 'relacion', fecha_meta: '' })
-    setSaving(false)
-    load()
+    try {
+      const { error } = await supabase.from('pareja_metas').insert({
+        nombre: metaForm.nombre.trim(), descripcion: metaForm.descripcion,
+        tipo: metaForm.tipo, fecha_meta: metaForm.fecha_meta || null
+      })
+      if (error) { setErrorForm(`No se guardo: ${error.message}`); return }
+      bMeta.limpiar()
+      load()
+    } catch (err) {
+      setErrorForm(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const toggleMeta = async (id: number, val: boolean) => {
@@ -228,6 +250,8 @@ export default function Pareja() {
               <input className="input w-full" type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
             </div>
           </div>
+          <AvisoForm mensaje={errorForm} />
+          <BorradorRecuperado b={bGasto} />
           <div className="flex gap-3 mt-4">
             <button onClick={createGasto} disabled={saving}
               className="px-4 py-2 rounded-lg text-sm font-medium text-strong" style={{ background: '#ec4899' }}>
@@ -306,6 +330,8 @@ export default function Pareja() {
                   <option value="otro">Otro</option>
                 </select>
               </div>
+              <AvisoForm mensaje={errorForm} />
+              <BorradorRecuperado b={bMeta} />
               <div>
                 <button onClick={createMeta} disabled={saving}
                   className="w-full px-3 py-2 rounded-lg text-sm font-medium text-strong" style={{ background: '#ec4899' }}>
