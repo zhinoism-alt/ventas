@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+import { parseCSV } from '../lib/presupuestoSheet'
 import {
   FileSpreadsheet, RefreshCw, Plus, Trash2, ChevronDown, ChevronUp,
   Clock, CheckCircle2, XCircle, ExternalLink, AlertTriangle
@@ -21,54 +23,114 @@ interface SheetRow {
   synced_at: string
 }
 
-// ─── API helpers ──────────────────────────────────────────────────────────────
-const API = '/api/sheets'
+/* ─── Datos ───────────────────────────────────────────────────────────────────
+   Antes esto llamaba a /api/sheets/*, que a su vez invocaba dos edge functions
+   de Supabase que hablaban con la API de Google usando una cuenta de servicio.
+   Nada de esa cadena existia: las edge functions nunca se desplegaron (404), la
+   cuenta de servicio nunca se dio de alta, y faltaban tres tablas.
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const r = await fetch(`${API}${path}`, opts)
-  const json = await r.json()
-  if (!r.ok) throw new Error(json.error ?? 'Error desconocido')
-  return json
+   Se termina por donde la propia pantalla siempre apunto: el enlace de
+   "Publicar en la web ... como CSV". Google lo sirve con
+   Access-Control-Allow-Origin: *, asi que el navegador lo lee directo. Sin
+   credenciales, sin edge functions, sin cola de escritura. Es lo mismo que
+   Presupuesto hace desde hace semanas.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+async function getConfigs(): Promise<{ configs: SheetConfig[] }> {
+  const { data, error } = await supabase
+    .from('sheets_config').select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return { configs: (data ?? []) as SheetConfig[] }
 }
 
-function getConfigs(): Promise<{ configs: SheetConfig[] }> {
-  return apiFetch('/sync')
+/** Lee el CSV publicado y deja el resultado en sheets_datos. */
+async function syncOne(config_id: number): Promise<{ rows_synced: number }> {
+  const { data: cfg, error: eCfg } = await supabase
+    .from('sheets_config').select('*').eq('id', config_id).single()
+  if (eCfg) throw new Error(eCfg.message)
+  if (!cfg?.sheet_csv_url) throw new Error('Esta hoja no tiene URL de CSV publicado.')
+
+  let filas: string[][]
+  try {
+    const res = await fetch(cfg.sheet_csv_url, { cache: 'no-store' })
+    if (!res.ok) throw new Error(`Google respondió ${res.status}`)
+    filas = parseCSV(await res.text())
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    await supabase.from('sheets_config')
+      .update({ ultimo_error: msg }).eq('id', config_id)
+    throw new Error(msg)
+  }
+
+  // La primera fila son los encabezados. Una columna sin nombre igual se
+  // guarda: perder datos por una celda vacia seria peor que un nombre feo.
+  const [encabezados = [], ...cuerpo] = filas
+  const nombres = encabezados.map((h, i) => h.trim() || `Columna ${i + 1}`)
+  const registros = cuerpo
+    .filter(f => f.some(c => c.trim() !== ''))
+    .map((f, i) => ({
+      config_id,
+      fila: i + 1,
+      datos: Object.fromEntries(nombres.map((n, j) => [n, f[j] ?? ''])),
+    }))
+
+  // Reemplazo completo: la hoja es la verdad, no lo que quedo aqui la vez
+  // pasada. Si una fila se borro alla, tiene que desaparecer aca.
+  const { error: eDel } = await supabase.from('sheets_datos').delete().eq('config_id', config_id)
+  if (eDel) throw new Error(eDel.message)
+  if (registros.length) {
+    const { error: eIns } = await supabase.from('sheets_datos').insert(registros)
+    if (eIns) throw new Error(eIns.message)
+  }
+
+  await supabase.from('sheets_config').update({
+    last_synced_at: new Date().toISOString(),
+    row_count: registros.length,
+    ultimo_error: null,
+  }).eq('id', config_id)
+
+  return { rows_synced: registros.length }
 }
 
-function syncOne(config_id: number): Promise<{ rows_synced: number }> {
-  return apiFetch('/sync', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ config_id }),
-  })
+async function syncAll(): Promise<{ results: unknown[] }> {
+  const { configs } = await getConfigs()
+  const results: unknown[] = []
+  for (const c of configs) {
+    // `ok` es lo que la pantalla cuenta para su resumen; sin ese campo una
+    // sincronizacion exitosa se reportaba como fallida.
+    try {
+      const { rows_synced } = await syncOne(c.id)
+      results.push({ id: c.id, ok: true, rows_synced })
+    } catch (e) {
+      results.push({ id: c.id, ok: false, error: e instanceof Error ? e.message : String(e) })
+    }
+  }
+  return { results }
 }
 
-function syncAll(): Promise<{ results: any[] }> {
-  return apiFetch('/sync', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sync_all: true }),
-  })
+async function addConfig(nombre: string, sheet_csv_url: string) {
+  const { error } = await supabase.from('sheets_config')
+    .insert({ nombre, sheet_csv_url })
+  if (error) throw new Error(error.message)
 }
 
-function addConfig(nombre: string, sheet_csv_url: string) {
-  return apiFetch('/sync', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'add', nombre, sheet_csv_url }),
-  })
+/** Archiva la hoja. Sus filas se conservan por si se reactiva. */
+async function deleteConfig(config_id: number) {
+  const { error } = await supabase.from('sheets_config')
+    .update({ is_active: false }).eq('id', config_id)
+  if (error) throw new Error(error.message)
 }
 
-function deleteConfig(config_id: number) {
-  return apiFetch('/sync', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'delete', config_id }),
-  })
-}
-
-function getRows(config_id: number, limit = 30): Promise<{ rows: SheetRow[] }> {
-  return apiFetch(`/data?config_id=${config_id}&limit=${limit}`)
+async function getRows(config_id: number, limit = 30): Promise<{ rows: SheetRow[] }> {
+  const { data, error } = await supabase
+    .from('sheets_datos').select('fila, datos, synced_at')
+    .eq('config_id', config_id)
+    .order('fila')
+    .limit(limit)
+  if (error) throw new Error(error.message)
+  return { rows: (data ?? []) as SheetRow[] }
 }
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
@@ -426,9 +488,12 @@ export default function SheetsSync() {
     setSyncAllResult('')
     try {
       const r = await syncAll()
-      const ok = r.results.filter((x: any) => x.ok).length
-      const fail = r.results.filter((x: any) => !x.ok).length
-      setSyncAllResult(`${ok} hojas sincronizadas${fail > 0 ? `, ${fail} con error` : ''}`)
+      const buenas = r.results.filter((x: any) => x.ok)
+      const fail = r.results.length - buenas.length
+      const filas = buenas.reduce((t: number, x: any) => t + (x.rows_synced ?? 0), 0)
+      setSyncAllResult(
+        `${buenas.length} hoja${buenas.length === 1 ? '' : 's'} · ${filas} fila${filas === 1 ? '' : 's'}` +
+        (fail > 0 ? ` · ${fail} con error` : ''))
       load()
     } catch (e: any) {
       setSyncAllResult('Error al sincronizar: ' + e.message)
