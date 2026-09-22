@@ -372,6 +372,26 @@ export default function Presupuesto() {
     }
   }, [d, ingresoPropio])
 
+  /**
+   * La historia de cada concepto a lo largo de los meses leidos.
+   *
+   * Un presupuesto mensual contesta "cuanto gaste"; lo que de verdad decide
+   * algo es "cuanto mas que el mes pasado, y desde cuando viene subiendo". Eso
+   * ya estaba en los datos y no se mostraba en ningun lado.
+   */
+  const historial = useMemo(() => {
+    const mapa = new Map<string, { anio: number; mes: number; monto: number }[]>()
+    const ordenados = [...meses].sort((a, b) => claveMes(a.anio, a.mes) - claveMes(b.anio, b.mes))
+    for (const m of ordenados) {
+      for (const it of [...(m.datos.necesarios ?? []), ...(m.datos.noNecesarios ?? [])]) {
+        const k = it.concepto.trim().toLowerCase()
+        if (!mapa.has(k)) mapa.set(k, [])
+        mapa.get(k)!.push({ anio: m.anio, mes: m.mes, monto: it.monto })
+      }
+    }
+    return mapa
+  }, [meses])
+
   const serie = useMemo(() => [...meses]
     .sort((a, b) => claveMes(a.anio, a.mes) - claveMes(b.anio, b.mes))
     .map(m => {
@@ -790,10 +810,28 @@ export default function Presupuesto() {
             </div>
           )}
 
+          {/* ── A donde se va ── */}
+          <div className="card">
+            <h2 className="text-strong font-semibold mb-1">A dónde se va tu dinero</h2>
+            <p className="text-xs text-dim mb-4">
+              De lo que entra a lo que te queda, en orden. Cada barra arranca donde acabó la anterior.
+            </p>
+            <Cascada
+              pasos={[
+                { etiqueta: 'Ingreso contado', monto: ingresoContado, tipo: 'entra' },
+                { etiqueta: 'Gastos necesarios', monto: -d.totalNecesarios, tipo: 'sale' },
+                { etiqueta: 'Gastos no necesarios', monto: -d.totalNoNecesarios, tipo: 'sale' },
+              ]}
+              final={{ etiqueta: 'Te queda', monto: sobra }}
+            />
+          </div>
+
           {/* ── Detalle de gastos ── */}
           <div className="grid md:grid-cols-2 gap-4">
-            <ListaGastos titulo="Gastos necesarios" items={d.necesarios} total={d.totalNecesarios} color="var(--green)" />
-            <ListaGastos titulo="Gastos no necesarios" items={d.noNecesarios} total={d.totalNoNecesarios} color="var(--yellow)" />
+            <ListaGastos titulo="Gastos necesarios" items={d.necesarios} total={d.totalNecesarios}
+                         color="var(--green)" historial={historial} sel={sel} />
+            <ListaGastos titulo="Gastos no necesarios" items={d.noNecesarios} total={d.totalNoNecesarios}
+                         color="var(--yellow)" historial={historial} sel={sel} />
           </div>
 
           {/* ── Apartados semanales ── */}
@@ -936,35 +974,166 @@ function FuenteIngreso({ nombre, nota, monto, incluido, onToggle, fijo, etiqueta
   )
 }
 
-function ListaGastos({ titulo, items, total, color }: {
-  titulo: string; items: { concepto: string; monto: number }[]; total: number; color: string
+interface PuntoHist { anio: number; mes: number; monto: number }
+
+function ListaGastos({ titulo, items, total, color, historial, sel }: {
+  titulo: string
+  items: { concepto: string; monto: number }[]
+  total: number
+  color: string
+  historial: Map<string, PuntoHist[]>
+  sel: number
 }) {
+  const [abierto, setAbierto] = useState<string | null>(null)
   const ordenados = [...items].sort((a, b) => b.monto - a.monto)
   const mayor = ordenados[0]?.monto ?? 1
+
   return (
     <div className="card">
-      <div className="flex items-baseline justify-between mb-3">
+      <div className="flex items-baseline justify-between mb-1">
         <h2 className="text-strong font-semibold">{titulo}</h2>
         <span className="font-mono font-bold" style={{ color }}>{fmt(total)}</span>
       </div>
+      <p className="text-xs text-dim mb-3">Pica un renglón para ver su historia.</p>
+
       {!ordenados.length ? (
         <p className="text-xs text-dim text-center py-4">Sin renglones este mes</p>
       ) : (
         <div className="space-y-1.5">
-          {ordenados.map(i => (
-            <div key={i.concepto}>
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-body truncate">{i.concepto}</span>
-                <span className="font-mono text-strong flex-shrink-0">{fmt(i.monto)}</span>
+          {ordenados.map(i => {
+            const hist = historial.get(i.concepto.trim().toLowerCase()) ?? []
+            const idx = hist.findIndex(h => claveMes(h.anio, h.mes) === sel)
+            const previo = idx > 0 ? hist[idx - 1] : null
+            const delta = previo ? i.monto - previo.monto : null
+            const estaAbierto = abierto === i.concepto
+
+            return (
+              <div key={i.concepto}>
+                <button className="w-full text-left"
+                        onClick={() => setAbierto(estaAbierto ? null : i.concepto)}>
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-body truncate">{i.concepto}</span>
+                    <span className="flex items-baseline gap-2 flex-shrink-0">
+                      {delta !== null && Math.abs(delta) > 0.5 && (
+                        <span className="text-xs font-mono"
+                              style={{ color: delta > 0 ? 'var(--red)' : 'var(--green)' }}>
+                          {delta > 0 ? '▲' : '▼'} {fmt(Math.abs(delta))}
+                        </span>
+                      )}
+                      <span className="font-mono text-strong">{fmt(i.monto)}</span>
+                    </span>
+                  </div>
+                  <div className="h-1 rounded-full mt-1" style={{ background: 'var(--surface-2)' }}>
+                    <div className="h-1 rounded-full"
+                         style={{ width: `${(i.monto / mayor) * 100}%`, background: color, opacity: .7 }} />
+                  </div>
+                </button>
+
+                {estaAbierto && (
+                  <div className="mt-2 mb-1 rounded-lg p-3" style={{ background: 'var(--surface-2)' }}>
+                    {hist.length < 2 ? (
+                      <p className="text-xs text-dim">
+                        Solo aparece este mes. No hay con qué compararlo todavía.
+                      </p>
+                    ) : (
+                      <>
+                        <Chispa puntos={hist} actual={sel} color={color} />
+                        <div className="flex justify-between text-xs text-dim mt-2">
+                          <span>Apareció en {hist.length} de los meses leídos</span>
+                          <span className="font-mono">
+                            promedio {fmt(hist.reduce((t, h) => t + h.monto, 0) / hist.length)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="h-1 rounded-full mt-1" style={{ background: 'var(--surface-2)' }}>
-                <div className="h-1 rounded-full"
-                     style={{ width: `${(i.monto / mayor) * 100}%`, background: color, opacity: 0.7 }} />
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Barras chiquitas: el mes que estas viendo va marcado. */
+function Chispa({ puntos, actual, color }: { puntos: PuntoHist[]; actual: number; color: string }) {
+  const tope = Math.max(...puntos.map(p => p.monto), 1)
+  return (
+    <div className="flex items-end gap-1" style={{ height: 52 }}>
+      {puntos.map(p => {
+        const esActual = claveMes(p.anio, p.mes) === actual
+        return (
+          <div key={`${p.anio}-${p.mes}`} className="flex-1 flex flex-col items-center gap-1"
+               title={`${MESES[p.mes - 1]}: ${fmt(p.monto)}`}>
+            <div className="w-full rounded-t"
+                 style={{
+                   height: Math.max(3, (p.monto / tope) * 36),
+                   background: color,
+                   opacity: esActual ? 1 : 0.35,
+                 }} />
+            <span className="text-dim" style={{ fontSize: 9 }}>
+              {MESES[p.mes - 1].slice(0, 3)}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** De lo que entra a lo que queda, cada barra arrancando donde acabo la anterior. */
+function Cascada({ pasos, final }: {
+  pasos: { etiqueta: string; monto: number; tipo: 'entra' | 'sale' }[]
+  final: { etiqueta: string; monto: number }
+}) {
+  const tope = Math.max(...pasos.map(p => Math.abs(p.monto)), Math.abs(final.monto), 1)
+  let acumulado = 0
+
+  return (
+    <div className="space-y-2">
+      {pasos.map(p => {
+        const desde = p.tipo === 'entra' ? 0 : acumulado + p.monto
+        const ancho = Math.abs(p.monto) / tope * 100
+        const izquierda = (p.tipo === 'entra' ? 0 : desde / tope * 100)
+        acumulado += p.monto
+        return (
+          <div key={p.etiqueta}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-body">{p.etiqueta}</span>
+              <span className="font-mono" style={{ color: p.tipo === 'entra' ? 'var(--green)' : 'var(--red)' }}>
+                {p.tipo === 'entra' ? '+' : '−'}{fmt(Math.abs(p.monto))}
+              </span>
+            </div>
+            <div className="h-5 rounded relative" style={{ background: 'var(--surface-2)' }}>
+              <div className="h-5 rounded absolute"
+                   style={{
+                     left: `${izquierda}%`, width: `${ancho}%`,
+                     background: p.tipo === 'entra' ? 'var(--green)' : 'var(--red)',
+                     opacity: .75,
+                   }} />
+            </div>
+          </div>
+        )
+      })}
+
+      <div className="pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="flex justify-between text-sm mb-1">
+          <span className="text-strong font-medium">{final.etiqueta}</span>
+          <span className="font-mono font-bold"
+                style={{ color: final.monto >= 0 ? 'var(--green)' : 'var(--red)' }}>
+            {fmt(final.monto)}
+          </span>
+        </div>
+        <div className="h-5 rounded" style={{ background: 'var(--surface-2)' }}>
+          <div className="h-5 rounded"
+               style={{
+                 width: `${Math.abs(final.monto) / tope * 100}%`,
+                 background: final.monto >= 0 ? 'var(--green)' : 'var(--red)',
+               }} />
+        </div>
+      </div>
     </div>
   )
 }
