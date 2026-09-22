@@ -4,7 +4,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import Clerk from '@clerk/backend'
+import { createClerkClient } from '@clerk/backend'
 import formidable from 'formidable'
 import fs from 'fs'
 import path from 'path'
@@ -16,10 +16,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 ) as any
 
-function getUserId(token: string): Promise<string> {
-  return (Clerk as any)
-    .verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY })
-    .then((payload: any) => payload.sub)
+/**
+ * Antes era `import Clerk from '@clerk/backend'` con `Clerk.verifyToken(...)`.
+ * Ese paquete no exporta nada por defecto, asi que el import fallaba al cargar
+ * el modulo y la funcion respondia 500 FUNCTION_INVOCATION_FAILED antes de
+ * ejecutar una sola linea del handler: ni siquiera llegaba a pedir el token.
+ *
+ * Las otras funciones de api/ ya usaban createClerkClient, que es la forma
+ * correcta en la version 1. Esta se quedo atras.
+ */
+async function getUserId(token: string): Promise<string> {
+  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
+  const payload = await (clerk as any).verifyToken(token)
+  return payload.sub
 }
 
 function isPDF(buffer: Buffer): boolean {

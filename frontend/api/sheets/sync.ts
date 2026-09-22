@@ -2,7 +2,7 @@
  * Serverless function: POST /api/sheets/sync
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import Clerk from '@clerk/backend'
+import { createClerkClient } from '@clerk/backend'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -11,7 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!token) return res.status(401).json({ error: 'Unauthorized' })
 
   try {
-    await (Clerk as any).verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY })
+    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
+    await (clerk as any).verifyToken(token)
   } catch {
     return res.status(401).json({ error: 'Invalid token' })
   }

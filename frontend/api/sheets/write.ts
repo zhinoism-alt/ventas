@@ -4,7 +4,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import Clerk from '@clerk/backend'
+import { createClerkClient } from '@clerk/backend'
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -19,7 +19,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!token) return res.status(401).json({ error: 'Unauthorized' })
 
   try {
-    await (Clerk as any).verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY })
+    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
+    await (clerk as any).verifyToken(token)
   } catch {
     return res.status(401).json({ error: 'Invalid token' })
   }

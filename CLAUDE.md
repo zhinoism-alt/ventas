@@ -16,9 +16,13 @@ finanzas personales, la escuela y la búsqueda de empleo.
 cd frontend && npm install && npm run dev     # http://localhost:5173
 ```
 
-El frontend habla directo con Supabase (PostgREST) desde el navegador. **No
-hace falta levantar el backend** para nada de Vida Personal; `backend/` es de la
-etapa anterior del proyecto y hoy solo lo usan Inventario e IPTV.
+El frontend habla directo con Supabase (PostgREST) desde el navegador, y para
+lo que necesita un secreto usa **funciones serverless de Vercel**, que viven en
+`frontend/api/` y se despliegan junto con el sitio.
+
+**`backend/` no se usa.** Es de la etapa anterior del proyecto y nada lo llama:
+lo que parece «el backend» son esas funciones de Vercel. No lo levantes ni
+supongas que hace falta.
 
 Antes de dar por terminado un cambio:
 
@@ -176,7 +180,12 @@ Otros datos que el confirmo:
 - **Clerk es una instancia de desarrollo** (`pk_test_`) corriendo en producción.
 - `CRON_SECRET` no está puesto en Vercel; los crons devuelven 401 en silencio.
 - `backend/`, `Dockerfile` y `fly.toml` son de una migración de hosting que
-  quedó a medias. No los toques sin preguntar.
+  quedó a medias, y **nada los llama**. Antes de culpar a «el backend» de un
+  fallo, revisa `frontend/api/`: ahí están las funciones que sí corren.
+- Las funciones de `frontend/api/` importan Clerk con `createClerkClient`. Un
+  `import Clerk from '@clerk/backend'` (por defecto) **revienta al cargar el
+  módulo** — ese paquete no tiene export por defecto en la versión 1 — y la
+  función responde 500 antes de ejecutar una línea.
 
 ---
 
