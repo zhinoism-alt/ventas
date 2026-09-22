@@ -5,7 +5,7 @@ import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
-  Wallet, Heart, PiggyBank, Truck, Leaf, FileSpreadsheet, Briefcase, Sun, Moon
+  Wallet, Heart, PiggyBank, Truck, Leaf, FileSpreadsheet, Briefcase, Sun, Moon, Search
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -25,6 +25,7 @@ const Pareja = lazy(() => import('./pages/Pareja'))
 const Bienestar = lazy(() => import('./pages/Bienestar'))
 const SheetsSync = lazy(() => import('./pages/SheetsSync'))
 const Empleo = lazy(() => import('./pages/Empleo'))
+const Consulta = lazy(() => import('./pages/Consulta'))
 import { getExchangeRate, refreshExchangeRate, getWhatsAppStatus } from './lib/api'
 
 // ─── Tema ─────────────────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ function Layout() {
     { to: '/bienestar',   icon: <Leaf size={18} />,            label: 'Bienestar',    group: 'vida' },
     { to: '/personal',    icon: <LayoutDashboard size={18} />, label: 'Personal',     group: 'vida' },
     { to: '/empleo',      icon: <Briefcase size={18} />,       label: 'Empleo',       group: 'vida' },
+    { to: '/consulta',    icon: <Search size={18} />,          label: 'Consulta',     group: 'vida' },
   ]
 
   return (
@@ -248,6 +250,7 @@ function Layout() {
             <Route path="/bienestar"   element={<Bienestar />} />
             <Route path="/personal"    element={<Personal />} />
             <Route path="/empleo"      element={<Empleo />} />
+            <Route path="/consulta"    element={<Consulta />} />
             <Route path="/sheets"      element={<SheetsSync />} />
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
