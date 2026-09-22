@@ -59,6 +59,10 @@ export default function IPTV() {
   const rClient = useRescate('iptv-cliente',      showClientModal ? clientForm : null)
   const rSub    = useRescate('iptv-suscripcion',  showSubModal    ? subForm    : null)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
+  // Los cuatro guardados tenian try/finally sin catch: un error de la base
+  // se iba como promesa rechazada a la consola, el modal se quedaba abierto
+  // sin decir nada y parecia que el boton no servia.
+  const [errorForm, setErrorForm] = useState<string | null>(null)
 
   const loadAll = async () => {
     // Siete consultas al backend de Node, que hoy no esta desplegado. Sin el
@@ -99,22 +103,28 @@ export default function IPTV() {
 
   const handlePkgSave = async () => {
     if (!pkgForm.credits || !pkgForm.price_paid) return alert('Créditos y precio son requeridos')
+    setErrorForm(null)
     setSaving(true)
     try {
       await createIPTVPackage({ ...pkgForm, credits: parseInt(pkgForm.credits), price_paid: parseFloat(pkgForm.price_paid), connections: parseInt(pkgForm.connections) })
       setShowPkgModal(false)
       loadAll()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
     } finally { setSaving(false) }
   }
 
   const handleClientSave = async () => {
     if (!clientForm.name) return alert('El nombre es requerido')
+    setErrorForm(null)
     setSaving(true)
     try {
       if (editingClient) await updateIPTVClient(editingClient.id, clientForm)
       else await createIPTVClient(clientForm)
       setShowClientModal(false)
       loadAll()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
     } finally { setSaving(false) }
   }
 
@@ -122,6 +132,7 @@ export default function IPTV() {
     if (!subForm.client_id || !subForm.price_charged || !subForm.start_date) {
       return alert('Cliente, precio y fecha son requeridos')
     }
+    setErrorForm(null)
     setSaving(true)
     try {
       await createIPTVSubscription({
@@ -144,6 +155,8 @@ export default function IPTV() {
         start_date: new Date().toISOString().split('T')[0], notes: '',
       })
       loadAll()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
     } finally { setSaving(false) }
   }
 
@@ -163,6 +176,7 @@ export default function IPTV() {
 
   const handleEditSubSave = async () => {
     if (!editingSub) return
+    setErrorForm(null)
     setSaving(true)
     try {
       const costoToken = parseFloat(editSubForm.costo_token) || 0
@@ -178,6 +192,8 @@ export default function IPTV() {
       })
       setEditingSub(null)
       loadAll()
+    } catch (e) {
+      setErrorForm(e instanceof Error ? e.message : String(e))
     } finally { setSaving(false) }
   }
 
@@ -741,6 +757,9 @@ export default function IPTV() {
                 </div>
               </div>
               <div className="flex gap-3 mt-5">
+                {errorForm && (
+                  <p className="w-full text-xs mb-2" style={{ color: 'var(--red)' }}>{errorForm}</p>
+                )}
                 <button onClick={() => setShowPkgModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button onClick={handlePkgSave} disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Guardando...' : 'Guardar'}</button>
               </div>
@@ -775,6 +794,9 @@ export default function IPTV() {
                 <div><label>Notas</label><textarea className="input" rows={2} value={clientForm.notes} onChange={e => setClientForm(f => ({ ...f, notes: e.target.value }))} /></div>
               </div>
               <div className="flex gap-3 mt-5">
+                {errorForm && (
+                  <p className="w-full text-xs mb-2" style={{ color: 'var(--red)' }}>{errorForm}</p>
+                )}
                 <button onClick={() => setShowClientModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button onClick={handleClientSave} disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Guardando...' : editingClient ? 'Actualizar' : 'Guardar'}</button>
               </div>
@@ -916,6 +938,9 @@ export default function IPTV() {
                 <div><label>Notas</label><input className="input" value={subForm.notes} onChange={e => setSubForm(f => ({ ...f, notes: e.target.value }))} /></div>
               </div>
               <div className="flex gap-3 mt-5">
+                {errorForm && (
+                  <p className="w-full text-xs mb-2" style={{ color: 'var(--red)' }}>{errorForm}</p>
+                )}
                 <button onClick={() => setShowSubModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button onClick={handleSubSave} disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Guardando...' : 'Crear suscripción'}</button>
               </div>
@@ -1013,6 +1038,9 @@ export default function IPTV() {
                 </div>
               </div>
               <div className="flex gap-3 mt-5">
+                {errorForm && (
+                  <p className="w-full text-xs mb-2" style={{ color: 'var(--red)' }}>{errorForm}</p>
+                )}
                 <button onClick={() => setEditingSub(null)} className="btn-secondary flex-1">Cancelar</button>
                 <button onClick={handleEditSubSave} disabled={saving} className="btn-primary flex-1 justify-center">
                   {saving ? 'Guardando...' : 'Guardar'}

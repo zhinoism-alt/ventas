@@ -519,9 +519,13 @@ export const updateIPTVSubscription = async (id: number, data: {
   status?: string
   notes?: string
 }) => {
+  // Sin updated_at: iptv_subscriptions no tiene esa columna, y mandarla hacia
+  // que Postgres rechazara el UPDATE entero con
+  //   PGRST204: Could not find the 'updated_at' column
+  // Guardar no fallaba a medias: no guardaba nada.
   const { error } = await supabase
     .from('iptv_subscriptions')
-    .update({ ...data, updated_at: new Date().toISOString() })
+    .update(data)
     .eq('id', id)
   if (error) throw error
   return { data: { success: true } }
