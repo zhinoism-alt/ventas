@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { parseCSV } from '../lib/presupuestoSheet'
 import {
@@ -261,23 +261,58 @@ function AddSheetForm({ onAdded }: { onAdded: () => void }) {
 }
 
 // ─── Data Preview ─────────────────────────────────────────────────────────────
+/**
+ * Vista previa de una hoja.
+ *
+ * El problema real: no toda hoja tiene forma de tabla. La de presupuesto de
+ * Brandon empieza con "Ingreso Mensual | $21,767.70" en la primera fila, asi
+ * que no hay encabezados que valgan y media hoja son columnas vacias que solo
+ * sirven de separacion visual dentro de Google Sheets.
+ *
+ * Una tabla cruda de eso es ilegible: columnas sin nada, nombres inventados
+ * como "Columna 7", y en un telefono no cabe ni la mitad. Asi que la vista se
+ * adapta a lo que encuentra:
+ *
+ *   · Las columnas que estan vacias en todas las filas no se dibujan.
+ *   · Si los encabezados son de relleno se usan letras, como en la hoja.
+ *   · En pantalla angosta cada fila se muestra como ficha, no como renglon.
+ */
 function DataPreview({ configId }: { configId: number }) {
   const [rows, setRows] = useState<SheetRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [headers, setHeaders] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let vivo = true
     getRows(configId, 30)
-      .then(r => {
-        setRows(r.rows ?? [])
-        // Object.keys(undefined) revienta: una fila sin `datos` tiraba la
-        // promesa y dejaba la vista vacia sin decir por que.
-        const primera = r.rows?.[0]?.datos
-        if (primera) setHeaders(Object.keys(primera))
-      })
-      .catch(e => console.error('[SheetsSync] no se pudo leer la vista previa', e))
-      .finally(() => setLoading(false))
+      .then(r => { if (vivo) setRows(r.rows ?? []) })
+      .catch(e => { if (vivo) setError(e instanceof Error ? e.message : String(e)) })
+      .finally(() => { if (vivo) setLoading(false) })
+    return () => { vivo = false }
   }, [configId])
+
+  // Solo las columnas que llevan algo. Una columna vacia en las treinta filas
+  // no aporta nada y empuja las demas fuera de la pantalla.
+  const columnas = useMemo(() => {
+    const todas: string[] = []
+    for (const r of rows) for (const k of Object.keys(r.datos ?? {})) if (!todas.includes(k)) todas.push(k)
+    return todas.filter(k => rows.some(r => String(r.datos?.[k] ?? '').trim() !== ''))
+  }, [rows])
+
+  /**
+   * Un encabezado util es una palabra que nombra la columna. Aqui llegan dos
+   * cosas que no lo son: el relleno que ponemos cuando la celda venia vacia
+   * ("Columna 7"), y los valores que la hoja trae en su primera fila cuando no
+   * es una fila de encabezados — "$21,767.70" como titulo no orienta a nadie.
+   * En esos casos la letra de la columna, como en la hoja, dice mas.
+   */
+  const etiqueta = (k: string, i: number) => {
+    const limpio = k.trim()
+    const esRelleno = /^Columna \d+$/.test(limpio)
+    const esValor = /^[$\d][\d,.\s%$-]*$/.test(limpio)
+    if (!limpio || esRelleno || esValor) return String.fromCharCode(65 + i)
+    return limpio.length > 28 ? limpio.slice(0, 27) + '…' : limpio
+  }
 
   if (loading) {
     return (
@@ -287,40 +322,82 @@ function DataPreview({ configId }: { configId: number }) {
     )
   }
 
+  if (error) {
+    return (
+      <p className="text-sm py-4" style={{ color: 'var(--red)' }}>
+        No se pudo leer la vista previa: {error}
+      </p>
+    )
+  }
+
   if (rows.length === 0) {
-    return <p className="text-sm text-dim py-4">Sin datos sincronizados aún. Haz clic en "Sincronizar".</p>
+    return <p className="text-sm text-dim py-4">Sin datos sincronizados aún. Pica «Sincronizar».</p>
+  }
+
+  if (columnas.length === 0) {
+    return <p className="text-sm text-dim py-4">Se sincronizaron {rows.length} filas, pero están todas vacías.</p>
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--border)' }}>
-      <table className="min-w-full text-xs">
-        <thead style={{ background: 'var(--bg)' }}>
-          <tr>
-            <th className="px-3 py-2 text-left text-dim font-medium">#</th>
-            {headers.map(h => (
-              <th key={h} className="px-3 py-2 text-left text-muted font-medium whitespace-nowrap">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr
-              key={row.fila}
-              style={{ background: i % 2 === 0 ? 'var(--bg-card)' : 'var(--surface-2)', borderTop: '1px solid var(--border)' }}
-            >
-              <td className="px-3 py-2 text-faint">{row.fila}</td>
-              {headers.map(h => (
-                <td key={h} className="px-3 py-2 text-body whitespace-nowrap max-w-xs truncate">
-                  {row.datos[h] ?? ''}
-                </td>
+    <div>
+      {/* Pantalla ancha: tabla */}
+      <div className="hidden md:block scroll-x rounded-lg" style={{ border: '1px solid var(--border)' }}>
+        <table className="min-w-full text-xs">
+          <thead style={{ background: 'var(--bg)' }}>
+            <tr>
+              <th className="px-3 py-2 text-left text-dim font-medium">#</th>
+              {columnas.map((h, i) => (
+                <th key={h} className="px-3 py-2 text-left text-muted font-medium whitespace-nowrap">
+                  {etiqueta(h, i)}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="text-xs text-faint px-3 py-2">Mostrando {rows.length} filas</p>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.fila}
+                  style={{ background: i % 2 === 0 ? 'var(--bg-card)' : 'var(--surface-2)',
+                           borderTop: '1px solid var(--border)' }}>
+                <td className="px-3 py-2 text-faint">{row.fila}</td>
+                {columnas.map(h => (
+                  <td key={h} className="px-3 py-2 text-body whitespace-nowrap" style={{ maxWidth: 220 }}>
+                    <span className="block truncate">{row.datos?.[h] ?? ''}</span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Telefono: una ficha por fila. Una tabla de nueve columnas ahi no se
+          lee — se ven dos columnas y el resto queda fuera. */}
+      <div className="md:hidden space-y-2">
+        {rows.map(row => {
+          const llenas = columnas.filter(h => String(row.datos?.[h] ?? '').trim() !== '')
+          if (!llenas.length) return null
+          return (
+            <div key={row.fila} className="rounded-lg p-3"
+                 style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+              <p className="text-xs text-faint mb-1.5">Fila {row.fila}</p>
+              <dl className="space-y-1">
+                {llenas.map(h => (
+                  <div key={h} className="flex justify-between gap-3 text-xs">
+                    <dt className="text-muted flex-shrink-0">{etiqueta(h, columnas.indexOf(h))}</dt>
+                    <dd className="text-body text-right break-words">{row.datos[h]}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )
+        })}
+      </div>
+
+      <p className="text-xs text-faint px-1 py-2">
+        {rows.length} filas · {columnas.length} columnas con datos
+        {columnas.length < Object.keys(rows[0]?.datos ?? {}).length &&
+          ` (se ocultaron ${Object.keys(rows[0]?.datos ?? {}).length - columnas.length} vacías)`}
+      </p>
     </div>
   )
 }
