@@ -958,17 +958,24 @@ export default function Ahorros() {
 
                     {isExpanded && (
                       <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-                        <div className="flex gap-2 mb-4">
-                          <select className="input flex-shrink-0"
+                        {/* flex-wrap y anchos minimos: antes el select traia
+                            width:100% de .input y flex-shrink-0, asi que se
+                            quedaba con toda la fila y aplastaba los dos campos
+                            a unos pocos pixeles. No es que no dejara escribir
+                            el monto: es que no cabia. */}
+                        <div className="flex gap-2 mb-4 flex-wrap">
+                          <select className="input w-auto flex-shrink-0"
                             value={movForm.id === a.id ? movForm.tipo : 'deposito'}
                             onChange={e => setMovForm(m => ({ ...m, id: a.id, tipo: e.target.value as 'deposito' | 'retiro' }))}>
                             <option value="deposito">Depósito</option>
                             <option value="retiro">Retiro</option>
                           </select>
                           <input className="input flex-1" type="number" placeholder="Monto"
+                            style={{ minWidth: 110 }}
                             value={movForm.id === a.id ? movForm.monto : ''}
                             onChange={e => setMovForm(m => ({ ...m, id: a.id, monto: e.target.value }))} />
                           <input className="input flex-1" placeholder="Nota (opcional)"
+                            style={{ minWidth: 140 }}
                             value={movForm.id === a.id ? movForm.nota : ''}
                             onChange={e => setMovForm(m => ({ ...m, id: a.id, nota: e.target.value }))} />
                           <button onClick={agregarMovimiento}

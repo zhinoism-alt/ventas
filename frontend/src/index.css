@@ -282,6 +282,10 @@ body {
   border-radius: var(--r-ctl);
   font-size: .875rem;
   width: 100%;
+  /* Dentro de una fila flex, el ancho minimo por defecto es el del contenido,
+     asi que un campo se niega a encogerse y desborda o aplasta a sus vecinos.
+     Con min-width:0 la fila reparte de verdad. */
+  min-width: 0;
   transition: border-color .15s, box-shadow .15s;
 }
 .input:focus {
