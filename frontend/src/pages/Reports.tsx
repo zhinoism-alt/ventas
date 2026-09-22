@@ -198,6 +198,26 @@ function PdfDropZone({ onUpload }: { onUpload: () => void }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+/**
+ * Un margen sobre ingresos casi nulos no informa: con $150 de ingreso y
+ * $18,193 de gasto sale "-12029%", que es cierto y no significa nada. Por
+ * debajo de cierto piso es mas honesto decir que no hay con que calcularlo.
+ */
+function margenTexto(summary: any): string {
+  const ing = Number(summary?.total_ingresos_mxn ?? 0)
+  const gan = Number(summary?.ganancia_neta_mxn ?? 0)
+  if (ing < 1000) return 'Muy pocas ventas para un margen'
+  const pct = Math.round((gan / ing) * 100)
+  return `Margen ${pct}%`
+}
+
+/** El eje decia "$0k" cinco veces cuando los montos eran de cientos. */
+function ejeDinero(v: number): string {
+  if (Math.abs(v) >= 10000) return `$${Math.round(v / 1000)}k`
+  if (Math.abs(v) >= 1000)  return `$${(v / 1000).toFixed(1)}k`
+  return `$${Math.round(v)}`
+}
+
 export default function Reports() {
   const [summary, setSummary]   = useState<any>(null)
   const [monthly, setMonthly]   = useState<any>(null)
@@ -252,14 +272,20 @@ export default function Reports() {
   // ── Monthly chart data ────────────────────────────────────────────────────
   const monthlyCombined = (() => {
     if (!monthly) return []
-    const map: Record<string, any> = {}
-    for (let i = 1; i <= 12; i++) {
-      const mo = String(i).padStart(2, '0')
-      map[mo] = { name: MESES[i - 1], productos: 0, iptv: 0 }
-    }
-    monthly.products?.forEach((p: any) => { if (map[p.mes]) map[p.mes].productos = p.ingresos || 0 })
-    monthly.iptv?.forEach((p: any)     => { if (map[p.mes]) map[p.mes].iptv      = p.ingresos || 0 })
-    return Object.values(map)
+    // Un arreglo, no Object.values sobre llaves '01'..'12'.
+    // JavaScript pone primero las llaves que son indices de arreglo validos,
+    // en orden numerico, y despues el resto en orden de insercion. '10', '11'
+    // y '12' son indices validos; '01'..'09' no, por el cero a la izquierda.
+    // El resultado era Oct, Nov, Dic, Ene, Feb... y nadie lo notaba hasta que
+    // habia datos en un mes de dos digitos.
+    const meses = Array.from({ length: 12 }, (_, i) => ({
+      mo: String(i + 1).padStart(2, '0'),
+      name: MESES[i], productos: 0, iptv: 0,
+    }))
+    const porMes = new Map(meses.map(m => [m.mo, m]))
+    monthly.products?.forEach((p: any) => { const m = porMes.get(p.mes); if (m) m.productos = p.ingresos || 0 })
+    monthly.iptv?.forEach((p: any)     => { const m = porMes.get(p.mes); if (m) m.iptv      = p.ingresos || 0 })
+    return meses
   })()
 
   const pieData = summary ? [
@@ -349,7 +375,7 @@ export default function Reports() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { title: 'Ingresos Totales', value: fmt(summary?.total_ingresos_mxn ?? 0), color: 'var(--green)', icon: <DollarSign size={18} />, sub: `Prod. ${fmt(summary?.ingresos_productos ?? 0)}` },
-              { title: 'Ganancia Neta',    value: fmt(summary?.ganancia_neta_mxn    ?? 0), color: 'var(--accent)', icon: <TrendingUp size={18} />,   sub: `Margen ${summary?.total_ingresos_mxn > 0 ? Math.round((summary.ganancia_neta_mxn / summary.total_ingresos_mxn) * 100) : 0}%` },
+              { title: 'Ganancia Neta',    value: fmt(summary?.ganancia_neta_mxn    ?? 0), color: 'var(--accent)', icon: <TrendingUp size={18} />,   sub: margenTexto(summary) },
               { title: 'Clientes IPTV',   value: String(summary?.clientes_activos_iptv ?? 0), color: 'var(--cyan)', icon: <Tv size={18} />,  sub: 'Suscriptores activos' },
               { title: 'Productos',        value: String(summary?.total_productos     ?? 0), color: 'var(--yellow)', icon: <Package size={18} />, sub: `${summary?.disponibles ?? 0} disponibles` },
             ].map(c => (
@@ -378,7 +404,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="name" tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false}
-                      tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                      tickFormatter={ejeDinero} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatMXN(v)} />
                     <Bar dataKey="productos" name="Productos" fill="var(--accent)" radius={[3,3,0,0]} />
                     <Bar dataKey="iptv"      name="IPTV"      fill="var(--green)" radius={[3,3,0,0]} />
@@ -458,7 +484,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false}
-                    tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                    tickFormatter={ejeDinero} />
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
                     formatter={(v: number, name: string) => name === 'spacer' ? null : [formatMXN(v), '']}

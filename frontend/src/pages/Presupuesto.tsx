@@ -687,7 +687,10 @@ export default function Presupuesto() {
               <p className="text-xs text-dim mb-4 max-w-2xl">
                 Tu pareja va a dejar de trabajar. Esto es {MESES[(sel % 100) - 1]} recalculado
                 sobre {fmt(soloPropio.ingreso)} tuyos
-                {totalOtros > 0 && <> ({fmt(ingresoNomina)} de nómina más {fmt(totalOtros)} de ventas)</>},
+                {totalOtros > 0 && <> ({fmt(ingresoNomina)} de nómina más {fmt(totalOtros)} de{' '}
+                  {otrosDelMes.length === 1
+                    ? otrosDelMes[0].concepto.toLowerCase()
+                    : 'otros ingresos'})</>},
                 con los gastos tal como están hoy.
               </p>
 

@@ -143,6 +143,9 @@ export default function Dashboard() {
   const [ahorros, setAhorros]         = useState<Ahorro[]>([])
   const [fondos, setFondos]           = useState<Fondo[]>([])
   const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([])
+  // Los mismos supuestos que usan Ahorros y Patrimonio. Sin ellos este panel
+  // mostraba el rendimiento bruto y contradecia a las otras dos pantallas.
+  const [supuestos, setSupuestos] = useState<{ isr_retencion_pct: number; inflacion_pct: number } | null>(null)
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState('')
 
@@ -154,6 +157,7 @@ export default function Dashboard() {
       getExpiringSubscriptions(7),
       supabase.from('ahorros').select('*').eq('activo', true).order('created_at', { ascending: false }),
       supabase.from('fondos_ahorro').select('*').eq('activo', true).order('created_at', { ascending: false }),
+      supabase.from('finanzas_perfil').select('isr_retencion_pct,inflacion_pct').eq('id', 1).maybeSingle(),
       supabase
         .from('recordatorios')
         .select('*')
@@ -162,11 +166,12 @@ export default function Dashboard() {
         .order('fecha_hora', { ascending: true })
         .limit(5),
     ])
-      .then(([s, e, a, f, r]) => {
+      .then(([s, e, a, f, sup, r]) => {
         setSummary(s.data)
         setExpiring(e.data)
         setAhorros(a.data ?? [])
         setFondos(f.data ?? [])
+        setSupuestos((sup.data as { isr_retencion_pct: number; inflacion_pct: number }) ?? null)
         setRecordatorios(r.data ?? [])
       })
       .catch((err: unknown) => {
@@ -200,6 +205,7 @@ export default function Dashboard() {
 
   const ganancia = summary.ganancia_neta_mxn ?? 0
   const isProfit = ganancia >= 0
+  const ingresosTotales = Number(summary.total_ingresos_mxn ?? 0)
   const profitMargin = summary.total_ingresos_mxn > 0
     ? ((ganancia / summary.total_ingresos_mxn) * 100).toFixed(1)
     : '0'
@@ -214,7 +220,15 @@ export default function Dashboard() {
   const totalMeta           = ahorros.reduce((s, a) => s + a.meta, 0)
   const ahorrosPct          = totalMeta > 0 ? Math.round((totalAcumulado / totalMeta) * 100) : 0
   const totalFondos         = fondos.reduce((s, f) => s + f.saldo, 0)
-  const rendimientoAnual    = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
+  // El bruto que anuncia el banco no es lo que ganas. Ahorros ya descuenta el
+  // ISR sobre el capital y la inflacion; este panel mostraba el bruto, asi que
+  // las dos pantallas decian cifras distintas del mismo dinero — 12,316 aqui y
+  // 7,660 alla — sin forma de saber cual creer.
+  const n = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
+  const rendimientoBruto    = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
+  const rendimientoAnual    = supuestos
+    ? rendimientoBruto - totalFondos * (n(supuestos.isr_retencion_pct) / 100) - totalFondos * (n(supuestos.inflacion_pct) / 100)
+    : rendimientoBruto
   const totalAhorradoGeneral = totalAcumulado + totalFondos
 
   // Upcoming reminders with urgency
@@ -290,7 +304,9 @@ export default function Dashboard() {
         <StatCard
           title={isProfit ? 'Ganancia Neta' : 'Pérdida Neta'}
           value={fmt(Math.abs(ganancia))}
-          sub={`Margen: ${profitMargin}% · ${isProfit ? 'Después de gastos' : 'Estás en pérdida'}`}
+          sub={ingresosTotales < 1000
+            ? 'Muy pocas ventas para un margen'
+            : `Margen: ${profitMargin}% · ${isProfit ? 'Después de gastos' : 'Estás en pérdida'}`}
           icon={isProfit ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
           color={isProfit ? 'var(--accent)' : 'var(--red)'}
           accent={isProfit ? 'var(--accent)' : 'var(--red)'}
@@ -309,7 +325,7 @@ export default function Dashboard() {
           value={fmt(totalAhorradoGeneral)}
           sub={
             fondos.length > 0
-              ? `${fmt(totalFondos)} fondos · ${fmt(totalAcumulado)} metas${rendimientoAnual > 0 ? ` · +${fmt(rendimientoAnual)}/año` : ''}`
+              ? `${fmt(totalFondos)} fondos · ${fmt(totalAcumulado)} metas${rendimientoAnual > 0 ? ` · +${fmt(rendimientoAnual)}/año real` : ''}`
               : totalMeta > 0
                 ? `${ahorrosPct}% de meta ${fmt(totalMeta)}`
                 : `${ahorros.length} cuentas activas`
@@ -348,7 +364,9 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                  tickFormatter={v => Math.abs(v) >= 10000 ? `$${Math.round(v / 1000)}k`
+                                     : Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(1)}k`
+                                     : `$${Math.round(v)}`} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
                   formatter={(v: number) => formatMXN(v)}
@@ -396,7 +414,11 @@ export default function Dashboard() {
 
               {/* Fondos */}
               {fondos.slice(0, 3).map(f => {
-                const gananciaAnual = f.saldo * (f.rendimiento / 100)
+                const gananciaAnual = supuestos
+                  ? f.saldo * (f.rendimiento / 100)
+                    - f.saldo * (n(supuestos.isr_retencion_pct) / 100)
+                    - f.saldo * (n(supuestos.inflacion_pct) / 100)
+                  : f.saldo * (f.rendimiento / 100)
                 return (
                   <div key={f.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: 'var(--bg)' }}>
                     <div className="flex items-center gap-2 min-w-0">
@@ -576,7 +598,7 @@ export default function Dashboard() {
             { label: 'Ingresos Productos', value: fmt(summary.ingresos_productos), color: 'var(--accent)', icon: <Package size={14} /> },
             { label: 'Ingresos IPTV', value: fmt(summary.ingresos_iptv), color: 'var(--green)', icon: <Tv size={14} /> },
             { label: 'Total Gastos', value: fmt(summary.total_gastos_mxn), color: 'var(--red)', icon: <TrendingDown size={14} /> },
-            { label: 'Margen Neto', value: `${profitMargin}%`, color: isProfit ? '#a78bfa' : 'var(--red)', icon: <Percent size={14} /> },
+            { label: 'Margen Neto', value: ingresosTotales < 1000 ? '—' : `${profitMargin}%`, color: isProfit ? '#a78bfa' : 'var(--red)', icon: <Percent size={14} /> },
           ].map(item => (
             <div
               key={item.label}

@@ -769,8 +769,11 @@ export const getMonthlyReport = async (year?: number) => {
     { data: subs,  error: subErr },
     rateRes,
   ] = await Promise.all([
-    supabase.from('sales').select('*').like('sale_date', `${y}-%`),
-    supabase.from('iptv_subscriptions').select('*').like('start_date', `${y}-%`),
+    // Rango de fechas, no LIKE: sale_date y start_date son DATE, y Postgres no
+    // tiene operador ~~ para fechas. La consulta reventaba con
+    // "operator does not exist: date ~~ unknown" y Reportes no cargaba nada.
+    supabase.from('sales').select('*').gte('sale_date', `${y}-01-01`).lt('sale_date', `${Number(y) + 1}-01-01`),
+    supabase.from('iptv_subscriptions').select('*').gte('start_date', `${y}-01-01`).lt('start_date', `${Number(y) + 1}-01-01`),
     getExchangeRate(),
   ])
   if (sErr)   throw sErr
