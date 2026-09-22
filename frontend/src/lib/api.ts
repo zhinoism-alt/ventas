@@ -568,13 +568,21 @@ export const getIPTVStats = async () => {
 
   // Subs summary
   const activeSubs = allSubs.filter(s => s.status === 'activo')
+  // Lo que rinde una suscripcion son las DOS conexiones, no solo la primera.
+  // El resumen sumaba unicamente price_charged, asi que lo que paga la segunda
+  // persona era invisible: con las cuentas de Brandon eso escondia 756 al mes.
+  // segundo_es_propio marca la conexion que usa el mismo y no paga.
+  const ingresoDe = (s: Record<string, unknown>): number => {
+    const uno = Number(s.price_charged ?? 0)
+    const dos = s.segundo_es_propio ? 0 : Number(s.segundo_precio ?? 0)
+    return s.price_currency === 'USD' ? (uno + dos) * rate : uno + dos
+  }
+
   const subsSummary = {
     total:   allSubs.length,
     activas: activeSubs.length,
     vencidas: allSubs.filter(s => s.status === 'vencido').length,
-    ingresos_activos_mxn: activeSubs.reduce((sum, s) => {
-      return sum + (s.price_currency === 'USD' ? s.price_charged * rate : s.price_charged)
-    }, 0),
+    ingresos_activos_mxn: activeSubs.reduce((sum, s) => sum + ingresoDe(s), 0),
   }
 
   // Monthly revenue
@@ -584,7 +592,7 @@ export const getIPTVStats = async () => {
     const month = s.start_date?.slice(0, 7)
     if (!month) continue
     if (!byMonth[month]) byMonth[month] = { month, revenue_mxn: 0, cost_mxn: 0, subscriptions: 0 }
-    byMonth[month].revenue_mxn += s.price_currency === 'USD' ? s.price_charged * rate : s.price_charged
+    byMonth[month].revenue_mxn += ingresoDe(s)
     byMonth[month].cost_mxn    += (s.cost_per_credit ?? 0) * (s.credits_used ?? 0)
     byMonth[month].subscriptions++
   }

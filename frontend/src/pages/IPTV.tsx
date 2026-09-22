@@ -497,7 +497,11 @@ export default function IPTV() {
             {filteredSubs.map(sub => {
               const daysLeft     = Math.ceil((new Date(sub.end_date).getTime() - Date.now()) / 86400000)
               const ingreso1     = toMXN(sub.price_charged || 0, sub.price_currency, rate)
-              const ingreso2     = sub.segundo_es_propio ? 0 : (sub.segundo_precio || 0)
+              // El segundo pago va en la misma moneda que el primero; antes se
+              // sumaba en crudo, asi que 12 USD contaban como 12 pesos.
+              const ingreso2     = sub.segundo_es_propio
+                ? 0
+                : toMXN(sub.segundo_precio || 0, sub.price_currency, rate)
               const ingresoTotal = ingreso1 + ingreso2
               const costoToken   = (sub.cost_per_credit || 0) * (sub.credits_used || 0)
               const gainMXN      = ingresoTotal - costoToken
