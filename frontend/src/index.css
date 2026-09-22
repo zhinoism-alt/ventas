@@ -281,12 +281,20 @@ body {
   padding: .55rem .8rem;
   border-radius: var(--r-ctl);
   font-size: .875rem;
-  width: 100%;
-  /* Dentro de una fila flex, el ancho minimo por defecto es el del contenido,
-     asi que un campo se niega a encogerse y desborda o aplasta a sus vecinos.
-     Con min-width:0 la fila reparte de verdad. */
-  min-width: 0;
   transition: border-color .15s, box-shadow .15s;
+}
+
+/* El ancho va aparte y envuelto en :where(), que no suma especificidad.
+   Dentro de .input ganaba siempre, porque este archivo va despues de
+   @tailwind utilities: un `w-24` o un `w-auto` en el JSX no hacia nada y el
+   campo se quedaba con el 100% de la fila, aplastando a sus vecinos hasta
+   dejarlos de unos pocos pixeles. Asi, cualquier utilidad de ancho manda.
+
+   min-width:0 tambien va aqui: en una fila flex el minimo por defecto es el
+   del contenido, asi que un campo se niega a encogerse y desborda. */
+:where(.input) {
+  width: 100%;
+  min-width: 0;
 }
 .input:focus {
   outline: none;
