@@ -9,6 +9,7 @@ import {
 import {
   getIPTVStats, getIPTVPackages, createIPTVPackage, deleteIPTVPackage,
   getIPTVClients, createIPTVClient, updateIPTVClient, deleteIPTVClient,
+  contarSuscripcionesDe,
   getIPTVSubscriptions, createIPTVSubscription, deleteIPTVSubscription,
   updateSubscriptionStatus, updateIPTVSubscription,
   getIPTVPricing, getPreviewRenewals, sendRenewalReminders,
@@ -172,6 +173,24 @@ export default function IPTV() {
       status:         sub.status || 'activo',
       notes:          sub.notes || '',
     })
+  }
+
+  /**
+   * Archivar un cliente. Antes era un DELETE directo que se llevaba en cascada
+   * sus suscripciones, con su precio y su historial, sin decir una palabra.
+   */
+  const archivarCliente = async (id: number, nombre: string) => {
+    try {
+      const { total, activas } = await contarSuscripcionesDe(id)
+      const detalle = total === 0
+        ? 'No tiene suscripciones.'
+        : `Tiene ${total} suscripción${total > 1 ? 'es' : ''}${activas ? `, ${activas} activa${activas > 1 ? 's' : ''}` : ''}. Se conservan con su historial.`
+      if (!confirm(`¿Quitar a "${nombre}" de la lista?\n\n${detalle}\n\nNo se borra nada: deja de aparecer y puedes recuperarlo desde la base.`)) return
+      await deleteIPTVClient(id)
+      await loadAll()
+    } catch (e) {
+      setErrorCarga(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const handleEditSubSave = async () => {
@@ -448,7 +467,7 @@ export default function IPTV() {
                     <button onClick={() => { setEditingClient(c); setClientForm({ name: c.name, phone: c.phone, country: c.country, email: c.email, notes: c.notes }); setShowClientModal(true) }} className="btn-secondary px-2 py-1.5">
                       <Edit2 size={12} />
                     </button>
-                    <button onClick={async () => { if (confirm(`¿Eliminar cliente "${c.name}"?`)) { await deleteIPTVClient(c.id); loadAll() } }} className="btn-danger px-2 py-1.5">
+                    <button onClick={() => archivarCliente(c.id, c.name)} className="btn-danger px-2 py-1.5">
                       <Trash2 size={12} />
                     </button>
                   </div>

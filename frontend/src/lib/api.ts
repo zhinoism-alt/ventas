@@ -348,7 +348,7 @@ export const deleteIPTVPackage = async (id: number) => {
 export const getIPTVClients = async () => {
   // Dos queries separadas para evitar ambigüedad FK (client_id + segundo_cliente_id → iptv_clients)
   const [{ data: clientsRaw, error: cErr }, { data: subsRaw, error: sErr }] = await Promise.all([
-    supabase.from('iptv_clients').select('*').order('created_at', { ascending: false }),
+    supabase.from('iptv_clients').select('*').eq('is_active', true).order('created_at', { ascending: false }),
     supabase.from('iptv_subscriptions').select('id, client_id, status, end_date'),
   ])
   if (cErr) throw cErr
@@ -391,10 +391,36 @@ export const updateIPTVClient = async (id: number, data: Record<string, unknown>
   return { data: client }
 }
 
+/**
+ * Archiva un cliente en vez de borrarlo.
+ *
+ * El DELETE de antes no fallaba: funcionaba demasiado bien. iptv_subscriptions
+ * referencia a iptv_clients en cascada, asi que borrar a Mario se llevaba por
+ * delante su suscripcion ETQ1MI — con su precio, sus fechas y su historial —
+ * sin preguntar y sin avisar. Un cliente que se da de baja no es un cliente
+ * que nunca existio: lo que cobraste sigue siendo parte de tus numeros.
+ *
+ * Con is_active en false desaparece de la lista y sus suscripciones quedan
+ * intactas.
+ */
 export const deleteIPTVClient = async (id: number) => {
-  const { error } = await supabase.from('iptv_clients').delete().eq('id', id)
+  const { error } = await supabase
+    .from('iptv_clients')
+    .update({ is_active: false })
+    .eq('id', id)
   if (error) throw error
   return { data: { success: true } }
+}
+
+/** Cuantas suscripciones tiene un cliente, para poder avisar antes de archivar. */
+export const contarSuscripcionesDe = async (id: number) => {
+  const { data, error } = await supabase
+    .from('iptv_subscriptions')
+    .select('id, status')
+    .or(`client_id.eq.${id},segundo_cliente_id.eq.${id}`)
+  if (error) throw error
+  const todas = data ?? []
+  return { total: todas.length, activas: todas.filter(s => s.status === 'activo').length }
 }
 
 export const getIPTVSubscriptions = async (params?: { status?: string; client_id?: number }) => {
