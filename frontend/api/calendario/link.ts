@@ -8,13 +8,7 @@
  * verificar su sesion.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createClerkClient } from '@clerk/backend'
-
-async function getUserId(token: string): Promise<string> {
-  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
-  const payload = await (clerk as any).verifyToken(token)
-  return payload.sub
-}
+import { verifyToken } from '@clerk/backend'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
@@ -22,11 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = req.headers.authorization?.replace('Bearer ', '')
   if (!token) return res.status(401).json({ error: 'Unauthorized' })
   try {
-    await getUserId(token)
-  } catch (e) {
-    // Diagnostico temporal: "Invalid token" a secas no decia por que.
-    console.error('[calendario/link] verifyToken fallo:', e instanceof Error ? e.message : e)
-    return res.status(401).json({ error: 'Invalid token', detalle: e instanceof Error ? e.message : String(e) })
+    // verifyToken es funcion suelta en @clerk/backend v1, no metodo del
+    // cliente -- ver la nota en api/pdf/upload.ts.
+    await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! })
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' })
   }
 
   if (!process.env.CALENDAR_FEED_TOKEN) {

@@ -1,14 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { createClerkClient } from '@clerk/backend'
+import { verifyToken } from '@clerk/backend'
 import * as XLSX from 'xlsx'
 
 async function verifyAuth(req: VercelRequest): Promise<boolean> {
   const token = req.headers.authorization?.split(' ')[1]
   if (!token) return false
   try {
-    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
-    await (clerk as any).verifyToken(token)
+    // verifyToken es funcion suelta en @clerk/backend v1, no metodo del
+    // cliente -- ver la nota en api/pdf/upload.ts.
+    await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! })
     return true
   } catch {
     return false

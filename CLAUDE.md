@@ -183,10 +183,15 @@ Otros datos que el confirmo:
   migración de hosting que quedó a medias) se borraron el 2026-09-22. Si
   aparece un fallo que huela a «el backend», es `frontend/api/`: ahí están
   las funciones que sí corren.
-- Las funciones de `frontend/api/` importan Clerk con `createClerkClient`. Un
-  `import Clerk from '@clerk/backend'` (por defecto) **revienta al cargar el
-  módulo** — ese paquete no tiene export por defecto en la versión 1 — y la
-  función responde 500 antes de ejecutar una línea.
+- Las funciones de `frontend/api/` verifican el token de Clerk con
+  `verifyToken(token, { secretKey })`, **función suelta** importada de
+  `@clerk/backend` — no un método de `createClerkClient(...)`. Dos intentos
+  anteriores fallaron: `import Clerk from '@clerk/backend'` (sin export por
+  defecto, revienta el módulo entero con 500) y luego
+  `createClerkClient(...).verifyToken(...)` (no existe, tira
+  "verifyToken is not a function", atrapado en silencio como un genérico
+  "Invalid token" — así estuvieron rotos la subida de PDFs y el export de
+  Reportes hasta el 2026-09-22, sin que nada lo dijera).
 
 ---
 

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { createClerkClient } from '@clerk/backend'
+import { verifyToken } from '@clerk/backend'
 import { Pinecone } from '@pinecone-database/pinecone'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -8,8 +8,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = req.headers.authorization?.split(' ')[1]
   if (!token) return res.status(401).json({ error: 'Unauthorized' })
   try {
-    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
-    await (clerk as any).verifyToken(token)
+    // verifyToken es una funcion suelta en @clerk/backend v1, no un metodo del
+    // cliente -- createClerkClient(...).verifyToken no existe y fallaba en
+    // silencio con "clerk.verifyToken is not a function", capturado por este
+    // mismo catch como un generico "Invalid token".
+    await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! })
   } catch {
     return res.status(401).json({ error: 'Invalid token' })
   }
