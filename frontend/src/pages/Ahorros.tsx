@@ -132,7 +132,7 @@ function TarjetaMeta({ a, expanded, setExpanded, movimientos, movForm, setMovFor
             <p className="text-xs text-muted">de {fmt(a.meta)}</p>
           </div>
           <button onClick={() => marcarPagada(a.id, !a.pagada)}
-            title={a.pagada ? 'Reabrir: vuelve a contar en Total Ahorrado' : 'Marcar como pagada: ya se gastó, sale de Total Ahorrado'}
+            title={a.pagada ? 'Reabrir: vuelve a contar en el progreso de Metas' : 'Marcar como pagada: ya se gastó, sale del progreso de Metas'}
             className="p-1"
             style={{ color: a.pagada ? 'var(--green)' : 'var(--text-faint)' }}>
             <Check size={16} />
@@ -503,7 +503,6 @@ export default function Ahorros() {
   const totalFondos    = fondos.reduce((s, f) => s + f.saldo, 0)
   const totalMeta      = metasEnCurso.reduce((s, a) => s + a.meta, 0)
   const totalAcumulado = metasEnCurso.reduce((s, a) => s + a.acumulado, 0)
-  const totalGeneral   = totalFondos + totalAcumulado
   const gananciasAnualesEstimadas = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
 
   // La tasa que anuncia el banco no es lo que ganas. El ISR se retiene sobre el
@@ -548,19 +547,17 @@ export default function Ahorros() {
         </button>
       </div>
 
-      {/* ── Resumen general ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── Resumen general ──
+          Total Ahorrado es SOLO Fondos: dinero real que existe en una cuenta.
+          Antes sumaba tambien el acumulado de las Metas, y eso mezclaba dos
+          cosas distintas -- una meta es una intencion con una cifra que se
+          actualiza a mano, no necesariamente dinero que exista aparte del
+          que ya esta en algun Fondo. Metas tiene su propia tarjeta de
+          progreso, sin sumarse aqui. */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="stat-card col-span-2 lg:col-span-1">
           <p className="text-xs text-muted mb-1">Total Ahorrado</p>
-          <p className="text-xl font-bold text-strong">{fmt(totalGeneral)}</p>
-          <p className="text-xs text-muted mt-1">
-            fondos + metas en curso
-            {!!metasPagadas.length && ` · ${metasPagadas.length} pagada${metasPagadas.length !== 1 ? 's' : ''} sin contar`}
-          </p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xs text-muted mb-1">En Fondos</p>
-          <p className="text-xl font-bold text-green-400">{fmt(totalFondos)}</p>
+          <p className="text-xl font-bold text-strong">{fmt(totalFondos)}</p>
           <p className="text-xs text-muted mt-1">{fondos.length} apartado{fondos.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="stat-card">
@@ -579,7 +576,10 @@ export default function Ahorros() {
           <p className="text-xl font-bold text-strong">
             {totalMeta > 0 ? ((totalAcumulado / totalMeta) * 100).toFixed(1) : '0'}%
           </p>
-          <p className="text-xs text-muted mt-1">{fmt(totalAcumulado)} de {fmt(totalMeta)}</p>
+          <p className="text-xs text-muted mt-1">
+            {fmt(totalAcumulado)} de {fmt(totalMeta)} en curso
+            {!!metasPagadas.length && ` · ${metasPagadas.length} pagada${metasPagadas.length !== 1 ? 's' : ''}`}
+          </p>
         </div>
       </div>
 
@@ -1084,7 +1084,7 @@ export default function Ahorros() {
                   <button onClick={() => setVerPagadas(v => !v)}
                     className="flex items-center gap-2 text-sm text-muted hover:text-strong mb-3">
                     {verPagadas ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    Completadas ({metasPagadas.length}) — no cuentan en Total Ahorrado
+                    Completadas ({metasPagadas.length}) — no cuentan en el progreso de Metas
                   </button>
                   {verPagadas && (
                     <div className="space-y-3">
