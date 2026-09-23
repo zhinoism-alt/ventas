@@ -35,6 +35,7 @@ interface Ahorro {
   color: string
   icono: string
   fecha_meta: string | null
+  pagada: boolean
 }
 
 interface Fondo {
@@ -216,8 +217,11 @@ export default function Dashboard() {
     IPTV: Math.round(m.iptv || 0),
   }))
 
-  const totalAcumulado      = ahorros.reduce((s, a) => s + a.acumulado, 0)
-  const totalMeta           = ahorros.reduce((s, a) => s + a.meta, 0)
+  // Una meta pagada ya se gasto: no es fondos, y tampoco cuenta como avance
+  // pendiente. Mismo criterio que Ahorros.tsx.
+  const metasEnCurso        = ahorros.filter(a => !a.pagada)
+  const totalAcumulado      = metasEnCurso.reduce((s, a) => s + a.acumulado, 0)
+  const totalMeta           = metasEnCurso.reduce((s, a) => s + a.meta, 0)
   const ahorrosPct          = totalMeta > 0 ? Math.round((totalAcumulado / totalMeta) * 100) : 0
   const totalFondos         = fondos.reduce((s, f) => s + f.saldo, 0)
   // El bruto que anuncia el banco no es lo que ganas. Ahorros ya descuenta el
@@ -229,8 +233,6 @@ export default function Dashboard() {
   const rendimientoAnual    = supuestos
     ? rendimientoBruto - totalFondos * (n(supuestos.isr_retencion_pct) / 100) - totalFondos * (n(supuestos.inflacion_pct) / 100)
     : rendimientoBruto
-  const totalAhorradoGeneral = totalAcumulado + totalFondos
-
   // Upcoming reminders with urgency
   const upcomingRecs = recordatorios.map(r => ({
     ...r,
@@ -322,10 +324,12 @@ export default function Dashboard() {
         />
         <StatCard
           title="Ahorros"
-          value={fmt(totalAhorradoGeneral)}
+          value={fmt(totalFondos)}
           sub={
             fondos.length > 0
-              ? `${fmt(totalFondos)} fondos · ${fmt(totalAcumulado)} metas${rendimientoAnual > 0 ? ` · +${fmt(rendimientoAnual)}/año real` : ''}`
+              ? rendimientoAnual > 0
+                ? `+${fmt(rendimientoAnual)}/año real${totalMeta > 0 ? ` · metas al ${ahorrosPct}%` : ''}`
+                : `${fondos.length} apartado${fondos.length !== 1 ? 's' : ''}${totalMeta > 0 ? ` · metas al ${ahorrosPct}%` : ''}`
               : totalMeta > 0
                 ? `${ahorrosPct}% de meta ${fmt(totalMeta)}`
                 : `${ahorros.length} cuentas activas`
@@ -333,7 +337,7 @@ export default function Dashboard() {
           icon={<PiggyBank size={20} />}
           color="var(--yellow)"
           accent="var(--yellow)"
-          trend={totalAhorradoGeneral > 0 ? 'up' : 'neutral'}
+          trend={totalFondos > 0 ? 'up' : 'neutral'}
         />
       </div>
 
@@ -470,15 +474,15 @@ export default function Dashboard() {
                   </div>
                 )}
                 {totalAcumulado > 0 && (
+                  // Metas en curso: no es dinero aparte, es una intencion que
+                  // se actualiza a mano. Se muestra su avance, no se suma a
+                  // Fondos -- sumarlos daba una cifra de "Total" que hacia
+                  // ver mas dinero liquido del que en realidad hay.
                   <div className="flex justify-between text-xs">
-                    <span className="text-dim">Metas</span>
-                    <span className="text-strong font-medium">{fmt(totalAcumulado)}</span>
+                    <span className="text-dim">Metas (en curso)</span>
+                    <span className="text-strong font-medium">{fmt(totalAcumulado)} de {fmt(totalMeta)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs font-bold">
-                  <span className="text-muted">Total</span>
-                  <span className="text-yellow-400">{fmt(totalAhorradoGeneral)}</span>
-                </div>
                 {rendimientoAnual > 0 && (
                   <div className="flex justify-between text-xs">
                     <span className="text-faint">Rendimiento est./año</span>

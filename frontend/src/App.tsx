@@ -5,7 +5,7 @@ import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
-  Wallet, Heart, PiggyBank, Truck, Leaf, FileSpreadsheet, Briefcase, Sun, Moon, Search
+  Wallet, PiggyBank, FileSpreadsheet, Briefcase, Sun, Moon, Search
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -20,9 +20,6 @@ const Reports = lazy(() => import('./pages/Reports'))
 const Presupuesto = lazy(() => import('./pages/Presupuesto'))
 const Personal = lazy(() => import('./pages/Personal'))
 const Ahorros = lazy(() => import('./pages/Ahorros'))
-const Mudanza = lazy(() => import('./pages/Mudanza'))
-const Pareja = lazy(() => import('./pages/Pareja'))
-const Bienestar = lazy(() => import('./pages/Bienestar'))
 const SheetsSync = lazy(() => import('./pages/SheetsSync'))
 const Empleo = lazy(() => import('./pages/Empleo'))
 const Consulta = lazy(() => import('./pages/Consulta'))
@@ -87,9 +84,6 @@ function Layout() {
     { to: '/reportes',    icon: <BarChart3 size={18} />,        label: 'Reportes',     group: 'negocio' },
     { to: '/sheets',      icon: <FileSpreadsheet size={18} />,  label: 'Sheets Sync',  group: 'negocio' },
     { to: '/ahorros',     icon: <PiggyBank size={18} />,       label: 'Ahorros',      group: 'vida' },
-    { to: '/mudanza',     icon: <Truck size={18} />,           label: 'Mudanza',      group: 'vida' },
-    { to: '/pareja',      icon: <Heart size={18} />,           label: 'Pareja',       group: 'vida' },
-    { to: '/bienestar',   icon: <Leaf size={18} />,            label: 'Bienestar',    group: 'vida' },
     { to: '/personal',    icon: <LayoutDashboard size={18} />, label: 'Personal',     group: 'vida' },
     { to: '/empleo',      icon: <Briefcase size={18} />,       label: 'Empleo',       group: 'vida' },
     { to: '/consulta',    icon: <Search size={18} />,          label: 'Consulta',     group: 'vida' },
@@ -245,9 +239,6 @@ function Layout() {
             <Route path="/presupuesto" element={<Presupuesto />} />
             <Route path="/reportes"    element={<Reports />} />
             <Route path="/ahorros"     element={<Ahorros />} />
-            <Route path="/mudanza"     element={<Mudanza />} />
-            <Route path="/pareja"      element={<Pareja />} />
-            <Route path="/bienestar"   element={<Bienestar />} />
             <Route path="/personal"    element={<Personal />} />
             <Route path="/empleo"      element={<Empleo />} />
             <Route path="/consulta"    element={<Consulta />} />

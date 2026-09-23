@@ -13,14 +13,6 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    key: 'mudanza',
-    label: 'Plan de Mudanza',
-    emoji: '🏠',
-    description: 'Checklist y organizacion para la mudanza',
-    type: 'placeholder',
-    color: 'var(--accent)',
-  },
-  {
     key: 'peso-yo',
     label: 'Mejora de Peso - Brandon',
     emoji: '💪',
