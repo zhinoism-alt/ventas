@@ -571,9 +571,12 @@ export default function Ahorros() {
             {haySupuestos ? fmt(gananciaReal) : fmt(gananciasAnualesEstimadas)}
           </p>
           <p className="text-xs text-muted mt-1">
-            {haySupuestos
-              ? `${fmt(gananciasAnualesEstimadas)} menos ISR e inflación`
-              : 'sin descontar impuestos'}
+            {/* Mensual = anual / 12, simple -- no es la tasa mensual compuesta
+                (esa seria un poco menor). Es el mismo criterio que ya usa
+                A_MENSUAL en Presupuesto para pasar semanal a mensual: dividir
+                entre el numero de periodos, sin inventar interes sobre interes. */}
+            ≈ {fmt((haySupuestos ? gananciaReal : gananciasAnualesEstimadas) / 12)}/mes
+            {haySupuestos && ` · ${fmt(gananciasAnualesEstimadas)} menos ISR e inflación`}
           </p>
         </div>
         <div className="stat-card">
@@ -874,7 +877,9 @@ export default function Ahorros() {
                         </div>
                       )}
 
-                      {/* Rendimiento */}
+                      {/* Rendimiento. El mensual es el anual entre 12, simple
+                          -- como pidio Brandon (6.5% anual = 0.5417% al mes),
+                          no la tasa mensual compuesta equivalente. */}
                       <div className="mt-4 pt-3 grid grid-cols-2 gap-3" style={{ borderTop: '1px solid var(--border)' }}>
                         <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -882,6 +887,7 @@ export default function Ahorros() {
                             <p className="text-xs text-muted">Rendimiento anual</p>
                           </div>
                           <p className="text-base font-bold text-yellow-400">{f.rendimiento}%</p>
+                          <p className="text-xs text-dim">≈ {(f.rendimiento / 12).toFixed(4)}%/mes</p>
                         </div>
                         <div className="rounded-lg p-2.5" style={{ background: 'var(--bg)' }}>
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -894,6 +900,9 @@ export default function Ahorros() {
                              style={{ color: (haySupuestos ? realAnual : gananciasAnual) >= 0 ? 'var(--green)' : 'var(--red)' }}>
                             {(haySupuestos ? realAnual : gananciasAnual) >= 0 ? '+' : ''}
                             {fmt(haySupuestos ? realAnual : gananciasAnual)}
+                          </p>
+                          <p className="text-xs text-dim">
+                            ≈ {fmt((haySupuestos ? realAnual : gananciasAnual) / 12)}/mes
                           </p>
                         </div>
                       </div>
@@ -912,9 +921,14 @@ export default function Ahorros() {
                           <div className="flex items-center justify-between pt-1"
                                style={{ borderTop: '1px solid var(--border)' }}>
                             <span className="text-xs font-medium text-body">Te queda</span>
-                            <span className="text-xs font-mono font-bold"
-                                  style={{ color: realAnual >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                              {realAnual >= 0 ? '+' : ''}{fmt(realAnual)}
+                            <span className="text-right">
+                              <span className="text-xs font-mono font-bold block"
+                                    style={{ color: realAnual >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                                {realAnual >= 0 ? '+' : ''}{fmt(realAnual)}
+                              </span>
+                              <span className="text-[10px] font-mono text-dim">
+                                ≈ {fmt(realAnual / 12)}/mes
+                              </span>
                             </span>
                           </div>
                         </div>
