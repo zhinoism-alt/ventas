@@ -369,16 +369,6 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    key: 'peso-yo', label: 'Mejora de Peso - Brandon', emoji: '💪',
-    description: 'Seguimiento de ejercicio, dieta y progreso personal',
-    type: 'placeholder', color: 'var(--green)',
-  },
-  {
-    key: 'peso-itzel', label: 'Mejora de Peso - Itzel', emoji: '🌸',
-    description: 'Seguimiento de ejercicio, dieta y progreso de Itzel',
-    type: 'placeholder', color: '#ec4899',
-  },
-  {
     key: 'terapia', label: 'Terapia', emoji: '🧠',
     description: 'Notas, reflexiones y seguimiento de terapia',
     type: 'placeholder', color: 'var(--yellow)',

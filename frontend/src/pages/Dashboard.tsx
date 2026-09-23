@@ -136,6 +136,87 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   )
 }
 
+/**
+ * Pendientes de HOY: eventos (dosis, citas) y limpieza si es sábado.
+ *
+ * A proposito NO es un modal/popup que bloquee al cargar. Un modal que
+ * interrumpe cada vez se vuelve ruido en un par de dias -- la gente aprende
+ * a cerrarlo por reflejo sin leerlo, que es lo contrario de "que se note".
+ * Un banner que solo aparece cuando hay algo real, arriba de todo, en un
+ * color que no se confunde con el resto del panel, se mantiene efectivo
+ * porque no esta ahi cuando no hace falta.
+ *
+ * Solo hoy, no "en 3 dias": para eso ya esta la pestana Calendario. Aqui
+ * es nada mas lo que de verdad se resuelve hoy.
+ */
+interface EventoPendiente { id: number; titulo: string; hora: string; recurrencia: 'ninguna' | 'semanal'; fecha: string }
+
+function BannerPendientes() {
+  const [eventos, setEventos] = useState<EventoPendiente[]>([])
+  const [limpiezaFalta, setLimpiezaFalta] = useState<number | null>(null)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    (async () => {
+      const hoy = new Date()
+      const esSabado = hoy.getDay() === 6
+      const [{ data: ev }, limpieza] = await Promise.all([
+        supabase.from('calendario_eventos')
+          .select('id,titulo,hora,recurrencia,fecha')
+          .eq('activo', true),
+        esSabado
+          ? supabase.from('limpieza_tareas').select('id').eq('activo', true)
+              .then(async ({ data: tareas }) => {
+                if (!tareas?.length) return 0
+                const sabadoISO = hoy.toISOString().slice(0, 10)
+                const { data: hechas } = await supabase.from('limpieza_estado')
+                  .select('tarea_id').eq('semana', sabadoISO)
+                return tareas.length - (hechas?.length ?? 0)
+              })
+          : Promise.resolve(null),
+      ])
+
+      const hoyDia = hoy.getDay()
+      const deHoy = ((ev ?? []) as EventoPendiente[]).filter(e => {
+        if (e.recurrencia === 'ninguna') return e.fecha === hoy.toISOString().slice(0, 10)
+        return new Date(e.fecha + 'T00:00:00').getDay() === hoyDia
+      }).sort((a, b) => a.hora.localeCompare(b.hora))
+
+      setEventos(deHoy)
+      setLimpiezaFalta(limpieza)
+      setCargando(false)
+    })()
+  }, [])
+
+  if (cargando) return null
+  if (eventos.length === 0 && !limpiezaFalta) return null
+
+  return (
+    <div className="flex items-start gap-3 p-4 rounded-xl border"
+      style={{ background: 'var(--yellow-soft)', borderColor: 'var(--yellow)' }}>
+      <Bell size={18} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <p className="text-yellow-300 font-medium text-sm">Pendientes de hoy</p>
+        {eventos.map(e => (
+          <div key={e.id} className="flex items-center justify-between gap-2 text-xs">
+            <span className="text-body">{e.titulo}</span>
+            <span className="text-dim flex-shrink-0">{e.hora?.slice(0, 5)}</span>
+          </div>
+        ))}
+        {!!limpiezaFalta && (
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="text-body">🧹 Limpieza del sábado</span>
+            <span className="text-dim flex-shrink-0">faltan {limpiezaFalta}</span>
+          </div>
+        )}
+      </div>
+      <a href="/calendario" className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 flex-shrink-0">
+        Ver <ArrowRight size={11} />
+      </a>
+    </div>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -241,6 +322,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
+
+      {/* ── Pendientes de hoy: eventos + limpieza (solo aparece si hay algo) ── */}
+      <BannerPendientes />
 
       {/* ── Greeting ── */}
       <div className="flex items-center justify-between flex-wrap gap-2">
