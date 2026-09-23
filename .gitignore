@@ -1,11 +1,9 @@
 node_modules/
-backend/node_modules/
 frontend/node_modules/
-backend/data/*.db
-backend/data/*.db-shm
-backend/data/*.db-wal
+# backend/ se borró (2026-09-22); esta línea es por si Windows deja sueltos
+# los .db bloqueados por un handle abierto y alguien hace `git add -A`.
+backend/
 .env
-backend/.env
 frontend/.env
 dist/
 frontend/dist/
@@ -19,12 +17,3 @@ log-*.txt
 frontend/vite.config.ts.timestamp-*.mjs
 supabase/.temp/
 .claude/settings.local.json
-
-# Copia duplicada del proyecto, dejada por un scaffold previo.
-# Revísala y bórrala cuando confirmes que no tiene nada único.
-ventas-claude-inventory-marketplace-automation-K0hqL/
-
-# Trae un JWT_SECRET y un hash de contraseña en claro, escritos a mano para un
-# despliegue a Fly.io. Nunca se subió y no debe subirse. Si hace falta
-# versionar el script, sácale los valores a variables de entorno primero.
-scripts/deploy-fly.bat

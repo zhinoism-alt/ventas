@@ -20,9 +20,8 @@ El frontend habla directo con Supabase (PostgREST) desde el navegador, y para
 lo que necesita un secreto usa **funciones serverless de Vercel**, que viven en
 `frontend/api/` y se despliegan junto con el sitio.
 
-**`backend/` no se usa.** Es de la etapa anterior del proyecto y nada lo llama:
-lo que parece «el backend» son esas funciones de Vercel. No lo levantes ni
-supongas que hace falta.
+No hay carpeta `backend/`: se borró el 2026-09-22 porque nada la llamaba. Lo
+que parece «el backend» son esas funciones de Vercel.
 
 Antes de dar por terminado un cambio:
 
@@ -179,9 +178,10 @@ Otros datos que el confirmo:
   público. El único freno real es Clerk. La migración está lista y pendiente.
 - **Clerk es una instancia de desarrollo** (`pk_test_`) corriendo en producción.
 - `CRON_SECRET` no está puesto en Vercel; los crons devuelven 401 en silencio.
-- `backend/`, `Dockerfile` y `fly.toml` son de una migración de hosting que
-  quedó a medias, y **nada los llama**. Antes de culpar a «el backend» de un
-  fallo, revisa `frontend/api/`: ahí están las funciones que sí corren.
+- `backend/`, `Dockerfile`, `fly.toml` y `scripts/deploy-fly.bat` (de una
+  migración de hosting que quedó a medias) se borraron el 2026-09-22. Si
+  aparece un fallo que huela a «el backend», es `frontend/api/`: ahí están
+  las funciones que sí corren.
 - Las funciones de `frontend/api/` importan Clerk con `createClerkClient`. Un
   `import Clerk from '@clerk/backend'` (por defecto) **revienta al cargar el
   módulo** — ese paquete no tiene export por defecto en la versión 1 — y la
