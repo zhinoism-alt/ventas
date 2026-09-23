@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   PiggyBank, Plus, TrendingUp, Target, Trash2,
   ChevronDown, ChevronUp, ArrowUpCircle, ArrowDownCircle,
@@ -24,6 +24,11 @@ interface Ahorro {
   icono: string
   color: string
   activo: boolean
+  // No es lo mismo que `activo`: apagar `activo` borra la meta de la vista.
+  // `pagada` la deja visible como logro, solo la saca de lo que cuenta como
+  // dinero disponible -- el acumulado de una meta ya pagada no es dinero
+  // que Brandon todavia tiene.
+  pagada: boolean
 }
 
 interface Movimiento {
@@ -80,6 +85,138 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   )
 }
 
+/** Una meta de ahorro, en curso o pagada -- misma tarjeta, distinto trato. */
+function TarjetaMeta({ a, expanded, setExpanded, movimientos, movForm, setMovForm, agregarMovimiento, saving, deleteAhorro, marcarPagada }: {
+  a: Ahorro
+  expanded: number | null
+  setExpanded: (id: number | null) => void
+  movimientos: Movimiento[]
+  movForm: { id: number | null; tipo: 'deposito' | 'retiro'; monto: string; nota: string }
+  setMovForm: Dispatch<SetStateAction<{ id: number | null; tipo: 'deposito' | 'retiro'; monto: string; nota: string }>>
+  agregarMovimiento: () => void
+  saving: boolean
+  deleteAhorro: (id: number) => void
+  marcarPagada: (id: number, pagada: boolean) => void
+}) {
+  const pct = a.meta > 0 ? Math.min(100, (a.acumulado / a.meta) * 100) : 0
+  const isExpanded = expanded === a.id
+  const movs = movimientos.filter(m => m.ahorro_id === a.id)
+
+  return (
+    <div className="card" style={a.pagada ? { opacity: 0.75 } : undefined}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+            style={{ background: a.color + '22' }}>{a.icono}</div>
+          <div>
+            <p className="font-semibold text-strong flex items-center gap-2">
+              {a.nombre}
+              {a.pagada && (
+                <span className="text-xs font-medium px-1.5 py-0.5 rounded"
+                  style={{ background: 'var(--green-soft, rgba(74,222,128,.15))', color: 'var(--green)' }}>
+                  Pagada
+                </span>
+              )}
+            </p>
+            {a.descripcion && <p className="text-xs text-muted">{a.descripcion}</p>}
+            {a.fecha_meta && (
+              <p className="text-xs text-dim mt-0.5">
+                Meta: {new Date(a.fecha_meta + 'T00:00:00').toLocaleDateString('es-MX', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <p className="text-strong font-bold">{fmt(a.acumulado)}</p>
+            <p className="text-xs text-muted">de {fmt(a.meta)}</p>
+          </div>
+          <button onClick={() => marcarPagada(a.id, !a.pagada)}
+            title={a.pagada ? 'Reabrir: vuelve a contar en Total Ahorrado' : 'Marcar como pagada: ya se gastó, sale de Total Ahorrado'}
+            className="p-1"
+            style={{ color: a.pagada ? 'var(--green)' : 'var(--text-faint)' }}>
+            <Check size={16} />
+          </button>
+          <button onClick={() => setExpanded(isExpanded ? null : a.id)}
+            className="text-muted hover:text-strong p-1">
+            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button onClick={() => deleteAhorro(a.id)}
+            className="text-faint hover:text-red-400 p-1">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <div className="flex justify-between text-xs text-muted mb-1">
+          <span>{pct.toFixed(1)}% completado</span>
+          <span>Faltan {fmt(Math.max(0, a.meta - a.acumulado))}</span>
+        </div>
+        <ProgressBar value={a.acumulado} max={a.meta} color={a.color} />
+      </div>
+
+      {isExpanded && (
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+          {/* flex-wrap y anchos minimos: antes el select traia
+              width:100% de .input y flex-shrink-0, asi que se
+              quedaba con toda la fila y aplastaba los dos campos
+              a unos pocos pixeles. No es que no dejara escribir
+              el monto: es que no cabia. */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <select className="input w-auto flex-shrink-0"
+              value={movForm.id === a.id ? movForm.tipo : 'deposito'}
+              onChange={e => setMovForm(m => ({ ...m, id: a.id, tipo: e.target.value as 'deposito' | 'retiro' }))}>
+              <option value="deposito">Depósito</option>
+              <option value="retiro">Retiro</option>
+            </select>
+            <input className="input flex-1" type="number" placeholder="Monto"
+              style={{ minWidth: 110 }}
+              value={movForm.id === a.id ? movForm.monto : ''}
+              onChange={e => setMovForm(m => ({ ...m, id: a.id, monto: e.target.value }))} />
+            <input className="input flex-1" placeholder="Nota (opcional)"
+              style={{ minWidth: 140 }}
+              value={movForm.id === a.id ? movForm.nota : ''}
+              onChange={e => setMovForm(m => ({ ...m, id: a.id, nota: e.target.value }))} />
+            <button onClick={agregarMovimiento}
+              disabled={movForm.id !== a.id || saving}
+              className="px-3 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
+              style={{ background: 'var(--accent)' }}>+</button>
+          </div>
+
+          <p className="text-xs text-muted mb-2">Movimientos recientes</p>
+          {movs.length === 0 ? (
+            <p className="text-xs text-dim text-center py-2">Sin movimientos aún</p>
+          ) : (
+            <div className="space-y-1.5">
+              {movs.slice(0, 10).map(m => (
+                <div key={m.id}
+                  className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg"
+                  style={{ background: 'var(--bg)' }}>
+                  <div className="flex items-center gap-2">
+                    {m.tipo === 'deposito'
+                      ? <ArrowUpCircle size={14} className="text-green-400" />
+                      : <ArrowDownCircle size={14} className="text-red-400" />}
+                    <span className="text-body">
+                      {m.nota || (m.tipo === 'deposito' ? 'Depósito' : 'Retiro')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={m.tipo === 'deposito' ? 'text-green-400' : 'text-red-400'}>
+                      {m.tipo === 'deposito' ? '+' : '-'}{fmt(m.monto)}
+                    </span>
+                    <span className="text-faint">{m.fecha}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const num2 = (v: unknown): number => {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
   return Number.isFinite(n) ? n : 0
@@ -105,6 +242,7 @@ export default function Ahorros() {
   const [movimientos, setMovimientos] = useState<Movimiento[]>([])
   const [showMetaForm, setShowMetaForm] = useState(false)
   const [expanded, setExpanded]     = useState<number | null>(null)
+  const [verPagadas, setVerPagadas] = useState(false)
   const [movForm, setMovForm]       = useState<{ id: number | null; tipo: 'deposito' | 'retiro'; monto: string; nota: string }>({
     id: null, tipo: 'deposito', monto: '', nota: '',
   })
@@ -349,11 +487,22 @@ export default function Ahorros() {
     load()
   }
 
+  /** Pagada = lograda y gastada: sale de los totales, se queda como historial. */
+  const marcarPagada = async (id: number, pagada: boolean) => {
+    await supabase.from('ahorros').update({ pagada }).eq('id', id)
+    load()
+  }
+
   // ── Stats ───────────────────────────────────────────────────────────────────
 
+  // Una meta pagada ya no es dinero disponible: el acumulado se gasto en lo
+  // que fuera que juntabas. Sigue en `ahorros` para no perder el historial,
+  // pero no cuenta aqui.
+  const metasEnCurso   = ahorros.filter(a => !a.pagada)
+  const metasPagadas   = ahorros.filter(a => a.pagada)
   const totalFondos    = fondos.reduce((s, f) => s + f.saldo, 0)
-  const totalMeta      = ahorros.reduce((s, a) => s + a.meta, 0)
-  const totalAcumulado = ahorros.reduce((s, a) => s + a.acumulado, 0)
+  const totalMeta      = metasEnCurso.reduce((s, a) => s + a.meta, 0)
+  const totalAcumulado = metasEnCurso.reduce((s, a) => s + a.acumulado, 0)
   const totalGeneral   = totalFondos + totalAcumulado
   const gananciasAnualesEstimadas = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
 
@@ -404,7 +553,10 @@ export default function Ahorros() {
         <div className="stat-card col-span-2 lg:col-span-1">
           <p className="text-xs text-muted mb-1">Total Ahorrado</p>
           <p className="text-xl font-bold text-strong">{fmt(totalGeneral)}</p>
-          <p className="text-xs text-muted mt-1">fondos + metas</p>
+          <p className="text-xs text-muted mt-1">
+            fondos + metas en curso
+            {!!metasPagadas.length && ` · ${metasPagadas.length} pagada${metasPagadas.length !== 1 ? 's' : ''} sin contar`}
+          </p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted mb-1">En Fondos</p>
@@ -911,112 +1063,43 @@ export default function Ahorros() {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {ahorros.map(a => {
-                const pct = a.meta > 0 ? Math.min(100, (a.acumulado / a.meta) * 100) : 0
-                const isExpanded = expanded === a.id
-                const movs = movimientos.filter(m => m.ahorro_id === a.id)
-                return (
-                  <div key={a.id} className="card">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                          style={{ background: a.color + '22' }}>{a.icono}</div>
-                        <div>
-                          <p className="font-semibold text-strong">{a.nombre}</p>
-                          {a.descripcion && <p className="text-xs text-muted">{a.descripcion}</p>}
-                          {a.fecha_meta && (
-                            <p className="text-xs text-dim mt-0.5">
-                              Meta: {new Date(a.fecha_meta + 'T00:00:00').toLocaleDateString('es-MX', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <p className="text-strong font-bold">{fmt(a.acumulado)}</p>
-                          <p className="text-xs text-muted">de {fmt(a.meta)}</p>
-                        </div>
-                        <button onClick={() => setExpanded(isExpanded ? null : a.id)}
-                          className="text-muted hover:text-strong p-1">
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
-                        <button onClick={() => deleteAhorro(a.id)}
-                          className="text-faint hover:text-red-400 p-1">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+            <>
+              <div className="space-y-3">
+                {metasEnCurso.length === 0 && (
+                  <p className="text-xs text-dim text-center py-4">
+                    Todas tus metas están pagadas — mira abajo.
+                  </p>
+                )}
+                {metasEnCurso.map(a => (
+                  <TarjetaMeta key={a.id} a={a}
+                    expanded={expanded} setExpanded={setExpanded}
+                    movimientos={movimientos} movForm={movForm} setMovForm={setMovForm}
+                    agregarMovimiento={agregarMovimiento} saving={saving}
+                    deleteAhorro={deleteAhorro} marcarPagada={marcarPagada} />
+                ))}
+              </div>
+
+              {!!metasPagadas.length && (
+                <div className="pt-2">
+                  <button onClick={() => setVerPagadas(v => !v)}
+                    className="flex items-center gap-2 text-sm text-muted hover:text-strong mb-3">
+                    {verPagadas ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    Completadas ({metasPagadas.length}) — no cuentan en Total Ahorrado
+                  </button>
+                  {verPagadas && (
+                    <div className="space-y-3">
+                      {metasPagadas.map(a => (
+                        <TarjetaMeta key={a.id} a={a}
+                          expanded={expanded} setExpanded={setExpanded}
+                          movimientos={movimientos} movForm={movForm} setMovForm={setMovForm}
+                          agregarMovimiento={agregarMovimiento} saving={saving}
+                          deleteAhorro={deleteAhorro} marcarPagada={marcarPagada} />
+                      ))}
                     </div>
-
-                    <div className="mt-3">
-                      <div className="flex justify-between text-xs text-muted mb-1">
-                        <span>{pct.toFixed(1)}% completado</span>
-                        <span>Faltan {fmt(Math.max(0, a.meta - a.acumulado))}</span>
-                      </div>
-                      <ProgressBar value={a.acumulado} max={a.meta} color={a.color} />
-                    </div>
-
-                    {isExpanded && (
-                      <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-                        {/* flex-wrap y anchos minimos: antes el select traia
-                            width:100% de .input y flex-shrink-0, asi que se
-                            quedaba con toda la fila y aplastaba los dos campos
-                            a unos pocos pixeles. No es que no dejara escribir
-                            el monto: es que no cabia. */}
-                        <div className="flex gap-2 mb-4 flex-wrap">
-                          <select className="input w-auto flex-shrink-0"
-                            value={movForm.id === a.id ? movForm.tipo : 'deposito'}
-                            onChange={e => setMovForm(m => ({ ...m, id: a.id, tipo: e.target.value as 'deposito' | 'retiro' }))}>
-                            <option value="deposito">Depósito</option>
-                            <option value="retiro">Retiro</option>
-                          </select>
-                          <input className="input flex-1" type="number" placeholder="Monto"
-                            style={{ minWidth: 110 }}
-                            value={movForm.id === a.id ? movForm.monto : ''}
-                            onChange={e => setMovForm(m => ({ ...m, id: a.id, monto: e.target.value }))} />
-                          <input className="input flex-1" placeholder="Nota (opcional)"
-                            style={{ minWidth: 140 }}
-                            value={movForm.id === a.id ? movForm.nota : ''}
-                            onChange={e => setMovForm(m => ({ ...m, id: a.id, nota: e.target.value }))} />
-                          <button onClick={agregarMovimiento}
-                            disabled={movForm.id !== a.id || saving}
-                            className="px-3 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-                            style={{ background: 'var(--accent)' }}>+</button>
-                        </div>
-
-                        <p className="text-xs text-muted mb-2">Movimientos recientes</p>
-                        {movs.length === 0 ? (
-                          <p className="text-xs text-dim text-center py-2">Sin movimientos aún</p>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {movs.slice(0, 10).map(m => (
-                              <div key={m.id}
-                                className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg"
-                                style={{ background: 'var(--bg)' }}>
-                                <div className="flex items-center gap-2">
-                                  {m.tipo === 'deposito'
-                                    ? <ArrowUpCircle size={14} className="text-green-400" />
-                                    : <ArrowDownCircle size={14} className="text-red-400" />}
-                                  <span className="text-body">
-                                    {m.nota || (m.tipo === 'deposito' ? 'Depósito' : 'Retiro')}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className={m.tipo === 'deposito' ? 'text-green-400' : 'text-red-400'}>
-                                    {m.tipo === 'deposito' ? '+' : '-'}{fmt(m.monto)}
-                                  </span>
-                                  <span className="text-faint">{m.fecha}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
