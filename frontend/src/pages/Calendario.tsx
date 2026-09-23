@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, X, Calendar as CalendarIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, X, Calendar as CalendarIcon, Check, ListTodo } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { fmt } from '../lib/utils'
+import { useAuth } from '../contexts/AuthContext'
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Calendario: vista de mes de calendario_eventos, con edicion completa.
@@ -235,6 +236,8 @@ export default function Calendario() {
         )}
       </div>
 
+      <TarjetaPendientes />
+
       {editando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,.6)' }}
           onClick={() => setEditando(null)}>
@@ -294,6 +297,106 @@ export default function Calendario() {
               <button onClick={() => setEditando(null)} className="px-4 py-2 rounded-lg text-sm text-muted">Cancelar</button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Pendientes: sin fecha, sin hora, para lo que no es un evento ─────────
+
+interface Pendiente { id: number; texto: string; hecho: boolean; hecho_por: string | null }
+
+function TarjetaPendientes() {
+  const { usuario } = useAuth()
+  const [items, setItems] = useState<Pendiente[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [nuevo, setNuevo] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  const cargar = async () => {
+    const { data } = await supabase.from('pendientes')
+      .select('id,texto,hecho,hecho_por')
+      .order('hecho').order('created_at', { ascending: false })
+    setItems((data ?? []) as Pendiente[])
+    setCargando(false)
+  }
+  useEffect(() => { cargar() }, [])
+
+  const agregar = async () => {
+    if (!nuevo.trim()) return
+    setGuardando(true)
+    try {
+      const { data } = await supabase.from('pendientes').insert({ texto: nuevo.trim() }).select().single()
+      if (data) setItems(is => [data as Pendiente, ...is])
+      setNuevo('')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const toggle = async (p: Pendiente) => {
+    const hecho = !p.hecho
+    setItems(is => is.map(x => x.id === p.id ? { ...x, hecho, hecho_por: hecho ? (usuario?.nombre ?? null) : null } : x))
+    await supabase.from('pendientes').update({
+      hecho, hecho_por: hecho ? (usuario?.nombre ?? null) : null, hecho_en: hecho ? new Date().toISOString() : null,
+    }).eq('id', p.id)
+  }
+
+  const borrar = async (id: number) => {
+    setItems(is => is.filter(x => x.id !== id))
+    await supabase.from('pendientes').delete().eq('id', id)
+  }
+
+  if (cargando) return null
+
+  const pendientes = items.filter(i => !i.hecho)
+  const hechos = items.filter(i => i.hecho)
+
+  return (
+    <div className="card">
+      <div className="flex items-center gap-2 mb-1">
+        <ListTodo size={16} className="text-indigo-400" />
+        <h2 className="text-strong font-semibold">Pendientes</h2>
+      </div>
+      <p className="text-xs text-muted mb-3">
+        Sin fecha ni hora — lo que no amerita un evento de calendario. Mientras no estén
+        marcados, aparecen en el Dashboard.
+      </p>
+
+      <div className="flex gap-2 mb-3">
+        <input className="input flex-1 text-xs" placeholder="Ej: Comprar pan, llamar al doctor…"
+          value={nuevo} onChange={e => setNuevo(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && agregar()} />
+        <button onClick={agregar} disabled={guardando} className="btn-secondary text-xs flex-shrink-0"><Plus size={12} /></button>
+      </div>
+
+      {!items.length ? (
+        <p className="text-xs text-dim text-center py-2">Nada pendiente.</p>
+      ) : (
+        <div className="space-y-1">
+          {pendientes.map(p => (
+            <div key={p.id} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs" style={{ background: 'var(--surface-2)' }}>
+              <button onClick={() => toggle(p)} className="flex items-center gap-2.5 flex-1 text-left min-w-0">
+                <span className="w-4 h-4 rounded flex-shrink-0" style={{ border: '1px solid var(--border-hi)' }} />
+                <span className="text-body truncate">{p.texto}</span>
+              </button>
+              <button onClick={() => borrar(p.id)} className="text-faint hover:text-red-400 flex-shrink-0"><X size={13} /></button>
+            </div>
+          ))}
+          {hechos.map(p => (
+            <div key={p.id} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs"
+              style={{ background: 'var(--green-soft, rgba(74,222,128,.15))' }}>
+              <button onClick={() => toggle(p)} className="flex items-center gap-2.5 flex-1 text-left min-w-0">
+                <span className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center" style={{ border: '1px solid var(--green)' }}>
+                  <Check size={11} style={{ color: 'var(--green)' }} />
+                </span>
+                <span className="line-through text-dim truncate">{p.texto}</span>
+              </button>
+              {p.hecho_por && <span className="flex-shrink-0" style={{ color: 'var(--green)' }}>{p.hecho_por}</span>}
+              <button onClick={() => borrar(p.id)} className="text-faint hover:text-red-400 flex-shrink-0"><X size={13} /></button>
+            </div>
+          ))}
         </div>
       )}
     </div>

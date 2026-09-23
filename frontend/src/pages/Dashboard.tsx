@@ -41,6 +41,7 @@ interface Ahorro {
 interface Fondo {
   id: number
   nombre: string
+  descripcion: string | null
   saldo: number
   rendimiento: number
   icono: string
@@ -124,20 +125,30 @@ function StatCard({
   )
 }
 
+/**
+ * `${color}cc` (para el degradado) solo es CSS valido si `color` es un hex de
+ * verdad. Una meta con color guardado como el texto "var(--accent)" (el
+ * default viejo del formulario, antes de tocar el selector) daba
+ * "var(--accent)cc" -- invalido, así que el navegador ignoraba todo el
+ * `background` y la barra quedaba invisible aunque el % de al lado sí se viera
+ * bien. Fondo solido, sin concatenar nada: funciona con hex, var(--x) o
+ * cualquier color CSS valido.
+ */
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   return (
     <div className="w-full h-2 rounded-full" style={{ background: 'var(--bg)' }}>
       <div
         className="h-2 rounded-full transition-all duration-700"
-        style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}cc, ${color})` }}
+        style={{ width: `${pct}%`, background: color }}
       />
     </div>
   )
 }
 
 /**
- * Pendientes de HOY: eventos (dosis, citas) y limpieza si es sábado.
+ * Pendientes: eventos de HOY (dosis, citas), limpieza si es sábado, y
+ * pendientes simples (sin fecha) mientras no estén marcados.
  *
  * A proposito NO es un modal/popup que bloquee al cargar. Un modal que
  * interrumpe cada vez se vuelve ruido en un par de dias -- la gente aprende
@@ -146,21 +157,26 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
  * color que no se confunde con el resto del panel, se mantiene efectivo
  * porque no esta ahi cuando no hace falta.
  *
- * Solo hoy, no "en 3 dias": para eso ya esta la pestana Calendario. Aqui
- * es nada mas lo que de verdad se resuelve hoy.
+ * Los eventos son solo de HOY, no "en 3 dias": para eso ya esta la pestana
+ * Calendario. Los pendientes simples si son abiertos (no tienen fecha), pero
+ * se limitan a 4 aqui para que esto no crezca sin limite -- el resto se ve
+ * completo en Calendario.
  */
 interface EventoPendiente { id: number; titulo: string; hora: string; recurrencia: 'ninguna' | 'semanal'; fecha: string }
+interface PendienteSimple { id: number; texto: string }
 
 function BannerPendientes() {
   const [eventos, setEventos] = useState<EventoPendiente[]>([])
   const [limpiezaFalta, setLimpiezaFalta] = useState<number | null>(null)
+  const [pendientes, setPendientes] = useState<PendienteSimple[]>([])
+  const [totalPendientes, setTotalPendientes] = useState(0)
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
     (async () => {
       const hoy = new Date()
       const esSabado = hoy.getDay() === 6
-      const [{ data: ev }, limpieza] = await Promise.all([
+      const [{ data: ev }, limpieza, { data: pend, count }] = await Promise.all([
         supabase.from('calendario_eventos')
           .select('id,titulo,hora,recurrencia,fecha')
           .eq('activo', true),
@@ -174,6 +190,8 @@ function BannerPendientes() {
                 return tareas.length - (hechas?.length ?? 0)
               })
           : Promise.resolve(null),
+        supabase.from('pendientes').select('id,texto', { count: 'exact' })
+          .eq('hecho', false).order('created_at', { ascending: false }).limit(4),
       ])
 
       const hoyDia = hoy.getDay()
@@ -184,21 +202,23 @@ function BannerPendientes() {
 
       setEventos(deHoy)
       setLimpiezaFalta(limpieza)
+      setPendientes((pend ?? []) as PendienteSimple[])
+      setTotalPendientes(count ?? 0)
       setCargando(false)
     })()
   }, [])
 
   if (cargando) return null
-  if (eventos.length === 0 && !limpiezaFalta) return null
+  if (eventos.length === 0 && !limpiezaFalta && pendientes.length === 0) return null
 
   return (
     <div className="flex items-start gap-3 p-4 rounded-xl border"
       style={{ background: 'var(--yellow-soft)', borderColor: 'var(--yellow)' }}>
       <Bell size={18} className="text-yellow-400 mt-0.5 flex-shrink-0" />
       <div className="flex-1 min-w-0 space-y-1.5">
-        <p className="text-yellow-300 font-medium text-sm">Pendientes de hoy</p>
+        <p className="text-yellow-300 font-medium text-sm">Pendientes</p>
         {eventos.map(e => (
-          <div key={e.id} className="flex items-center justify-between gap-2 text-xs">
+          <div key={`ev-${e.id}`} className="flex items-center justify-between gap-2 text-xs">
             <span className="text-body">{e.titulo}</span>
             <span className="text-dim flex-shrink-0">{e.hora?.slice(0, 5)}</span>
           </div>
@@ -208,6 +228,14 @@ function BannerPendientes() {
             <span className="text-body">🧹 Limpieza del sábado</span>
             <span className="text-dim flex-shrink-0">faltan {limpiezaFalta}</span>
           </div>
+        )}
+        {pendientes.map(p => (
+          <div key={`p-${p.id}`} className="flex items-center justify-between gap-2 text-xs">
+            <span className="text-body">📝 {p.texto}</span>
+          </div>
+        ))}
+        {totalPendientes > pendientes.length && (
+          <p className="text-dim text-xs">+{totalPendientes - pendientes.length} pendiente{totalPendientes - pendientes.length !== 1 ? 's' : ''} más</p>
         )}
       </div>
       <a href="/calendario" className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 flex-shrink-0">
@@ -500,7 +528,12 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3 flex-1">
 
-              {/* Fondos */}
+              {/* Fondos. El nombre se repite a proposito (dos "Fondo de
+                  Inversion" en Nu y en Didi, dos "Fondo Emergencia" en Mifel
+                  y OpenBank) -- son cuentas distintas, no el mismo dato
+                  calculado dos veces. Sin la institucion debajo, dos saldos
+                  y dos rendimientos distintos bajo el mismo nombre se ven
+                  como un error. */}
               {fondos.slice(0, 3).map(f => {
                 const gananciaAnual = supuestos
                   ? f.saldo * (f.rendimiento / 100)
@@ -512,7 +545,9 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-base flex-shrink-0">{f.icono}</span>
                       <div className="min-w-0">
-                        <p className="text-xs text-body truncate">{f.nombre}</p>
+                        <p className="text-xs text-body truncate">
+                          {f.nombre}{f.descripcion && <span className="text-faint"> · {f.descripcion}</span>}
+                        </p>
                         {f.rendimiento > 0 && (
                           <p className="text-[10px] text-green-400">+{fmt(gananciaAnual)}/año</p>
                         )}

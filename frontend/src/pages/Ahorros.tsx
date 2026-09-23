@@ -248,14 +248,19 @@ export default function Ahorros() {
   })
   // Borrador: lo escrito sobrevive a un remonte, a una recarga o a un Cancelar
   // por error. Antes cualquiera de las tres cosas lo borraba sin aviso.
-  const bMeta = useDraft('ahorros-meta', { nombre: '', meta: '', descripcion: '', fecha_meta: '', color: 'var(--accent)', icono: '🎯' })
+  // Hex de verdad, no la variable CSS: un <input type="color"> no la entiende,
+  // y si se crea el registro sin tocar el selector, este es el valor que se
+  // guarda tal cual. "var(--accent)" guardado como texto se veia bien donde
+  // se usaba como color de texto, pero rompia cualquier lugar que concatenara
+  // algo al color -- ver la nota en el ProgressBar de Dashboard.tsx.
+  const bMeta = useDraft('ahorros-meta', { nombre: '', meta: '', descripcion: '', fecha_meta: '', color: '#6366F1', icono: '🎯' })
   const metaForm = bMeta.valor
   const setMetaForm = bMeta.set
 
   // — Fondos —
   const [fondos, setFondos]         = useState<Fondo[]>([])
   const [showFondoForm, setShowFondoForm] = useState(false)
-  const bFondo = useDraft('ahorros-fondo', { nombre: '', saldo: '', rendimiento: '', descripcion: '', color: 'var(--green)', icono: '💰' })
+  const bFondo = useDraft('ahorros-fondo', { nombre: '', saldo: '', rendimiento: '', descripcion: '', color: '#3FB950', icono: '💰' })
   const fondoForm = bFondo.valor
   const setFondoForm = bFondo.set
   // Antes solo se podia tocar el saldo. El rendimiento, el nombre y el resto
