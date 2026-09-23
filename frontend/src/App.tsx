@@ -5,7 +5,8 @@ import { navLinkClass } from './lib/utils'
 import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
-  Wallet, PiggyBank, FileSpreadsheet, Briefcase, Sun, Moon, Search
+  Wallet, PiggyBank, FileSpreadsheet, Briefcase, Sun, Moon, Search,
+  Calendar as CalendarIcon, ShoppingCart,
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -23,6 +24,8 @@ const Ahorros = lazy(() => import('./pages/Ahorros'))
 const SheetsSync = lazy(() => import('./pages/SheetsSync'))
 const Empleo = lazy(() => import('./pages/Empleo'))
 const Consulta = lazy(() => import('./pages/Consulta'))
+const Calendario = lazy(() => import('./pages/Calendario'))
+const ListaSuper = lazy(() => import('./pages/ListaSuper'))
 import { getExchangeRate, refreshExchangeRate, getWhatsAppStatus } from './lib/api'
 
 // ─── Tema ─────────────────────────────────────────────────────────────────────
@@ -85,6 +88,8 @@ function Layout() {
     { to: '/sheets',      icon: <FileSpreadsheet size={18} />,  label: 'Sheets Sync',  group: 'negocio' },
     { to: '/ahorros',     icon: <PiggyBank size={18} />,       label: 'Ahorros',      group: 'vida' },
     { to: '/personal',    icon: <LayoutDashboard size={18} />, label: 'Personal',     group: 'vida' },
+    { to: '/calendario',  icon: <CalendarIcon size={18} />,    label: 'Calendario',   group: 'vida' },
+    { to: '/super',       icon: <ShoppingCart size={18} />,    label: 'Lista de Super', group: 'vida' },
     { to: '/empleo',      icon: <Briefcase size={18} />,       label: 'Empleo',       group: 'vida' },
     { to: '/consulta',    icon: <Search size={18} />,          label: 'Consulta',     group: 'vida' },
   ]
@@ -240,6 +245,8 @@ function Layout() {
             <Route path="/reportes"    element={<Reports />} />
             <Route path="/ahorros"     element={<Ahorros />} />
             <Route path="/personal"    element={<Personal />} />
+            <Route path="/calendario"  element={<Calendario />} />
+            <Route path="/super"       element={<ListaSuper />} />
             <Route path="/empleo"      element={<Empleo />} />
             <Route path="/consulta"    element={<Consulta />} />
             <Route path="/sheets"      element={<SheetsSync />} />

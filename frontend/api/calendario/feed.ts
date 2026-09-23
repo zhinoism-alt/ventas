@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const [{ data: menus }, { data: tareas }, { data: eventos }] = await Promise.all([
     supabase.from('dietas_menus').select('id,nombre').order('id'),
     supabase.from('limpieza_tareas').select('nombre').eq('activo', true).order('orden'),
-    supabase.from('calendario_eventos').select('titulo,detalle,fecha,hora,recurrencia,monto').eq('activo', true),
+    supabase.from('calendario_eventos').select('id,titulo,detalle,fecha,hora,recurrencia,monto').eq('activo', true),
   ])
 
   // Alterna por paridad de semana ISO -- ver semanaISO() arriba.
@@ -153,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     lineas.push('END:VEVENT')
   }
 
-  for (const ev of (eventos ?? []) as { titulo: string; detalle: string | null; fecha: string; hora: string; recurrencia: string; monto: number | null }[]) {
+  for (const ev of (eventos ?? []) as { id: number; titulo: string; detalle: string | null; fecha: string; hora: string; recurrencia: string; monto: number | null }[]) {
     const [hh, mm] = String(ev.hora).split(':').map(Number)
     const finTotal = hh * 60 + mm + 60  // 1h de duracion por default
     const hhFin = String(Math.floor(finTotal / 60) % 24).padStart(2, '0')
@@ -164,18 +164,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(Boolean).join('\n\n')
 
     lineas.push('BEGIN:VEVENT')
+    // El UID usa el id de la fila, NUNCA el titulo: si se edita el titulo,
+    // la fecha o lo que sea, Google tiene que ver el MISMO evento y
+    // actualizarlo -- si el UID cambiara con el texto, Google lo tomaria
+    // como uno nuevo y dejaria el viejo huerfano en el calendario de quien
+    // ya se suscribio.
     if (ev.recurrencia === 'semanal') {
       const anclaISO = new Date(ev.fecha + 'T00:00:00')
       const diaISO = anclaISO.getDay() === 0 ? 7 : anclaISO.getDay()
       const fecha = proximaFecha(diaISO)
-      lineas.push(`UID:evento-${ev.titulo.replace(/[^a-zA-Z0-9]/g, '')}@ventaspro`)
+      lineas.push(`UID:evento-${ev.id}@ventaspro`)
       lineas.push(`DTSTAMP:${fecha}T000000Z`)
       lineas.push(`DTSTART;TZID=America/Mexico_City:${fecha}T${hhIni}${mmIni}00`)
       lineas.push(`DTEND;TZID=America/Mexico_City:${fecha}T${hhFin}${mmFin}00`)
       lineas.push(`RRULE:FREQ=WEEKLY;BYDAY=${BYDAY[diaISO]}`)
     } else {
       const fecha = ev.fecha.replace(/-/g, '')
-      lineas.push(`UID:evento-${ev.titulo.replace(/[^a-zA-Z0-9]/g, '')}-${fecha}@ventaspro`)
+      lineas.push(`UID:evento-${ev.id}@ventaspro`)
       lineas.push(`DTSTAMP:${fecha}T000000Z`)
       lineas.push(`DTSTART;TZID=America/Mexico_City:${fecha}T${hhIni}${mmIni}00`)
       lineas.push(`DTEND;TZID=America/Mexico_City:${fecha}T${hhFin}${mmFin}00`)

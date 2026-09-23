@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
   ExternalLink, RefreshCw, Maximize2, ChevronDown, ChevronUp,
-  Calendar, Copy, Check, FileText, Sparkles, Plus, Pencil,
+  Calendar, Copy, Check, FileText, Sparkles,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getCalendarLink } from '../lib/api'
 import { fmt } from '../lib/utils'
-import { useDraft } from '../lib/useDraft'
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Personal: calendario compartido, dieta de la semana, limpieza y eventos.
@@ -138,6 +137,9 @@ function TarjetaDieta() {
   const [urls, setUrls] = useState<Record<number, string>>({})
   const [diaAbierto, setDiaAbierto] = useState<number | null>(HOY_DIA_ISO)
   const [cargando, setCargando] = useState(true)
+  // null = automático (el que de verdad manda el calendario). Si picas el
+  // otro botón, ves su vista previa sin que eso cambie lo que se manda.
+  const [verMenuId, setVerMenuId] = useState<number | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -165,9 +167,11 @@ function TarjetaDieta() {
   if (cargando) return <div className="card"><p className="text-xs text-dim">Cargando dieta…</p></div>
   if (!menus.length) return null
 
-  const menuActivo = menus[semanaISO(new Date()) % 2 === 1 ? 0 : 1 % menus.length]
-  const comidasMenu = comidas.filter(c => c.menu_id === menuActivo.id)
-  const archivoMenu = archivos.find(a => a.menu_id === menuActivo.id)
+  const menuOficial = menus[semanaISO(new Date()) % 2 === 1 ? 0 : 1 % menus.length]
+  const menuMostrado = menus.find(m => m.id === verMenuId) ?? menuOficial
+  const esVistaPrevia = menuMostrado.id !== menuOficial.id
+  const comidasMenu = comidas.filter(c => c.menu_id === menuMostrado.id)
+  const archivoMenu = archivos.find(a => a.menu_id === menuMostrado.id)
   const tablasEquiv = archivos.find(a => a.menu_id === null)
 
   return (
@@ -175,9 +179,7 @@ function TarjetaDieta() {
       <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-green-400" />
-          <h2 className="text-strong font-semibold">Dieta de esta semana</h2>
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full"
-            style={{ background: 'var(--accent)', color: '#fff' }}>{menuActivo.nombre}</span>
+          <h2 className="text-strong font-semibold">Dieta{esVistaPrevia ? '' : ' de esta semana'}</h2>
         </div>
         <div className="flex gap-2 text-xs">
           {archivoMenu && urls[archivoMenu.id] && (
@@ -192,16 +194,41 @@ function TarjetaDieta() {
           )}
         </div>
       </div>
-      <p className="text-xs text-muted mb-3">
-        Se alterna sola cada semana (Menú A / Menú B) según la fecha, tal como la recetó la
-        Dra. Ochoa. Las comidas del día ya están en el calendario que se suscribieron arriba.
-      </p>
+
+      {/* Cuál semana toca es automático (por fecha); esto solo deja
+          adelantarte a ver la otra sin cambiar lo que de verdad se manda. */}
+      <div className="flex gap-1.5 mb-3">
+        {menus.map(m => {
+          const esEsta = m.id === menuMostrado.id
+          const esLaOficial = m.id === menuOficial.id
+          return (
+            <button key={m.id} onClick={() => setVerMenuId(m.id)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+              style={esEsta
+                ? { background: 'var(--accent)', color: '#fff' }
+                : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+              {m.nombre}{esLaOficial ? ' · esta semana' : ''}
+            </button>
+          )
+        })}
+      </div>
+      {esVistaPrevia && (
+        <p className="text-xs mb-3 px-2.5 py-1.5 rounded-lg" style={{ background: 'var(--yellow-soft, rgba(250,204,21,.12))', color: 'var(--yellow)' }}>
+          Vista previa de {menuMostrado.nombre} — esta semana el calendario manda {menuOficial.nombre}.
+        </p>
+      )}
+      {!esVistaPrevia && (
+        <p className="text-xs text-muted mb-3">
+          Se alterna sola cada semana según la fecha, tal como la recetó la Dra. Ochoa. Las
+          comidas del día ya están en el calendario que se suscribieron arriba.
+        </p>
+      )}
 
       <div className="space-y-1.5">
         {DIAS.map((nombreDia, i) => {
           const diaISO = i + 1
           const abierto = diaAbierto === diaISO
-          const esHoy = diaISO === HOY_DIA_ISO
+          const esHoy = !esVistaPrevia && diaISO === HOY_DIA_ISO
           const comidasDia = comidasMenu
             .filter(c => c.dia === diaISO)
             .sort((a, b) => ORDEN_TIEMPO.indexOf(a.tiempo) - ORDEN_TIEMPO.indexOf(b.tiempo))
@@ -309,50 +336,21 @@ function TarjetaLimpieza() {
 
 // ── Eventos (dosis, citas, lo que sea) ──────────────────────────────────
 
-function TarjetaEventos() {
+/** Vista chica: los próximos eventos, con link a la pestaña Calendario que
+ *  tiene el mes completo y la edición de verdad. */
+function TarjetaEventosPreview() {
   const [eventos, setEventos] = useState<Evento[]>([])
   const [cargando, setCargando] = useState(true)
-  const [editandoMonto, setEditandoMonto] = useState<number | null>(null)
-  const [montoInput, setMontoInput] = useState('')
-  const [nuevo, setNuevo] = useState(false)
-  const b = useDraft('personal-evento', { titulo: '', fecha: '', hora: '09:00', recurrencia: 'ninguna' as 'ninguna' | 'semanal' })
-  const [guardando, setGuardando] = useState(false)
-  const [errorForm, setErrorForm] = useState<string | null>(null)
 
-  const cargar = async () => {
-    const { data } = await supabase.from('calendario_eventos')
-      .select('id,titulo,detalle,fecha,hora,recurrencia,monto')
-      .eq('activo', true).order('fecha')
-    setEventos((data ?? []) as Evento[])
-    setCargando(false)
-  }
-  useEffect(() => { cargar() }, [])
-
-  const guardarMonto = async (id: number) => {
-    const monto = montoInput.trim() ? Number(montoInput) : null
-    await supabase.from('calendario_eventos').update({ monto }).eq('id', id)
-    setEditandoMonto(null)
-    cargar()
-  }
-
-  const crear = async () => {
-    if (!b.valor.titulo.trim()) return setErrorForm('Falta el título.')
-    if (!b.valor.fecha)         return setErrorForm('Falta la fecha.')
-    setErrorForm(null)
-    setGuardando(true)
-    try {
-      const { error } = await supabase.from('calendario_eventos').insert({
-        titulo: b.valor.titulo.trim(), fecha: b.valor.fecha, hora: b.valor.hora,
-        recurrencia: b.valor.recurrencia,
-      })
-      if (error) { setErrorForm(`No se guardó: ${error.message}`); return }
-      b.limpiar()
-      setNuevo(false)
-      cargar()
-    } finally {
-      setGuardando(false)
-    }
-  }
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('calendario_eventos')
+        .select('id,titulo,detalle,fecha,hora,recurrencia,monto')
+        .eq('activo', true).order('fecha').limit(3)
+      setEventos((data ?? []) as Evento[])
+      setCargando(false)
+    })()
+  }, [])
 
   if (cargando) return <div className="card"><p className="text-xs text-dim">Cargando eventos…</p></div>
 
@@ -360,40 +358,13 @@ function TarjetaEventos() {
     <div className="card">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-strong font-semibold">📌 Eventos</h2>
-        <button onClick={() => setNuevo(n => !n)} className="btn-secondary text-xs">
-          <Plus size={12} /> Nuevo
-        </button>
+        <a href="/calendario" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+          Ver calendario →
+        </a>
       </div>
       <p className="text-xs text-muted mb-3">
         Citas, dosis, lo que sea — se van al mismo calendario suscrito de arriba.
       </p>
-
-      {nuevo && (
-        <div className="rounded-lg p-3 mb-3 space-y-2" style={{ background: 'var(--surface-2)' }}>
-          <input className="input w-full text-xs" placeholder="Título (ej: Cita con el dentista)"
-            value={b.valor.titulo} onChange={e => b.campo('titulo', e.target.value)} />
-          <div className="flex gap-2 flex-wrap">
-            <input className="input text-xs" type="date" style={{ minWidth: 140 }}
-              value={b.valor.fecha} onChange={e => b.campo('fecha', e.target.value)} />
-            <input className="input text-xs" type="time" style={{ minWidth: 100 }}
-              value={b.valor.hora} onChange={e => b.campo('hora', e.target.value)} />
-            <select className="input text-xs w-auto"
-              value={b.valor.recurrencia} onChange={e => b.campo('recurrencia', e.target.value as 'ninguna' | 'semanal')}>
-              <option value="ninguna">Una sola vez</option>
-              <option value="semanal">Cada semana</option>
-            </select>
-          </div>
-          {errorForm && <p className="text-xs" style={{ color: 'var(--red)' }}>{errorForm}</p>}
-          <div className="flex gap-2">
-            <button onClick={crear} disabled={guardando}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ background: 'var(--accent)' }}>
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </button>
-            <button onClick={() => { setNuevo(false); setErrorForm(null) }} className="text-xs text-muted">Cancelar</button>
-          </div>
-        </div>
-      )}
-
       {!eventos.length ? (
         <p className="text-xs text-dim text-center py-3">Sin eventos todavía.</p>
       ) : (
@@ -406,24 +377,8 @@ function TarjetaEventos() {
                 <p className="text-dim">
                   {ev.recurrencia === 'semanal' ? 'Cada semana' : ev.fecha} · {ev.hora?.slice(0, 5)}
                 </p>
-                {ev.detalle && <p className="text-dim mt-0.5">{ev.detalle}</p>}
               </div>
-              <div className="flex-shrink-0 text-right">
-                {editandoMonto === ev.id ? (
-                  <div className="flex items-center gap-1">
-                    <input autoFocus className="input text-xs" style={{ width: 80 }} type="number" placeholder="0.00"
-                      value={montoInput} onChange={e => setMontoInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && guardarMonto(ev.id)} />
-                    <button onClick={() => guardarMonto(ev.id)} className="text-green-400"><Check size={14} /></button>
-                  </div>
-                ) : (
-                  <button onClick={() => { setEditandoMonto(ev.id); setMontoInput(ev.monto != null ? String(ev.monto) : '') }}
-                    className="flex items-center gap-1 text-dim hover:text-strong">
-                    {ev.monto != null ? <span className="font-mono text-strong">{fmt(ev.monto)}</span> : <span>agregar precio</span>}
-                    <Pencil size={10} />
-                  </button>
-                )}
-              </div>
+              {ev.monto != null && <span className="font-mono text-strong flex-shrink-0">{fmt(ev.monto)}</span>}
             </div>
           ))}
         </div>
@@ -584,7 +539,7 @@ export default function Personal() {
       <TarjetaDieta />
       <div className="grid md:grid-cols-2 gap-4">
         <TarjetaLimpieza />
-        <TarjetaEventos />
+        <TarjetaEventosPreview />
       </div>
 
       <SeccionesViejas />
