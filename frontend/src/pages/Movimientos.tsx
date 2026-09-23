@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Wallet, Trash2, Pencil, X, ChevronLeft, ChevronRight,
-  HandCoins, Check, Search, CalendarRange, CreditCard, Repeat, Target, Archive, Plus,
+  HandCoins, Check, Search, CalendarRange, CreditCard, Repeat, Target, Archive, Plus, SlidersHorizontal,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -120,10 +120,14 @@ const PISTAS_CATEGORIA: [string, string][] = [
   ['soriana', 'Súper'], ['walmart', 'Súper'], ['costco', 'Súper'], ['supermercado', 'Súper'],
   ['gasolina', 'Transporte'], ['uber', 'Transporte'], ['didi', 'Transporte'], ['taxi', 'Transporte'],
   ['parqu', 'Transporte'], ['estacionamiento', 'Transporte'],
-  ['luz', 'Servicios'], ['agua', 'Servicios'], ['internet', 'Servicios'], ['telcel', 'Servicios'],
+  ['luz', 'Servicios'], ['agua', 'Servicios'], ['internet', 'Servicios'], ['telcel', 'Servicios'], ['celular', 'Servicios'],
+  // 'gas' va despues de 'gasolina' a proposito: "gasolina" tiene que
+  // encontrar Transporte primero, o "Gasolina" caeria aqui por error
+  // (gasolina contiene "gas" como substring).
+  ['gas', 'Servicios'],
   ['netflix', 'Entretenimiento'], ['spotify', 'Entretenimiento'], ['cine', 'Entretenimiento'], ['boleto', 'Entretenimiento'],
   ['farmacia', 'Salud'], ['doctor', 'Salud'], ['medico', 'Salud'], ['dentista', 'Salud'], ['hospital', 'Salud'],
-  ['regalo', 'Regalos'], ['boda', 'Regalos'], ['cumpleaños', 'Regalos'],
+  ['regalo', 'Regalos'], ['boda', 'Regalos'], ['cumpleaños', 'Regalos'], ['cumple', 'Regalos'], ['baby shower', 'Regalos'],
   ['ropa', 'Ropa'], ['zapatos', 'Ropa'],
   ['renta', 'Casa'], ['mantenimiento', 'Casa'],
   ['seguro', 'Seguros'], ['aseguranza', 'Seguros'], ['poliza', 'Seguros'],
@@ -498,6 +502,41 @@ function FormPresupuestos({ presupuestos, onGuardado, onCerrar }: {
     return inicial
   })
   const [guardando, setGuardando] = useState(false)
+  const [sugiriendo, setSugiriendo] = useState(false)
+  const [sugerencia, setSugerencia] = useState<{ fuente: string; omitidos: string[] } | null>(null)
+
+  // Combinacion que Brandon pidio: el Presupuesto (Google Sheet) sigue
+  // siendo la fuente para lo estructural (PPR, seguros de vida, viajes) --
+  // eso ya lo modelan bien ahi con quincenas y % teorico vs real. Esto solo
+  // jala lo que SI es gasto variable del dia a dia (gasolina, luz, comida...)
+  // usando el mismo diccionario de palabras clave que ya adivina categorias
+  // al capturar un movimiento. Lo que no mapea (PPR, Vida Mujer, viajes) se
+  // queda fuera a proposito -- forzarlo a una categoria seria enganoso.
+  const sugerirDesdePresupuesto = async () => {
+    setSugiriendo(true)
+    const { data } = await supabase.from('presupuesto_meses')
+      .select('anio,mes,datos')
+      .order('anio', { ascending: false }).order('mes', { ascending: false })
+      .limit(1).maybeSingle()
+    setSugiriendo(false)
+    if (!data) { setSugerencia({ fuente: '', omitidos: [] }); return }
+
+    const items = [...(data.datos?.necesarios ?? []), ...(data.datos?.noNecesarios ?? [])] as { concepto: string; monto: number }[]
+    const sumas: Record<string, number> = {}
+    const omitidos: string[] = []
+    items.forEach(it => {
+      const cat = sugerirCategoria(it.concepto ?? '', CATEGORIAS_GASTO)
+      if (cat) sumas[cat] = (sumas[cat] ?? 0) + Number(it.monto ?? 0)
+      else if (it.concepto) omitidos.push(it.concepto)
+    })
+    setValores(v => {
+      const nuevo = { ...v }
+      Object.entries(sumas).forEach(([cat, monto]) => { nuevo[cat] = String(Math.round(monto * 100) / 100) })
+      return nuevo
+    })
+    const fuente = new Date(data.anio, data.mes - 1, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+    setSugerencia({ fuente, omitidos })
+  }
 
   const guardar = async () => {
     setGuardando(true)
@@ -520,6 +559,27 @@ function FormPresupuestos({ presupuestos, onGuardado, onCerrar }: {
           <button onClick={onCerrar} className="text-dim"><X size={18} /></button>
         </div>
         <p className="text-xs text-dim mb-3">Cuánto quieren gastar como máximo por categoría cada periodo. Déjalo vacío para no ponerle límite.</p>
+
+        <button onClick={sugerirDesdePresupuesto} disabled={sugiriendo}
+          className="w-full mb-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+          style={{ background: 'var(--surface-2)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>
+          ✨ {sugiriendo ? 'Buscando…' : 'Sugerir desde mi Presupuesto'}
+        </button>
+        {sugerencia && (
+          <div className="rounded-lg p-2.5 mb-3 text-xs" style={{ background: 'var(--surface-2)' }}>
+            {sugerencia.fuente ? (
+              <>
+                <p className="text-body">Sugerido desde tu Presupuesto de <span className="font-medium">{sugerencia.fuente}</span>. Ajusta si hace falta y guarda.</p>
+                {sugerencia.omitidos.length > 0 && (
+                  <p className="text-dim mt-1">No se ubicaron automáticamente: {sugerencia.omitidos.join(', ')} — esos siguen viviendo solo en tu Presupuesto, no son gasto variable del día a día.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-dim">No encontramos ningún mes sincronizado en tu Presupuesto todavía.</p>
+            )}
+          </div>
+        )}
+
         <div className="space-y-2">
           {CATEGORIAS_GASTO.map(c => (
             <div key={c} className="flex items-center gap-2">
@@ -611,6 +671,7 @@ export default function Movimientos() {
   const [busqueda, setBusqueda] = useState('')
   const [filtroDesde, setFiltroDesde] = useState('')
   const [filtroHasta, setFiltroHasta] = useState('')
+  const [mostrarRango, setMostrarRango] = useState(false)
 
   const periodo = useMemo(() => periodoConOffset(offset), [offset])
 
@@ -877,10 +938,14 @@ export default function Movimientos() {
         <p className="text-strong font-semibold text-sm mb-3">Historial</p>
 
         <div className="relative mb-2.5">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+          {/* El padding-left va inline a proposito: .input define su propio
+              `padding` en shorthand y, como ese CSS carga despues de las
+              utilidades de Tailwind, un simple `pl-9` no le ganaba -- el
+              icono terminaba encimado sobre el texto. Inline siempre gana. */}
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar por concepto, categoría o monto…"
-            className="input w-full pl-9" />
+            className="input w-full" style={{ paddingLeft: '2.25rem', paddingRight: busqueda ? '2.25rem' : undefined }} />
           {busqueda && (
             <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-strong">
               <X size={14} />
@@ -889,25 +954,36 @@ export default function Movimientos() {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap mb-1">
-          <CalendarRange size={14} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-          <input type="date" value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)}
-            className="input text-xs py-1 px-2 w-[130px]" />
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>a</span>
-          <input type="date" value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)}
-            className="input text-xs py-1 px-2 w-[130px]" />
           <button onClick={filtrarHoy} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
             style={{ background: 'var(--bg-card)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>Hoy</button>
           <button onClick={filtrarEsteMes} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
             style={{ background: 'var(--bg-card)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>Este mes</button>
           <button onClick={filtrarEstePeriodo} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
             style={{ background: 'var(--bg-card)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>Este periodo</button>
+          <button onClick={() => setMostrarRango(v => !v)} className="text-xs px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1"
+            style={mostrarRango
+              ? { background: 'var(--accent)', color: '#fff' }
+              : { background: 'var(--bg-card)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>
+            <SlidersHorizontal size={11} /> Fecha
+          </button>
           {hayFiltroActivo && (
-            <button onClick={limpiarFiltros} className="text-xs px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1"
+            <button onClick={() => { limpiarFiltros(); setMostrarRango(false) }} className="text-xs px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1"
               style={{ background: 'var(--red)', color: '#fff' }}>
               <X size={11} /> Limpiar
             </button>
           )}
         </div>
+
+        {mostrarRango && (
+          <div className="rounded-xl p-3 mb-2 flex items-center gap-1.5 flex-wrap" style={{ background: 'var(--surface-2)' }}>
+            <CalendarRange size={14} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+            <input type="date" value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)}
+              className="input text-xs py-1 px-2 w-[130px]" />
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>a</span>
+            <input type="date" value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)}
+              className="input text-xs py-1 px-2 w-[130px]" />
+          </div>
+        )}
         <p className="text-xs mt-1 mb-3" style={{ color: 'var(--text-muted)' }}>
           "Este mes" es mes de calendario y "Este periodo" es el jueves-a-jueves de arriba — este buscador es independiente y no cambia el Reporte del periodo.
         </p>
