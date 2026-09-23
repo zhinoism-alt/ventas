@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
   Wallet, PiggyBank, FileSpreadsheet, Briefcase, Sun, Moon, Search,
-  Calendar as CalendarIcon, ShoppingCart,
+  Calendar as CalendarIcon, ShoppingCart, Sparkles,
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -26,6 +26,7 @@ const Empleo = lazy(() => import('./pages/Empleo'))
 const Consulta = lazy(() => import('./pages/Consulta'))
 const Calendario = lazy(() => import('./pages/Calendario'))
 const ListaSuper = lazy(() => import('./pages/ListaSuper'))
+const Limpieza = lazy(() => import('./pages/Limpieza'))
 import { getExchangeRate, refreshExchangeRate, getWhatsAppStatus } from './lib/api'
 
 // ─── Tema ─────────────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ function Layout() {
     { to: '/personal',    icon: <LayoutDashboard size={18} />, label: 'Personal',     group: 'vida' },
     { to: '/calendario',  icon: <CalendarIcon size={18} />,    label: 'Calendario',   group: 'vida' },
     { to: '/super',       icon: <ShoppingCart size={18} />,    label: 'Lista de Super', group: 'vida' },
+    { to: '/limpieza',    icon: <Sparkles size={18} />,        label: 'Limpieza',     group: 'vida' },
     { to: '/empleo',      icon: <Briefcase size={18} />,       label: 'Empleo',       group: 'vida' },
     { to: '/consulta',    icon: <Search size={18} />,          label: 'Consulta',     group: 'vida' },
   ]
@@ -247,6 +249,7 @@ function Layout() {
             <Route path="/personal"    element={<Personal />} />
             <Route path="/calendario"  element={<Calendario />} />
             <Route path="/super"       element={<ListaSuper />} />
+            <Route path="/limpieza"    element={<Limpieza />} />
             <Route path="/empleo"      element={<Empleo />} />
             <Route path="/consulta"    element={<Consulta />} />
             <Route path="/sheets"      element={<SheetsSync />} />

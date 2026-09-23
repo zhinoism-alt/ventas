@@ -266,70 +266,43 @@ function TarjetaDieta() {
 
 // ── Limpieza (el pizarrón, digitalizado) ────────────────────────────────
 
-function TarjetaLimpieza() {
+/** Vista chica: cuántas faltan, con link a la pestaña Limpieza que tiene el
+ *  detalle completo y quién hizo cada una. */
+function TarjetaLimpiezaPreview() {
   const [tareas, setTareas] = useState<TareaLimpieza[]>([])
   const [hechas, setHechas] = useState<Set<number>>(new Set())
   const [cargando, setCargando] = useState(true)
 
-  const cargar = async () => {
-    const [{ data: t }, { data: e }] = await Promise.all([
-      supabase.from('limpieza_tareas').select('id,nombre,orden').eq('activo', true).order('orden'),
-      supabase.from('limpieza_estado').select('tarea_id').eq('semana', SEMANA_ACTUAL),
-    ])
-    setTareas((t ?? []) as TareaLimpieza[])
-    setHechas(new Set(((e ?? []) as EstadoLimpieza[]).map(x => x.tarea_id)))
-    setCargando(false)
-  }
-
-  useEffect(() => { cargar() }, [])
-
-  const toggle = async (id: number) => {
-    const yaHecha = hechas.has(id)
-    const siguiente = new Set(hechas)
-    if (yaHecha) siguiente.delete(id); else siguiente.add(id)
-    setHechas(siguiente) // optimista
-
-    if (yaHecha) {
-      await supabase.from('limpieza_estado').delete().eq('tarea_id', id).eq('semana', SEMANA_ACTUAL)
-    } else {
-      await supabase.from('limpieza_estado').upsert({ tarea_id: id, semana: SEMANA_ACTUAL })
-    }
-  }
+  useEffect(() => {
+    (async () => {
+      const [{ data: t }, { data: e }] = await Promise.all([
+        supabase.from('limpieza_tareas').select('id,nombre,orden').eq('activo', true).order('orden'),
+        supabase.from('limpieza_estado').select('tarea_id').eq('semana', SEMANA_ACTUAL),
+      ])
+      setTareas((t ?? []) as TareaLimpieza[])
+      setHechas(new Set(((e ?? []) as EstadoLimpieza[]).map(x => x.tarea_id)))
+      setCargando(false)
+    })()
+  }, [])
 
   if (cargando) return <div className="card"><p className="text-xs text-dim">Cargando limpieza…</p></div>
 
-  const total = tareas.length
-  const hecho = hechas.size
+  const faltan = tareas.filter(t => !hechas.has(t.id))
 
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-strong font-semibold">🧹 Limpieza del sábado</h2>
-        <span className="text-xs text-muted">{hecho} de {total}</span>
+        <a href="/limpieza" className="text-xs text-indigo-400 hover:text-indigo-300">Ver todo →</a>
       </div>
-      <p className="text-xs text-muted mb-3">
-        El pizarrón, pero sin borrar con la manga: se marca aquí, y se vacía solo el sábado
-        siguiente. Semana: {SEMANA_ACTUAL}
-      </p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-        {tareas.map(t => {
-          const hecha = hechas.has(t.id)
-          return (
-            <button key={t.id} onClick={() => toggle(t.id)}
-              className="flex items-center gap-2 text-left px-2.5 py-2 rounded-lg text-xs transition-colors"
-              style={{
-                background: hecha ? 'var(--green-soft, rgba(74,222,128,.15))' : 'var(--surface-2)',
-                color: hecha ? 'var(--green)' : 'var(--text-body)',
-              }}>
-              <span className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center"
-                style={{ border: `1px solid ${hecha ? 'var(--green)' : 'var(--border-hi)'}` }}>
-                {hecha && <Check size={11} />}
-              </span>
-              <span className={hecha ? 'line-through' : ''}>{t.nombre}</span>
-            </button>
-          )
-        })}
-      </div>
+      <p className="text-xs text-muted mb-3">{hechas.size} de {tareas.length} hechas.</p>
+      {faltan.length === 0 ? (
+        <p className="text-xs text-dim text-center py-2">Ya está todo. 🎉</p>
+      ) : (
+        <p className="text-xs text-body">
+          Falta: {faltan.slice(0, 6).map(t => t.nombre).join(', ')}{faltan.length > 6 ? `, +${faltan.length - 6} más` : ''}
+        </p>
+      )}
     </div>
   )
 }
@@ -538,7 +511,7 @@ export default function Personal() {
       <TarjetaCalendario />
       <TarjetaDieta />
       <div className="grid md:grid-cols-2 gap-4">
-        <TarjetaLimpieza />
+        <TarjetaLimpiezaPreview />
         <TarjetaEventosPreview />
       </div>
 
