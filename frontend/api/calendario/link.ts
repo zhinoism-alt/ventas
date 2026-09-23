@@ -23,8 +23,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!token) return res.status(401).json({ error: 'Unauthorized' })
   try {
     await getUserId(token)
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' })
+  } catch (e) {
+    // Diagnostico temporal: "Invalid token" a secas no decia por que.
+    console.error('[calendario/link] verifyToken fallo:', e instanceof Error ? e.message : e)
+    return res.status(401).json({ error: 'Invalid token', detalle: e instanceof Error ? e.message : String(e) })
   }
 
   if (!process.env.CALENDAR_FEED_TOKEN) {
