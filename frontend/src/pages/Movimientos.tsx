@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, TrendingDown, Wallet, Trash2, Pencil, X, ChevronLeft, ChevronRight, HandCoins, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -47,12 +47,15 @@ const CATEGORIAS_GASTO = [
 ]
 const CATEGORIAS_INGRESO = ['Nómina', 'Venta', 'Extra', 'Reembolso', 'Otro']
 const PERSONAS = [
-  { valor: 'compartido', label: 'Compartido' },
-  { valor: 'brandon',    label: 'Brandon' },
-  { valor: 'itzel',      label: 'Itzel' },
+  { valor: 'compartido', label: 'Compartido', emoji: '🤝', color: 'var(--yellow)' },
+  { valor: 'brandon',    label: 'Brandon',    emoji: '🧔', color: 'var(--accent)' },
+  { valor: 'itzel',      label: 'Itzel',      emoji: '👩', color: '#f472b6' },
 ] as const
 
-const COLORS = ['var(--accent)', 'var(--red)', 'var(--yellow)', 'var(--cyan)', 'var(--green)', '#a78bfa', '#f472b6', '#fb923c', '#38bdf8', '#94a3b8']
+// Paletas separadas: verdes/frios para lo que entra, calidos para lo que
+// sale. Ayuda a distinguir los dos pastels de un vistazo sin leer el titulo.
+const INGRESO_COLORS = ['var(--green)', '#38bdf8', 'var(--cyan)', 'var(--accent)', '#4ade80', '#22d3ee']
+const GASTO_COLORS   = ['var(--red)', '#fb923c', 'var(--yellow)', '#f472b6', '#a78bfa', '#94a3b8', '#f87171', '#fbbf24']
 
 // Un emoji fijo por categoria, como el icono que FetPocket le pone a cada
 // gasto -- da referencia visual de un vistazo sin tener que leer el texto.
@@ -218,6 +221,81 @@ function FormMovimiento({ tipo, fondos, editando, onGuardado, onCerrar }: {
   )
 }
 
+// Fila de historial estilo FetPocket: avatar circular con el emoji,
+// pastilla de categoria, descripcion, y a la derecha el monto con los
+// botones de editar/borrar siempre visibles (no hace falta pasar el mouse
+// para saber que existen).
+function FilaMovimiento({ m, onEditar, onBorrar, destacar }: {
+  m: Movimiento; onEditar: () => void; onBorrar: () => void; destacar?: ReactNode
+}) {
+  return (
+    <div className="group flex items-center gap-3 p-2.5 rounded-xl transition-colors hover:brightness-110"
+      style={{ background: 'var(--bg)' }}>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+        style={{ background: 'var(--surface-2)' }}>
+        {CATEGORIA_EMOJI[m.categoria] ?? '💸'}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'var(--surface-2)', color: 'var(--text-strong)' }}>
+            {m.categoria}
+          </span>
+          <span className="text-xs text-dim">{PERSONAS.find(p => p.valor === m.persona)?.emoji} {PERSONAS.find(p => p.valor === m.persona)?.label}</span>
+        </div>
+        <p className="text-body text-sm font-medium truncate mt-1">{m.descripcion || m.categoria}</p>
+        {destacar}
+      </div>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        <span className="text-base font-bold" style={{ color: m.tipo === 'gasto' ? 'var(--red)' : 'var(--green)' }}>
+          {m.tipo === 'gasto' ? '-' : '+'}{fmt(m.monto)}
+        </span>
+        <div className="flex items-center gap-1">
+          <button onClick={onEditar}
+            className="p-1.5 rounded-lg text-dim hover:text-indigo-400 transition-colors" style={{ background: 'var(--surface-2)' }}>
+            <Pencil size={13} />
+          </button>
+          <button onClick={onBorrar}
+            className="p-1.5 rounded-lg text-dim hover:text-red-400 transition-colors" style={{ background: 'var(--surface-2)' }}>
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TarjetaCategorias({ titulo, datos, colores }: { titulo: string; datos: { name: string; value: number }[]; colores: string[] }) {
+  return (
+    <div className="card">
+      <p className="text-strong font-semibold text-sm mb-2">{titulo}</p>
+      <div className="flex items-center gap-4 flex-wrap">
+        <div style={{ width: 130, height: 130 }} className="flex-shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={datos} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={32} outerRadius={58} paddingAngle={2}>
+                {datos.map((_, i) => <Cell key={i} fill={colores[i % colores.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex-1 min-w-[140px] space-y-1.5">
+          {datos.map((c, i) => (
+            <div key={c.name} className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 text-body">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: colores[i % colores.length] }} />
+                {CATEGORIA_EMOJI[c.name] ?? ''} {c.name}
+              </span>
+              <span className="text-muted font-medium">{fmt(c.value)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Movimientos() {
   const [movs, setMovs]         = useState<Movimiento[]>([])
   const [fondos, setFondos]     = useState<FondoLite[]>([])
@@ -257,11 +335,13 @@ export default function Movimientos() {
   const totalGastos   = delPeriodo.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0)
   const balance        = totalIngresos - totalGastos
 
-  const gastosPorCategoria = useMemo(() => {
+  const agruparPorCategoria = (tipo: 'ingreso' | 'gasto') => {
     const mapa = new Map<string, number>()
-    delPeriodo.filter(m => m.tipo === 'gasto').forEach(m => mapa.set(m.categoria, (mapa.get(m.categoria) ?? 0) + m.monto))
+    delPeriodo.filter(m => m.tipo === tipo).forEach(m => mapa.set(m.categoria, (mapa.get(m.categoria) ?? 0) + m.monto))
     return Array.from(mapa, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
-  }, [delPeriodo])
+  }
+  const gastosPorCategoria   = useMemo(() => agruparPorCategoria('gasto'), [delPeriodo])
+  const ingresosPorCategoria = useMemo(() => agruparPorCategoria('ingreso'), [delPeriodo])
 
   const porPersona = useMemo(() => PERSONAS.map(p => {
     const items = delPeriodo.filter(m => m.persona === p.valor)
@@ -271,11 +351,10 @@ export default function Movimientos() {
   }).filter(p => p.ingresos > 0 || p.gastos > 0), [delPeriodo])
 
   const porFondo = useMemo(() => {
-    const mapa = new Map<number, { nombre: string; ingresos: number; gastos: number }>()
+    const mapa = new Map<number, { nombre: string; color: string; ingresos: number; gastos: number }>()
     delPeriodo.filter(m => m.fondo_id != null).forEach(m => {
       const f = fondos.find(x => x.id === m.fondo_id)
-      const nombre = f?.nombre ?? `Fondo #${m.fondo_id}`
-      const actual = mapa.get(m.fondo_id!) ?? { nombre, ingresos: 0, gastos: 0 }
+      const actual = mapa.get(m.fondo_id!) ?? { nombre: f?.nombre ?? `Fondo #${m.fondo_id}`, color: f?.color || 'var(--accent)', ingresos: 0, gastos: 0 }
       if (m.tipo === 'ingreso') actual.ingresos += m.monto; else actual.gastos += m.monto
       mapa.set(m.fondo_id!, actual)
     })
@@ -312,13 +391,13 @@ export default function Movimientos() {
 
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => setFormAbierto({ tipo: 'gasto' })}
-          className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5"
-          style={{ background: 'var(--red)' }}>
+          className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5 transition-transform hover:scale-[1.02]"
+          style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)', boxShadow: '0 4px 14px -4px rgba(239,68,68,.5)' }}>
           <TrendingDown size={20} /> Registrar gasto
         </button>
         <button onClick={() => setFormAbierto({ tipo: 'ingreso' })}
-          className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5"
-          style={{ background: 'var(--green)' }}>
+          className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5 transition-transform hover:scale-[1.02]"
+          style={{ background: 'linear-gradient(135deg, #22c55e, #15803d)', boxShadow: '0 4px 14px -4px rgba(34,197,94,.5)' }}>
           <TrendingUp size={20} /> Registrar ingreso
         </button>
       </div>
@@ -342,13 +421,17 @@ export default function Movimientos() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl p-4" style={{ background: 'var(--green)' }}>
-            <p className="text-xs text-white/80 mb-1">Ingresos</p>
-            <p className="text-xl font-bold text-white">{fmt(totalIngresos)}</p>
+          <div className="rounded-2xl p-4 relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #22c55e, #15803d)' }}>
+            <TrendingUp size={54} className="absolute -right-2 -bottom-3 text-white/15" />
+            <p className="text-xs text-white/80 mb-1 font-medium uppercase tracking-wide">Ingresos</p>
+            <p className="text-2xl font-extrabold text-white">{fmt(totalIngresos)}</p>
           </div>
-          <div className="rounded-xl p-4" style={{ background: 'var(--red)' }}>
-            <p className="text-xs text-white/80 mb-1">Gastos</p>
-            <p className="text-xl font-bold text-white">{fmt(totalGastos)}</p>
+          <div className="rounded-2xl p-4 relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}>
+            <TrendingDown size={54} className="absolute -right-2 -bottom-3 text-white/15" />
+            <p className="text-xs text-white/80 mb-1 font-medium uppercase tracking-wide">Gastos</p>
+            <p className="text-2xl font-extrabold text-white">{fmt(totalGastos)}</p>
           </div>
         </div>
         <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
@@ -362,15 +445,15 @@ export default function Movimientos() {
           <p className="text-strong font-semibold text-sm mb-2 flex items-center gap-1.5">
             <HandCoins size={15} style={{ color: 'var(--yellow)' }} /> Préstamos pendientes de reponer ({prestamosPendientes.length})
           </p>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {prestamosPendientes.map(m => (
-              <div key={m.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: 'var(--bg)' }}>
-                <div className="min-w-0 flex items-center gap-2">
-                  <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[m.categoria] ?? '💸'}</span>
-                  <div className="min-w-0">
-                    <p className="text-body text-sm truncate">{m.descripcion || m.categoria}</p>
-                    <p className="text-xs text-dim">{fmt(m.monto)} · {PERSONAS.find(p => p.valor === m.persona)?.label} · {m.fecha}</p>
-                  </div>
+              <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: 'var(--bg)' }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-base flex-shrink-0" style={{ background: 'var(--surface-2)' }}>
+                  {CATEGORIA_EMOJI[m.categoria] ?? '💸'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-body text-sm font-medium truncate">{m.descripcion || m.categoria}</p>
+                  <p className="text-xs text-dim">{fmt(m.monto)} · {PERSONAS.find(p => p.valor === m.persona)?.label} · {m.fecha}</p>
                 </div>
                 <button onClick={() => marcarRepuesto(m.id)}
                   className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white"
@@ -385,20 +468,33 @@ export default function Movimientos() {
 
       {porPersona.length > 0 && (
         <div className="card">
-          <p className="text-strong font-semibold text-sm mb-2">Por persona (periodo)</p>
-          <div className="space-y-2">
-            {porPersona.map(p => (
-              <div key={p.valor} className="flex items-center justify-between text-sm">
-                <span className="text-body">{p.label}</span>
-                <span className="text-xs text-dim">
-                  <span style={{ color: 'var(--green)' }}>+{fmt(p.ingresos)}</span>
-                  {' · '}
-                  <span style={{ color: 'var(--red)' }}>−{fmt(p.gastos)}</span>
-                  {' · '}
-                  <span className="font-medium" style={{ color: p.neto >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(p.neto)}</span>
-                </span>
-              </div>
-            ))}
+          <p className="text-strong font-semibold text-sm mb-3">Por persona (periodo)</p>
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            {porPersona.map(p => {
+              const total = p.ingresos + p.gastos
+              const pctIngreso = total > 0 ? (p.ingresos / total) * 100 : 0
+              return (
+                <div key={p.valor} className="rounded-xl p-3" style={{ background: 'var(--bg)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                      style={{ background: 'var(--surface-2)' }}>{p.emoji}</div>
+                    <span className="text-sm font-semibold text-strong">{p.label}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden flex mb-2" style={{ background: 'var(--surface-2)' }}>
+                    <div style={{ width: `${pctIngreso}%`, background: 'var(--green)' }} />
+                    <div style={{ width: `${100 - pctIngreso}%`, background: 'var(--red)' }} />
+                  </div>
+                  <div className="text-xs space-y-0.5">
+                    <div className="flex justify-between"><span className="text-dim">Ingresos</span><span style={{ color: 'var(--green)' }} className="font-medium">+{fmt(p.ingresos)}</span></div>
+                    <div className="flex justify-between"><span className="text-dim">Gastos</span><span style={{ color: 'var(--red)' }} className="font-medium">−{fmt(p.gastos)}</span></div>
+                    <div className="flex justify-between pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+                      <span className="text-dim">Neto</span>
+                      <span className="font-bold" style={{ color: p.neto >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(p.neto)}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -408,11 +504,12 @@ export default function Movimientos() {
           <p className="text-strong font-semibold text-sm mb-2">Por fondo de origen (periodo)</p>
           <div className="space-y-2">
             {porFondo.map(f => (
-              <div key={f.nombre} className="flex items-center justify-between text-sm">
-                <span className="text-body">{f.nombre}</span>
-                <span className="text-xs text-dim">
-                  {f.ingresos > 0 && <span style={{ color: 'var(--green)' }}>+{fmt(f.ingresos)} </span>}
-                  {f.gastos > 0 && <span style={{ color: 'var(--red)' }}>−{fmt(f.gastos)}</span>}
+              <div key={f.nombre} className="flex items-center gap-2.5 p-2 rounded-lg" style={{ background: 'var(--bg)' }}>
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: f.color }} />
+                <span className="text-body text-sm flex-1">{f.nombre}</span>
+                <span className="text-xs">
+                  {f.ingresos > 0 && <span style={{ color: 'var(--green)' }} className="font-medium">+{fmt(f.ingresos)} </span>}
+                  {f.gastos > 0 && <span style={{ color: 'var(--red)' }} className="font-medium">−{fmt(f.gastos)}</span>}
                 </span>
               </div>
             ))}
@@ -420,32 +517,14 @@ export default function Movimientos() {
         </div>
       )}
 
-      {gastosPorCategoria.length > 0 && (
-        <div className="card">
-          <p className="text-strong font-semibold text-sm mb-2">Gastos por categoría (periodo)</p>
-          <div className="flex items-center gap-4 flex-wrap">
-            <div style={{ width: 140, height: 140 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={gastosPorCategoria} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={60}>
-                    {gastosPorCategoria.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex-1 min-w-[160px] space-y-1">
-              {gastosPorCategoria.map((c, i) => (
-                <div key={c.name} className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5 text-body">
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                    {c.name}
-                  </span>
-                  <span className="text-muted font-medium">{fmt(c.value)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {(ingresosPorCategoria.length > 0 || gastosPorCategoria.length > 0) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {ingresosPorCategoria.length > 0 && (
+            <TarjetaCategorias titulo="Ingresos por categoría (periodo)" datos={ingresosPorCategoria} colores={INGRESO_COLORS} />
+          )}
+          {gastosPorCategoria.length > 0 && (
+            <TarjetaCategorias titulo="Gastos por categoría (periodo)" datos={gastosPorCategoria} colores={GASTO_COLORS} />
+          )}
         </div>
       )}
 
@@ -457,33 +536,21 @@ export default function Movimientos() {
           <div className="space-y-4">
             {porFecha.map(([fecha, items]) => (
               <div key={fecha}>
-                <p className="text-xs text-dim mb-1.5">{new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
-                <div className="space-y-1">
+                <p className="text-xs text-dim mb-1.5 font-medium uppercase tracking-wide">
+                  {new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}
+                </p>
+                <div className="space-y-1.5">
                   {items.map(m => (
-                    <div key={m.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: 'var(--bg)' }}>
-                      <div className="min-w-0 flex items-center gap-2">
-                        <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[m.categoria] ?? '💸'}</span>
-                        <div className="min-w-0">
-                          <p className="text-body text-sm truncate">{m.descripcion || m.categoria}</p>
-                          <p className="text-xs text-dim">
-                            {m.categoria} · {PERSONAS.find(p => p.valor === m.persona)?.label}
-                            {m.es_prestamo ? (m.prestamo_pagado ? ' · préstamo repuesto' : ' · préstamo pendiente') : ''}
-                            {m.registrado_por ? ` · ${m.registrado_por}` : ''}
+                    <FilaMovimiento key={m.id} m={m}
+                      onEditar={() => setFormAbierto({ tipo: m.tipo, editando: m })}
+                      onBorrar={() => delMov(m.id)}
+                      destacar={m.es_prestamo
+                        ? <p className="text-xs mt-0.5" style={{ color: 'var(--yellow)' }}>
+                            🤝 {m.prestamo_pagado ? 'Préstamo repuesto' : 'Préstamo pendiente'}
                           </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm font-medium" style={{ color: m.tipo === 'gasto' ? 'var(--red)' : 'var(--green)' }}>
-                          {m.tipo === 'gasto' ? '-' : '+'}{fmt(m.monto)}
-                        </span>
-                        <button onClick={() => setFormAbierto({ tipo: m.tipo, editando: m })} className="text-dim hover:text-indigo-400">
-                          <Pencil size={13} />
-                        </button>
-                        <button onClick={() => delMov(m.id)} className="text-dim hover:text-red-400">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
+                        : m.registrado_por
+                          ? <p className="text-xs text-dim mt-0.5">{m.registrado_por}</p>
+                          : undefined} />
                   ))}
                 </div>
               </div>
