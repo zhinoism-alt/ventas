@@ -12,6 +12,7 @@ import { getSummary, getExpiringSubscriptions, formatMXN } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { TOOLTIP_STYLE, formatMonth } from '../lib/constants'
 import { fmt } from '../lib/utils'
+import { periodoConOffset } from '../lib/periodoFinanciero'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -256,6 +257,63 @@ function BannerPendientes() {
   )
 }
 
+// El HUD de Movimientos vive aparte de BannerPendientes: uno avisa "hay algo
+// que hacer hoy" y desaparece si no hay nada, este otro siempre muestra el
+// balance del periodo (jueves a jueves) porque es la pregunta que antes se
+// contestaba abriendo FetPocket -- ahora se contesta sin salir del Dashboard.
+function MovimientosHUD() {
+  const [datos, setDatos] = useState<{ ingresos: number; gastos: number; prestamos: number } | null>(null)
+
+  useEffect(() => {
+    (async () => {
+      const periodo = periodoConOffset(0)
+      const [{ data: movs }, { count: prestamos }] = await Promise.all([
+        supabase.from('movimientos').select('tipo,monto')
+          .gte('fecha', periodo.inicioISO).lte('fecha', periodo.cierreISO),
+        supabase.from('movimientos').select('id', { count: 'exact', head: true })
+          .eq('es_prestamo', true).eq('prestamo_pagado', false),
+      ])
+      const ingresos = (movs ?? []).filter((m: any) => m.tipo === 'ingreso').reduce((s: number, m: any) => s + Number(m.monto), 0)
+      const gastos   = (movs ?? []).filter((m: any) => m.tipo === 'gasto').reduce((s: number, m: any) => s + Number(m.monto), 0)
+      setDatos({ ingresos, gastos, prestamos: prestamos ?? 0 })
+    })()
+  }, [])
+
+  if (!datos) return null
+  const balance = datos.ingresos - datos.gastos
+
+  return (
+    <a href="/movimientos" className="block rounded-2xl p-4 transition-transform hover:scale-[1.01]"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hi)', textDecoration: 'none' }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-strong font-semibold text-sm flex items-center gap-1.5">
+          💳 Movimientos del mes
+        </p>
+        <span className="text-xs text-dim flex items-center gap-1">Ver todo <ArrowRight size={11} /></span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl p-3" style={{ background: 'var(--green)' }}>
+          <p className="text-xs text-white/80 mb-0.5">Ingresos</p>
+          <p className="text-lg font-bold text-white">{fmt(datos.ingresos)}</p>
+        </div>
+        <div className="rounded-xl p-3" style={{ background: 'var(--red)' }}>
+          <p className="text-xs text-white/80 mb-0.5">Gastos</p>
+          <p className="text-lg font-bold text-white">{fmt(datos.gastos)}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-2.5 text-sm">
+        <span className="text-muted">Balance</span>
+        <span className="font-semibold" style={{ color: balance >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(balance)}</span>
+      </div>
+      {datos.prestamos > 0 && (
+        <p className="text-xs mt-2" style={{ color: 'var(--yellow)' }}>
+          🤝 {datos.prestamos} préstamo{datos.prestamos > 1 ? 's' : ''} pendiente{datos.prestamos > 1 ? 's' : ''} de reponer
+        </p>
+      )}
+    </a>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -396,6 +454,9 @@ export default function Dashboard() {
           </a>
         </div>
       </div>
+
+      {/* ── Movimientos: protagonista, no escondido dentro de la app ── */}
+      <MovimientosHUD />
 
       {/* ── IPTV Expiration Alert ── */}
       {expiring.length > 0 && (
