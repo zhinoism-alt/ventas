@@ -118,10 +118,15 @@ const PISTAS_CATEGORIA: [string, string][] = [
   ['burger', 'Comida rápida'], ['mcdonalds', 'Comida rápida'], ['kfc', 'Comida rápida'],
   ['restaurante', 'Comida rápida'], ['comida', 'Comida rápida'], ['tostadas', 'Comida rápida'],
   ['soriana', 'Súper'], ['walmart', 'Súper'], ['costco', 'Súper'], ['supermercado', 'Súper'], ['mandado', 'Súper'],
+  // 'garrafon' va ANTES que 'agua': el garrafon de agua purificada ($17/galon
+  // que ellos mismos van a rellenar) no es lo mismo que el servicio de JMAS,
+  // aunque la palabra "agua" aparezca en las dos ("Garrafon de agua"). Si
+  // 'agua' se revisara primero, "garrafon de agua" caeria mal en Servicios.
+  ['garrafon', 'Súper'], ['garrafones', 'Súper'],
   ['gasolina', 'Transporte'], ['uber', 'Transporte'], ['didi', 'Transporte'], ['taxi', 'Transporte'],
-  ['parqu', 'Transporte'], ['estacionamiento', 'Transporte'],
-  ['luz', 'Servicios'], ['agua', 'Servicios'], ['garrafon', 'Servicios'], ['internet', 'Servicios'],
-  ['telcel', 'Servicios'], ['celular', 'Servicios'],
+  ['parqu', 'Transporte'], ['estacionamiento', 'Transporte'], ['camioneta', 'Transporte'],
+  ['luz', 'Servicios'], ['agua', 'Servicios'], ['internet', 'Servicios'],
+  ['telcel', 'Servicios'], ['celular', 'Servicios'], ['servicio', 'Servicios'], ['servicios', 'Servicios'],
   // 'gas' va despues de 'gasolina' a proposito: "gasolina" tiene que
   // encontrar Transporte primero, o "Gasolina" caeria aqui por error
   // (gasolina contiene "gas" como substring).
@@ -139,9 +144,11 @@ const PISTAS_CATEGORIA: [string, string][] = [
 ]
 
 function sugerirCategoria(descripcion: string, categorias: string[]): string | null {
-  const d = descripcion.toLowerCase()
+  // normalizar() (no solo toLowerCase) para que "Garrafón" encuentre la
+  // pista "garrafon" aunque el acento no coincida caracter por caracter.
+  const d = normalizar(descripcion)
   for (const [pista, cat] of PISTAS_CATEGORIA) {
-    if (d.includes(pista) && categorias.includes(cat)) return cat
+    if (d.includes(normalizar(pista)) && categorias.includes(cat)) return cat
   }
   return null
 }
@@ -153,6 +160,39 @@ function hoyISO() { return new Date().toISOString().slice(0, 10) }
 // letra de su acento (a + ´) y el regex se queda solo con la letra.
 function normalizar(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+// Quita palabras de enlace para comparar "fondo de emergencia" contra
+// "Fondo Emergencia" -- son el mismo nombre, pero el "de" de en medio rompe
+// una comparacion de substring directa.
+function limpiarParaComparar(s: string): string {
+  return normalizar(s).replace(/\b(de|del|la|el|los|las)\b/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * "Pizza-salidas" o "Camioneta - Fondo de Emergencia": el "hard code" que
+ * Brandon e Itzel ya usaban a mano para decir de donde quieren que salga un
+ * gasto, ahora VentasPro lo lee. Lo que va despues del ultimo guion gana
+ * sobre la categoria que hubiera adivinado la palabra de antes -- por eso
+ * "pizza" sola cae en Comida rapida, pero "pizza-salidas" cae en
+ * Entretenimiento. Si el texto despues del guion nombra un fondo en vez de
+ * una categoria ("fondo de emergencia"), en cambio se usa para el fondo de
+ * origen/destino, no para la categoria.
+ */
+function interpretarDestino(texto: string, categorias: string[], fondos: FondoLite[]): { categoria: string | null; fondoId: number | null } {
+  const guion = texto.lastIndexOf('-')
+  if (guion < 0) return { categoria: null, fondoId: null }
+  const destino = texto.slice(guion + 1).trim()
+  if (!destino) return { categoria: null, fondoId: null }
+
+  const destinoLimpio = limpiarParaComparar(destino)
+  const fondoMatch = fondos.find(f => {
+    const nombreLimpio = limpiarParaComparar(f.nombre)
+    return nombreLimpio.length > 2 && (destinoLimpio.includes(nombreLimpio) || nombreLimpio.includes(destinoLimpio))
+  })
+
+  const categoriaMatch = sugerirCategoria(destino, categorias)
+  return { categoria: categoriaMatch, fondoId: fondoMatch?.id ?? null }
 }
 
 function primerDiaDelMes(d: Date): string {
@@ -178,12 +218,21 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
   const [fecha, setFecha]           = useState(editando?.fecha ?? hoyISO())
   const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? recurrenteBase?.persona ?? 'compartido')
   const [fondoId, setFondoId]       = useState(editando?.fondo_id ? String(editando.fondo_id) : recurrenteBase?.fondo_id ? String(recurrenteBase.fondo_id) : '')
+  const [fondoTocado, setFondoTocado] = useState(!!editando?.fondo_id || !!recurrenteBase?.fondo_id)
   const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? recurrenteBase?.metodo_pago ?? '')
   const [esPrestamo, setEsPrestamo] = useState(editando?.es_prestamo ?? false)
   const [guardando, setGuardando]   = useState(false)
 
   const cambiarDescripcion = (v: string) => {
     setDescripcion(v)
+    // "Pizza-salidas" o "Camioneta - Fondo de Emergencia": lo que va despues
+    // del guion es el hard-code de ellos para decir a que categoria o fondo
+    // quieren que se vaya el gasto, y gana sobre lo que adivinaria la
+    // palabra de antes del guion.
+    const destino = interpretarDestino(v, categorias, fondos)
+    if (destino.categoria && !categoriaTocada) { setCategoria(destino.categoria); return }
+    if (destino.fondoId != null && !fondoTocado) setFondoId(String(destino.fondoId))
+    if (destino.categoria) return
     if (!categoriaTocada) {
       const sugerida = sugerirCategoria(v, categorias)
       if (sugerida) setCategoria(sugerida)
@@ -277,11 +326,13 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
             <label className="text-xs text-muted mb-1 block">
               {tipo === 'gasto' ? '¿De qué fondo sale? (opcional)' : '¿A qué fondo entra? (opcional)'}
             </label>
-            <select value={fondoId} onChange={e => setFondoId(e.target.value)} className="input w-full">
+            <select value={fondoId} onChange={e => { setFondoId(e.target.value); setFondoTocado(true) }} className="input w-full">
               <option value="">Sin fondo específico</option>
               {fondos.map(f => <option key={f.id} value={f.id}>{f.nombre}{f.descripcion ? ` · ${f.descripcion}` : ''}</option>)}
             </select>
-            <p className="text-xs text-dim mt-1">Solo para reportear — no cambia el saldo del fondo en Ahorros.</p>
+            <p className="text-xs text-dim mt-1">
+              Solo para reportear — no cambia el saldo del fondo en Ahorros. Tip: escribe "concepto - fondo" (ej. "Camioneta - Fondo Emergencia") para que lo detecte solo.
+            </p>
           </div>
           <div>
             <label className="text-xs text-muted mb-1 block">¿Con qué pagaste? (opcional)</label>
