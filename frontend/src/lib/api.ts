@@ -911,6 +911,17 @@ export const refreshExchangeRate = async () => {
   }
 }
 
+// ── Calendario (.ics) ───────────────────────────────────────────────────────
+// El token del feed nunca esta en el bundle del navegador (CALENDAR_FEED_TOKEN
+// no lleva prefijo VITE_); esta funcion es la unica forma de conseguir la URL
+// completa, y solo la entrega la funcion serverless a quien ya inicio sesion.
+export const getCalendarLink = async () => {
+  const token = await getToken()
+  const res = await fetch('/api/calendario/link', { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) throw new Error('No se pudo obtener el enlace del calendario')
+  return (await res.json()) as { url: string }
+}
+
 // ── WhatsApp (disabled in serverless) ─────────────────────────────────────────
 export const getWhatsAppStatus    = () => Promise.resolve({ data: { status: 'disabled' } })
 export const getWhatsAppQR        = () => Promise.resolve({ data: { qr: null } })
