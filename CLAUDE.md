@@ -174,8 +174,9 @@ Otros datos que el confirmo:
 
 ## Deuda conocida
 
-- **RLS apagado** en todas las tablas y la llave anónima va en el paquete
-  público. El único freno real es Clerk. La migración está lista y pendiente.
+- **RLS activo desde el 2026-09-22** en las 31 tablas (una política,
+  `clerk_autenticados`, por tabla). Detalle de cómo se cerró en
+  `supabase/RLS.md`.
 - **Clerk es una instancia de desarrollo** (`pk_test_`) corriendo en producción.
 - `CRON_SECRET` no está puesto en Vercel; los crons devuelven 401 en silencio.
 - `backend/`, `Dockerfile`, `fly.toml` y `scripts/deploy-fly.bat` (de una

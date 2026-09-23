@@ -1,16 +1,22 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- RLS: cerrar el acceso anonimo a todas las tablas.
 --
--- ⚠️  NO CORRAS ESTO TODAVIA.  Es el ULTIMO paso de supabase/RLS.md.
+-- Aplicada en produccion el 2026-09-22. Hasta ese dia RLS estaba apagado y
+-- la anon key viaja en el bundle publico del navegador: cualquiera con la
+-- URL desplegada podia leer y escribir el presupuesto, los ahorros y el
+-- sueldo. Esta migracion lo cierra.
 --
--- Hoy RLS esta apagado y la anon key viaja en el bundle publico del navegador:
--- cualquiera con la URL desplegada puede leer y escribir el presupuesto, los
--- ahorros y el sueldo. Esta migracion lo cierra.
+-- El bloqueo real no fue esta migracion: fue que Supabase rechazaba el JWT
+-- de Clerk con PGRST301 "No suitable key was found to decode the JWT" pese
+-- a que Clerk, el claim y el proveedor en Supabase ya estaban bien
+-- configurados. Se resolvio quitando y volviendo a agregar el proveedor
+-- Clerk en Authentication -> Third-Party Auth (forzo a PostgREST a
+-- refrescar la llave), sin tocar nada de este archivo.
 --
--- Si la corres ANTES de que Clerk este registrado como Third-Party Auth en
--- Supabase y VITE_SUPABASE_CLERK_AUTH este en true, la app se queda ciega:
--- las consultas seguiran yendo como anon y ya no habra politica que las deje
--- pasar. Al final del archivo esta la reversa por si eso pasa.
+-- Al aplicarla aparecieron 18 tablas con politicas viejas de un intento
+-- anterior (`anon_all`, que le daba paso al rol anon, y `auth_all`,
+-- redundante con la de abajo) que sobrevivian junto a la nueva. Se
+-- limpiaron aparte, ver 20260922010000_limpiar_politicas_viejas.sql.
 --
 -- Las funciones serverless (crons, sheets) usan SERVICE_ROLE_KEY, que ignora
 -- RLS por diseno: no se ven afectadas.
