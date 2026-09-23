@@ -4,6 +4,7 @@
   ],
   "crons": [
     { "path": "/api/cron/refresh-exchange-rate", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/expire-subscriptions",  "schedule": "0 8 * * *" }
+    { "path": "/api/cron/expire-subscriptions",  "schedule": "0 8 * * *" },
+    { "path": "/api/cron/cierre-periodo",        "schedule": "0 13 * * 4" }
   ]
 }
