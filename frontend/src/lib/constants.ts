@@ -1,10 +1,14 @@
 // ── Shared chart tooltip style ────────────────────────────────────────────────
+// El borde oscuro (#2d3f58) se perdia contra el fondo del tema oscuro -- el
+// tooltip se veia como un bloque negro sin contorno. Borde mas claro +
+// sombra le dan profundidad para que se distinga de lo que tiene detras.
 export const TOOLTIP_STYLE = {
   backgroundColor: '#1e293b',
-  border: '1px solid #2d3f58',
+  border: '1px solid #475569',
   borderRadius: '8px',
   color: '#f1f5f9',
   fontSize: '12px',
+  boxShadow: '0 8px 24px rgba(0,0,0,.5)',
 }
 
 // ── Month abbreviations (ES) ──────────────────────────────────────────────────

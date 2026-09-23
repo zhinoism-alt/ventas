@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { TrendingUp, TrendingDown, Wallet, Trash2, Pencil, X, ChevronLeft, ChevronRight, HandCoins, Check } from 'lucide-react'
+import {
+  TrendingUp, TrendingDown, Wallet, Trash2, Pencil, X, ChevronLeft, ChevronRight,
+  HandCoins, Check, Search, CalendarRange,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/utils'
@@ -96,6 +99,20 @@ function sugerirCategoria(descripcion: string, categorias: string[]): string | n
 }
 
 function hoyISO() { return new Date().toISOString().slice(0, 10) }
+
+// Sin acentos y sin mayusculas para que "categoria" encuentre "categoría" y
+// "Súper" se encuentre buscando "super". String.normalize('NFD') separa la
+// letra de su acento (a + ´) y el regex se queda solo con la letra.
+function normalizar(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+function primerDiaDelMes(d: Date): string {
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
+}
+function ultimoDiaDelMes(d: Date): string {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)
+}
 
 function FormMovimiento({ tipo, fondos, editando, onGuardado, onCerrar }: {
   tipo: 'ingreso' | 'gasto'; fondos: FondoLite[]; editando?: Movimiento; onGuardado: () => void; onCerrar: () => void
@@ -302,6 +319,9 @@ export default function Movimientos() {
   const [cargando, setCargando] = useState(true)
   const [formAbierto, setFormAbierto] = useState<{ tipo: 'ingreso' | 'gasto'; editando?: Movimiento } | null>(null)
   const [offset, setOffset]     = useState(0)
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroDesde, setFiltroDesde] = useState('')
+  const [filtroHasta, setFiltroHasta] = useState('')
 
   const periodo = useMemo(() => periodoConOffset(offset), [offset])
 
@@ -366,15 +386,47 @@ export default function Movimientos() {
       .sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [movs])
 
+  // El buscador de Historial es independiente del Reporte del periodo de
+  // arriba (jueves a jueves): busca sobre TODOS los movimientos, no solo los
+  // del periodo mostrado, para que "buscar gasolina" encuentre uno de hace
+  // dos meses aunque el reporte de arriba este viendo el periodo actual.
+  const hayFiltroActivo = !!busqueda.trim() || !!filtroDesde || !!filtroHasta
+
+  const historialFiltrado = useMemo(() => {
+    let lista = movs
+    if (filtroDesde) lista = lista.filter(m => m.fecha >= filtroDesde)
+    if (filtroHasta) lista = lista.filter(m => m.fecha <= filtroHasta)
+    const q = busqueda.trim()
+    if (q) {
+      const qNorm = normalizar(q)
+      lista = lista.filter(m =>
+        normalizar(m.descripcion).includes(qNorm) ||
+        normalizar(m.categoria).includes(qNorm) ||
+        String(m.monto).includes(q))
+    }
+    return lista
+  }, [movs, busqueda, filtroDesde, filtroHasta])
+
+  const resumenFiltrado = useMemo(() => {
+    const ingresos = historialFiltrado.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
+    const gastos   = historialFiltrado.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0)
+    return { ingresos, gastos, balance: ingresos - gastos, cantidad: historialFiltrado.length }
+  }, [historialFiltrado])
+
   // Agrupados por fecha para la lista, mas facil de leer que una tabla plana.
   const porFecha = useMemo(() => {
     const mapa = new Map<string, Movimiento[]>()
-    movs.slice(0, 100).forEach(m => {
+    historialFiltrado.slice(0, 300).forEach(m => {
       if (!mapa.has(m.fecha)) mapa.set(m.fecha, [])
       mapa.get(m.fecha)!.push(m)
     })
     return Array.from(mapa.entries())
-  }, [movs])
+  }, [historialFiltrado])
+
+  const limpiarFiltros = () => { setBusqueda(''); setFiltroDesde(''); setFiltroHasta('') }
+  const filtrarHoy = () => { const h = hoyISO(); setFiltroDesde(h); setFiltroHasta(h) }
+  const filtrarEsteMes = () => { const hoy = new Date(); setFiltroDesde(primerDiaDelMes(hoy)); setFiltroHasta(ultimoDiaDelMes(hoy)) }
+  const filtrarEstePeriodo = () => { setFiltroDesde(periodo.inicioISO); setFiltroHasta(periodo.cierreISO) }
 
   if (cargando) return <div className="card"><p className="text-xs text-dim">Cargando…</p></div>
 
@@ -530,8 +582,57 @@ export default function Movimientos() {
 
       <div className="card">
         <p className="text-strong font-semibold text-sm mb-3">Historial</p>
+
+        <div className="relative mb-2.5">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim" />
+          <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar por concepto, categoría o monto…"
+            className="input w-full pl-9" />
+          {busqueda && (
+            <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-strong">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+          <CalendarRange size={13} className="text-dim flex-shrink-0" />
+          <input type="date" value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)}
+            className="input text-xs py-1 px-2 w-[130px]" />
+          <span className="text-xs text-dim">a</span>
+          <input type="date" value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)}
+            className="input text-xs py-1 px-2 w-[130px]" />
+          <button onClick={filtrarHoy} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Hoy</button>
+          <button onClick={filtrarEsteMes} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Este mes</button>
+          <button onClick={filtrarEstePeriodo} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Este periodo</button>
+          {hayFiltroActivo && (
+            <button onClick={limpiarFiltros} className="text-xs px-2 py-1 rounded-lg flex items-center gap-1"
+              style={{ background: 'var(--red)', color: '#fff' }}>
+              <X size={11} /> Limpiar
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-dim mb-3">
+          "Este mes" es mes de calendario y "Este periodo" es el jueves-a-jueves de arriba — este buscador es independiente y no cambia el Reporte del periodo.
+        </p>
+
+        {hayFiltroActivo && (
+          <div className="rounded-xl p-3 mb-3 flex items-center justify-between flex-wrap gap-2" style={{ background: 'var(--surface-2)' }}>
+            <span className="text-xs text-muted">{resumenFiltrado.cantidad} resultado{resumenFiltrado.cantidad !== 1 ? 's' : ''}</span>
+            <span className="text-xs">
+              <span style={{ color: 'var(--green)' }}>+{fmt(resumenFiltrado.ingresos)}</span>
+              {' · '}
+              <span style={{ color: 'var(--red)' }}>−{fmt(resumenFiltrado.gastos)}</span>
+              {' · '}
+              <span className="font-semibold" style={{ color: resumenFiltrado.balance >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(resumenFiltrado.balance)}</span>
+            </span>
+          </div>
+        )}
+
         {porFecha.length === 0 ? (
-          <p className="text-xs text-dim text-center py-6">Sin movimientos todavía.</p>
+          <p className="text-xs text-dim text-center py-6">
+            {hayFiltroActivo ? 'Nada encontrado con ese filtro.' : 'Sin movimientos todavía.'}
+          </p>
         ) : (
           <div className="space-y-4">
             {porFecha.map(([fecha, items]) => (
