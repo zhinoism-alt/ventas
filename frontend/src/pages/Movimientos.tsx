@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { TrendingUp, TrendingDown, Wallet, Trash2, X, ChevronLeft, ChevronRight, HandCoins, Check } from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, Trash2, Pencil, X, ChevronLeft, ChevronRight, HandCoins, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/utils'
@@ -43,7 +43,7 @@ interface FondoLite { id: number; nombre: string; descripcion: string | null; co
 
 const CATEGORIAS_GASTO = [
   'Comida rápida', 'Súper', 'Transporte', 'Servicios', 'Salud',
-  'Entretenimiento', 'Regalos', 'Ropa', 'Casa', 'Otro',
+  'Entretenimiento', 'Regalos', 'Ropa', 'Casa', 'Seguros', 'Otro',
 ]
 const CATEGORIAS_INGRESO = ['Nómina', 'Venta', 'Extra', 'Reembolso', 'Otro']
 const PERSONAS = [
@@ -54,33 +54,86 @@ const PERSONAS = [
 
 const COLORS = ['var(--accent)', 'var(--red)', 'var(--yellow)', 'var(--cyan)', 'var(--green)', '#a78bfa', '#f472b6', '#fb923c', '#38bdf8', '#94a3b8']
 
+// Un emoji fijo por categoria, como el icono que FetPocket le pone a cada
+// gasto -- da referencia visual de un vistazo sin tener que leer el texto.
+const CATEGORIA_EMOJI: Record<string, string> = {
+  'Comida rápida': '🍔', 'Súper': '🛒', 'Transporte': '🚗', 'Servicios': '💡',
+  'Salud': '🏥', 'Entretenimiento': '🎬', 'Regalos': '🎁', 'Ropa': '👕',
+  'Casa': '🏠', 'Seguros': '📄', 'Nómina': '💼', 'Venta': '📈',
+  'Extra': '➕', 'Reembolso': '🔄', 'Otro': '💸',
+}
+
+// Adivina la categoria a partir de lo que Brandon escribe en "que es" --
+// nada de IA, solo palabras clave. Empezar sencillo: cubre lo que ya
+// aparece en su historial de FetPocket, y siempre queda editable.
+const PISTAS_CATEGORIA: [string, string][] = [
+  ['pizza', 'Comida rápida'], ['subway', 'Comida rápida'], ['tacos', 'Comida rápida'],
+  ['burger', 'Comida rápida'], ['mcdonalds', 'Comida rápida'], ['kfc', 'Comida rápida'],
+  ['restaurante', 'Comida rápida'], ['comida', 'Comida rápida'], ['tostadas', 'Comida rápida'],
+  ['soriana', 'Súper'], ['walmart', 'Súper'], ['costco', 'Súper'], ['supermercado', 'Súper'],
+  ['gasolina', 'Transporte'], ['uber', 'Transporte'], ['didi', 'Transporte'], ['taxi', 'Transporte'],
+  ['parqu', 'Transporte'], ['estacionamiento', 'Transporte'],
+  ['luz', 'Servicios'], ['agua', 'Servicios'], ['internet', 'Servicios'], ['telcel', 'Servicios'],
+  ['netflix', 'Entretenimiento'], ['spotify', 'Entretenimiento'], ['cine', 'Entretenimiento'], ['boleto', 'Entretenimiento'],
+  ['farmacia', 'Salud'], ['doctor', 'Salud'], ['medico', 'Salud'], ['dentista', 'Salud'], ['hospital', 'Salud'],
+  ['regalo', 'Regalos'], ['boda', 'Regalos'], ['cumpleaños', 'Regalos'],
+  ['ropa', 'Ropa'], ['zapatos', 'Ropa'],
+  ['renta', 'Casa'], ['mantenimiento', 'Casa'],
+  ['seguro', 'Seguros'], ['aseguranza', 'Seguros'], ['poliza', 'Seguros'],
+  ['nomina', 'Nómina'], ['sueldo', 'Nómina'], ['salario', 'Nómina'],
+  ['venta', 'Venta'], ['iptv', 'Venta'],
+]
+
+function sugerirCategoria(descripcion: string, categorias: string[]): string | null {
+  const d = descripcion.toLowerCase()
+  for (const [pista, cat] of PISTAS_CATEGORIA) {
+    if (d.includes(pista) && categorias.includes(cat)) return cat
+  }
+  return null
+}
+
 function hoyISO() { return new Date().toISOString().slice(0, 10) }
 
-function FormMovimiento({ tipo, fondos, onGuardado, onCerrar }: {
-  tipo: 'ingreso' | 'gasto'; fondos: FondoLite[]; onGuardado: () => void; onCerrar: () => void
+function FormMovimiento({ tipo, fondos, editando, onGuardado, onCerrar }: {
+  tipo: 'ingreso' | 'gasto'; fondos: FondoLite[]; editando?: Movimiento; onGuardado: () => void; onCerrar: () => void
 }) {
   const { usuario } = useAuth()
   const categorias = tipo === 'gasto' ? CATEGORIAS_GASTO : CATEGORIAS_INGRESO
-  const [monto, setMonto]           = useState('')
-  const [categoria, setCategoria]   = useState(categorias[0])
-  const [descripcion, setDescripcion] = useState('')
-  const [fecha, setFecha]           = useState(hoyISO())
-  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>('compartido')
-  const [fondoId, setFondoId]       = useState('')
-  const [esPrestamo, setEsPrestamo] = useState(false)
+  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? '')
+  const [monto, setMonto]           = useState(editando ? String(editando.monto) : '')
+  const [categoria, setCategoria]   = useState(editando?.categoria ?? categorias[0])
+  // Mientras el usuario no toque el select a mano, cada letra que escribe en
+  // "que es" puede seguir moviendo la categoria sugerida. En cuanto la elige
+  // el mismo, se respeta lo que puso -- nunca se le pisa una eleccion propia.
+  const [categoriaTocada, setCategoriaTocada] = useState(!!editando)
+  const [fecha, setFecha]           = useState(editando?.fecha ?? hoyISO())
+  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? 'compartido')
+  const [fondoId, setFondoId]       = useState(editando?.fondo_id ? String(editando.fondo_id) : '')
+  const [esPrestamo, setEsPrestamo] = useState(editando?.es_prestamo ?? false)
   const [guardando, setGuardando]   = useState(false)
+
+  const cambiarDescripcion = (v: string) => {
+    setDescripcion(v)
+    if (!categoriaTocada) {
+      const sugerida = sugerirCategoria(v, categorias)
+      if (sugerida) setCategoria(sugerida)
+    }
+  }
 
   const guardar = async () => {
     const m = Number(monto)
     if (!m || m <= 0) return
     setGuardando(true)
-    await supabase.from('movimientos').insert({
-      tipo, monto: m, categoria, descripcion, fecha,
-      registrado_por: usuario?.nombre ?? null,
-      persona,
+    const payload = {
+      tipo, monto: m, categoria, descripcion, fecha, persona,
       fondo_id: fondoId ? Number(fondoId) : null,
       es_prestamo: tipo === 'gasto' ? esPrestamo : false,
-    })
+    }
+    if (editando) {
+      await supabase.from('movimientos').update(payload).eq('id', editando.id)
+    } else {
+      await supabase.from('movimientos').insert({ ...payload, registrado_por: usuario?.nombre ?? null })
+    }
     setGuardando(false)
     onGuardado()
   }
@@ -92,29 +145,33 @@ function FormMovimiento({ tipo, fondos, onGuardado, onCerrar }: {
         <div className="flex items-center justify-between mb-4">
           <p className="text-strong font-semibold flex items-center gap-2">
             {tipo === 'gasto'
-              ? <><TrendingDown size={16} style={{ color: 'var(--red)' }} /> Nuevo gasto</>
-              : <><TrendingUp size={16} style={{ color: 'var(--green)' }} /> Nuevo ingreso</>}
+              ? <><TrendingDown size={16} style={{ color: 'var(--red)' }} /> {editando ? 'Editar gasto' : 'Nuevo gasto'}</>
+              : <><TrendingUp size={16} style={{ color: 'var(--green)' }} /> {editando ? 'Editar ingreso' : 'Nuevo ingreso'}</>}
           </p>
           <button onClick={onCerrar} className="text-dim"><X size={18} /></button>
         </div>
 
         <div className="space-y-3">
           <div>
+            <label className="text-xs text-muted mb-1 block">¿De qué es?</label>
+            <input autoFocus value={descripcion} onChange={e => cambiarDescripcion(e.target.value)}
+              placeholder={tipo === 'gasto' ? 'Ej: Pizza, gasolina, Subway…' : 'Ej: Pago de nómina, venta…'}
+              className="input w-full" />
+          </div>
+          <div>
             <label className="text-xs text-muted mb-1 block">Monto</label>
-            <input type="number" inputMode="decimal" autoFocus value={monto}
+            <input type="number" inputMode="decimal" value={monto}
               onChange={e => setMonto(e.target.value)} placeholder="0.00"
               className="input w-full text-lg" />
           </div>
           <div>
-            <label className="text-xs text-muted mb-1 block">Categoría</label>
-            <select value={categoria} onChange={e => setCategoria(e.target.value)} className="input w-full">
-              {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+            <label className="text-xs text-muted mb-1 block flex items-center justify-between">
+              <span>Categoría</span>
+              {!categoriaTocada && descripcion && <span className="text-dim normal-case font-normal">sugerida automáticamente</span>}
+            </label>
+            <select value={categoria} onChange={e => { setCategoria(e.target.value); setCategoriaTocada(true) }} className="input w-full">
+              {categorias.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c] ?? ''} {c}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="text-xs text-muted mb-1 block">Descripción (opcional)</label>
-            <input value={descripcion} onChange={e => setDescripcion(e.target.value)}
-              placeholder={tipo === 'gasto' ? 'Ej: Pizza' : 'Ej: Pago de nómina'} className="input w-full" />
           </div>
           <div>
             <label className="text-xs text-muted mb-1 block">Fecha</label>
@@ -165,7 +222,7 @@ export default function Movimientos() {
   const [movs, setMovs]         = useState<Movimiento[]>([])
   const [fondos, setFondos]     = useState<FondoLite[]>([])
   const [cargando, setCargando] = useState(true)
-  const [formTipo, setFormTipo] = useState<'ingreso' | 'gasto' | null>(null)
+  const [formAbierto, setFormAbierto] = useState<{ tipo: 'ingreso' | 'gasto'; editando?: Movimiento } | null>(null)
   const [offset, setOffset]     = useState(0)
 
   const periodo = useMemo(() => periodoConOffset(offset), [offset])
@@ -254,12 +311,12 @@ export default function Movimientos() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => setFormTipo('gasto')}
+        <button onClick={() => setFormAbierto({ tipo: 'gasto' })}
           className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5"
           style={{ background: 'var(--red)' }}>
           <TrendingDown size={20} /> Registrar gasto
         </button>
-        <button onClick={() => setFormTipo('ingreso')}
+        <button onClick={() => setFormAbierto({ tipo: 'ingreso' })}
           className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5"
           style={{ background: 'var(--green)' }}>
           <TrendingUp size={20} /> Registrar ingreso
@@ -308,9 +365,12 @@ export default function Movimientos() {
           <div className="space-y-1">
             {prestamosPendientes.map(m => (
               <div key={m.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: 'var(--bg)' }}>
-                <div className="min-w-0">
-                  <p className="text-body text-sm truncate">{m.descripcion || m.categoria}</p>
-                  <p className="text-xs text-dim">{fmt(m.monto)} · {PERSONAS.find(p => p.valor === m.persona)?.label} · {m.fecha}</p>
+                <div className="min-w-0 flex items-center gap-2">
+                  <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[m.categoria] ?? '💸'}</span>
+                  <div className="min-w-0">
+                    <p className="text-body text-sm truncate">{m.descripcion || m.categoria}</p>
+                    <p className="text-xs text-dim">{fmt(m.monto)} · {PERSONAS.find(p => p.valor === m.persona)?.label} · {m.fecha}</p>
+                  </div>
                 </div>
                 <button onClick={() => marcarRepuesto(m.id)}
                   className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white"
@@ -401,18 +461,24 @@ export default function Movimientos() {
                 <div className="space-y-1">
                   {items.map(m => (
                     <div key={m.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg" style={{ background: 'var(--bg)' }}>
-                      <div className="min-w-0">
-                        <p className="text-body text-sm truncate">{m.descripcion || m.categoria}</p>
-                        <p className="text-xs text-dim">
-                          {m.categoria} · {PERSONAS.find(p => p.valor === m.persona)?.label}
-                          {m.es_prestamo ? (m.prestamo_pagado ? ' · préstamo repuesto' : ' · préstamo pendiente') : ''}
-                          {m.registrado_por ? ` · ${m.registrado_por}` : ''}
-                        </p>
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[m.categoria] ?? '💸'}</span>
+                        <div className="min-w-0">
+                          <p className="text-body text-sm truncate">{m.descripcion || m.categoria}</p>
+                          <p className="text-xs text-dim">
+                            {m.categoria} · {PERSONAS.find(p => p.valor === m.persona)?.label}
+                            {m.es_prestamo ? (m.prestamo_pagado ? ' · préstamo repuesto' : ' · préstamo pendiente') : ''}
+                            {m.registrado_por ? ` · ${m.registrado_por}` : ''}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-sm font-medium" style={{ color: m.tipo === 'gasto' ? 'var(--red)' : 'var(--green)' }}>
                           {m.tipo === 'gasto' ? '-' : '+'}{fmt(m.monto)}
                         </span>
+                        <button onClick={() => setFormAbierto({ tipo: m.tipo, editando: m })} className="text-dim hover:text-indigo-400">
+                          <Pencil size={13} />
+                        </button>
                         <button onClick={() => delMov(m.id)} className="text-dim hover:text-red-400">
                           <Trash2 size={13} />
                         </button>
@@ -426,9 +492,10 @@ export default function Movimientos() {
         )}
       </div>
 
-      {formTipo && (
-        <FormMovimiento tipo={formTipo} fondos={fondos} onCerrar={() => setFormTipo(null)}
-          onGuardado={() => { setFormTipo(null); cargar() }} />
+      {formAbierto && (
+        <FormMovimiento tipo={formAbierto.tipo} fondos={fondos} editando={formAbierto.editando}
+          onCerrar={() => setFormAbierto(null)}
+          onGuardado={() => { setFormAbierto(null); cargar() }} />
       )}
     </div>
   )
