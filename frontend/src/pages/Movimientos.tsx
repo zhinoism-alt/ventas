@@ -870,6 +870,92 @@ export default function Movimientos() {
         </div>
       )}
 
+      {/* ── Historial: arriba de los analisis, porque la mayoria de las
+          capturas y consultas pasan aqui y son desde el celular -- no tiene
+          sentido hacer scroll por seis tarjetas de graficas primero. ── */}
+      <div className="card">
+        <p className="text-strong font-semibold text-sm mb-3">Historial</p>
+
+        <div className="relative mb-2.5">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+          <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar por concepto, categoría o monto…"
+            className="input w-full pl-9" />
+          {busqueda && (
+            <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-strong">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+          <CalendarRange size={14} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+          <input type="date" value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)}
+            className="input text-xs py-1 px-2 w-[130px]" />
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>a</span>
+          <input type="date" value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)}
+            className="input text-xs py-1 px-2 w-[130px]" />
+          <button onClick={filtrarHoy} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+            style={{ background: 'var(--bg-card)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>Hoy</button>
+          <button onClick={filtrarEsteMes} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+            style={{ background: 'var(--bg-card)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>Este mes</button>
+          <button onClick={filtrarEstePeriodo} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+            style={{ background: 'var(--bg-card)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>Este periodo</button>
+          {hayFiltroActivo && (
+            <button onClick={limpiarFiltros} className="text-xs px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1"
+              style={{ background: 'var(--red)', color: '#fff' }}>
+              <X size={11} /> Limpiar
+            </button>
+          )}
+        </div>
+        <p className="text-xs mt-1 mb-3" style={{ color: 'var(--text-muted)' }}>
+          "Este mes" es mes de calendario y "Este periodo" es el jueves-a-jueves de arriba — este buscador es independiente y no cambia el Reporte del periodo.
+        </p>
+
+        {hayFiltroActivo && (
+          <div className="rounded-xl p-3 mb-3 flex items-center justify-between flex-wrap gap-2" style={{ background: 'var(--surface-2)' }}>
+            <span className="text-xs text-muted">{resumenFiltrado.cantidad} resultado{resumenFiltrado.cantidad !== 1 ? 's' : ''}</span>
+            <span className="text-xs">
+              <span style={{ color: 'var(--green)' }}>+{fmt(resumenFiltrado.ingresos)}</span>
+              {' · '}
+              <span style={{ color: 'var(--red)' }}>−{fmt(resumenFiltrado.gastos)}</span>
+              {' · '}
+              <span className="font-semibold" style={{ color: resumenFiltrado.balance >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(resumenFiltrado.balance)}</span>
+            </span>
+          </div>
+        )}
+
+        {porFecha.length === 0 ? (
+          <p className="text-xs text-dim text-center py-6">
+            {hayFiltroActivo ? 'Nada encontrado con ese filtro.' : 'Sin movimientos todavía.'}
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {porFecha.map(([fecha, items]) => (
+              <div key={fecha}>
+                <p className="text-xs text-dim mb-1.5 font-medium uppercase tracking-wide">
+                  {new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}
+                </p>
+                <div className="space-y-1.5">
+                  {items.map(m => (
+                    <FilaMovimiento key={m.id} m={m}
+                      onEditar={() => setFormAbierto({ tipo: m.tipo, editando: m })}
+                      onBorrar={() => delMov(m.id)}
+                      destacar={m.es_prestamo
+                        ? <p className="text-xs mt-0.5" style={{ color: 'var(--yellow)' }}>
+                            🤝 {m.prestamo_pagado ? 'Préstamo repuesto' : 'Préstamo pendiente'}
+                          </p>
+                        : m.registrado_por
+                          ? <p className="text-xs text-dim mt-0.5">{m.registrado_por}</p>
+                          : undefined} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {porPersona.length > 0 && (
         <div className="card">
           <p className="text-strong font-semibold text-sm mb-3">Por persona (periodo)</p>
@@ -1033,86 +1119,6 @@ export default function Movimientos() {
           </div>
         </div>
       )}
-
-      <div className="card">
-        <p className="text-strong font-semibold text-sm mb-3">Historial</p>
-
-        <div className="relative mb-2.5">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim" />
-          <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por concepto, categoría o monto…"
-            className="input w-full pl-9" />
-          {busqueda && (
-            <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-strong">
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap mb-1">
-          <CalendarRange size={13} className="text-dim flex-shrink-0" />
-          <input type="date" value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)}
-            className="input text-xs py-1 px-2 w-[130px]" />
-          <span className="text-xs text-dim">a</span>
-          <input type="date" value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)}
-            className="input text-xs py-1 px-2 w-[130px]" />
-          <button onClick={filtrarHoy} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Hoy</button>
-          <button onClick={filtrarEsteMes} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Este mes</button>
-          <button onClick={filtrarEstePeriodo} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Este periodo</button>
-          {hayFiltroActivo && (
-            <button onClick={limpiarFiltros} className="text-xs px-2 py-1 rounded-lg flex items-center gap-1"
-              style={{ background: 'var(--red)', color: '#fff' }}>
-              <X size={11} /> Limpiar
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-dim mb-3">
-          "Este mes" es mes de calendario y "Este periodo" es el jueves-a-jueves de arriba — este buscador es independiente y no cambia el Reporte del periodo.
-        </p>
-
-        {hayFiltroActivo && (
-          <div className="rounded-xl p-3 mb-3 flex items-center justify-between flex-wrap gap-2" style={{ background: 'var(--surface-2)' }}>
-            <span className="text-xs text-muted">{resumenFiltrado.cantidad} resultado{resumenFiltrado.cantidad !== 1 ? 's' : ''}</span>
-            <span className="text-xs">
-              <span style={{ color: 'var(--green)' }}>+{fmt(resumenFiltrado.ingresos)}</span>
-              {' · '}
-              <span style={{ color: 'var(--red)' }}>−{fmt(resumenFiltrado.gastos)}</span>
-              {' · '}
-              <span className="font-semibold" style={{ color: resumenFiltrado.balance >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(resumenFiltrado.balance)}</span>
-            </span>
-          </div>
-        )}
-
-        {porFecha.length === 0 ? (
-          <p className="text-xs text-dim text-center py-6">
-            {hayFiltroActivo ? 'Nada encontrado con ese filtro.' : 'Sin movimientos todavía.'}
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {porFecha.map(([fecha, items]) => (
-              <div key={fecha}>
-                <p className="text-xs text-dim mb-1.5 font-medium uppercase tracking-wide">
-                  {new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}
-                </p>
-                <div className="space-y-1.5">
-                  {items.map(m => (
-                    <FilaMovimiento key={m.id} m={m}
-                      onEditar={() => setFormAbierto({ tipo: m.tipo, editando: m })}
-                      onBorrar={() => delMov(m.id)}
-                      destacar={m.es_prestamo
-                        ? <p className="text-xs mt-0.5" style={{ color: 'var(--yellow)' }}>
-                            🤝 {m.prestamo_pagado ? 'Préstamo repuesto' : 'Préstamo pendiente'}
-                          </p>
-                        : m.registrado_por
-                          ? <p className="text-xs text-dim mt-0.5">{m.registrado_por}</p>
-                          : undefined} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {formAbierto && (
         <FormMovimiento tipo={formAbierto.tipo} fondos={fondos} editando={formAbierto.editando} recurrenteBase={formAbierto.recurrenteBase}
