@@ -211,34 +211,45 @@ function BannerPendientes() {
   if (cargando) return null
   if (eventos.length === 0 && !limpiezaFalta && pendientes.length === 0) return null
 
+  // Fondo solido con degradado (no la variable --yellow-soft, que es un
+  // amarillo casi blanco en tema claro -- exactamente el "no se ve" que
+  // reporto Brandon) + texto blanco de verdad, sin depender del contraste
+  // del tema. El brillo es una animacion lenta (3.5s, "respira") en vez de
+  // parpadear: llama la atencion sin ser un anuncio de neon.
   return (
-    <div className="flex items-start gap-3 p-4 rounded-xl border"
-      style={{ background: 'var(--yellow-soft)', borderColor: 'var(--yellow)' }}>
-      <Bell size={18} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <p className="text-yellow-300 font-medium text-sm">Pendientes</p>
+    <div className="banner-pendientes flex items-start gap-4 p-5 rounded-2xl"
+      style={{ background: 'linear-gradient(135deg, #F59E0B, #EA580C)' }}>
+      <div className="relative flex-shrink-0 mt-0.5">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-40 animate-ping" />
+        <Bell size={24} className="relative text-white" fill="white" fillOpacity={0.15} />
+      </div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <p className="text-white font-bold text-base uppercase tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,.15)' }}>
+          Pendientes
+        </p>
         {eventos.map(e => (
-          <div key={`ev-${e.id}`} className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-body">{e.titulo}</span>
-            <span className="text-dim flex-shrink-0">{e.hora?.slice(0, 5)}</span>
+          <div key={`ev-${e.id}`} className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-white font-medium">{e.titulo}</span>
+            <span className="text-white/80 flex-shrink-0">{e.hora?.slice(0, 5)}</span>
           </div>
         ))}
         {!!limpiezaFalta && (
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-body">🧹 Limpieza del sábado</span>
-            <span className="text-dim flex-shrink-0">faltan {limpiezaFalta}</span>
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-white font-medium">🧹 Limpieza del sábado</span>
+            <span className="text-white/80 flex-shrink-0">faltan {limpiezaFalta}</span>
           </div>
         )}
         {pendientes.map(p => (
-          <div key={`p-${p.id}`} className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-body">📝 {p.texto}</span>
+          <div key={`p-${p.id}`} className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-white font-medium">📝 {p.texto}</span>
           </div>
         ))}
         {totalPendientes > pendientes.length && (
-          <p className="text-dim text-xs">+{totalPendientes - pendientes.length} pendiente{totalPendientes - pendientes.length !== 1 ? 's' : ''} más</p>
+          <p className="text-white/80 text-xs">+{totalPendientes - pendientes.length} pendiente{totalPendientes - pendientes.length !== 1 ? 's' : ''} más</p>
         )}
       </div>
-      <a href="/calendario" className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 flex-shrink-0">
+      <a href="/calendario"
+        className="text-xs font-semibold text-amber-900 bg-white hover:bg-amber-50 transition-colors flex items-center gap-1 flex-shrink-0 px-3 py-1.5 rounded-full">
         Ver <ArrowRight size={11} />
       </a>
     </div>

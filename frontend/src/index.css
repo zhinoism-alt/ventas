@@ -387,6 +387,13 @@ label {
   border-radius: 6px;
 }
 
+/* ── Banner de pendientes: brillo lento, "respira" en vez de parpadear ───── */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0px 0px rgba(245, 158, 11, .0), var(--sh-md); }
+  50%      { box-shadow: 0 0 26px 4px rgba(245, 158, 11, .45), var(--sh-md); }
+}
+.banner-pendientes { animation: glow-pulse 3.5s ease-in-out infinite; }
+
 /* ── Utilidades semánticas ──────────────────────────────────────────────────
    Reemplazan a las text-slate y bg-slate de Tailwind, que están congeladas en
    un solo tema. Estas siguen al token y funcionan en claro y en oscuro.     */
