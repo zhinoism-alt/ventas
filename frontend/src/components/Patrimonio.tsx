@@ -12,8 +12,10 @@ import { EditorCampos, BotonEditar, type Campo, type Valores } from './EditorCam
    La tasa que anuncia el banco casi nunca es lo que ganas. Entre medias
    hay tres cosas:
 
-   1. El ISR se retiene sobre el CAPITAL, no sobre el interes (LIF art. 24).
-      En 2026 son 0.90% anual del saldo, se hayan generado intereses o no.
+   1. El ISR se retiene sobre el CAPITAL, no sobre el interes real pagado
+      (LIF art. 24, 0.90% anual en 2026) -- pero solo si la cuenta genera
+      intereses. Al 0% no hay "ingresos por intereses" (LISR Cap. VI) que
+      retener.
    2. Las tasas promocionales tienen tope. Arriba de el aplica otra tasa,
       normalmente mucho menor, y la tasa efectiva se diluye.
    3. La inflacion se lleva el resto. Es lo unico que decide si tu dinero
@@ -327,7 +329,12 @@ export function Patrimonio() {
 
   const capital  = cuentas.reduce((s, c) => s + num(c.saldo), 0)
   const interes  = cuentas.reduce((s, c) => s + interesAnual(c), 0)
-  const isr      = capital * isrRet
+  // El ISR retenido es sobre el capital (LIF art. 24), pero solo existe esa
+  // retencion porque hay un interes del que retener -- Cap. VI "De los
+  // ingresos por intereses" de la LISR. Una cuenta con tasa 0% no genera ese
+  // ingreso, asi que no paga ISR. La inflacion si se lleva el capital completo.
+  const capitalConInteres = cuentas.reduce((s, c) => s + (interesAnual(c) > 0 ? num(c.saldo) : 0), 0)
+  const isr      = capitalConInteres * isrRet
   const costoInf = capital * infl
   const real     = interes - isr - costoInf
 
@@ -383,9 +390,10 @@ export function Patrimonio() {
             titulo="Editar ISR, inflación y UDI" />
         </div>
         <p className="text-xs text-dim mb-4 max-w-2xl">
-          La tasa del banco menos el ISR menos la inflación. El ISR se retiene sobre el
-          capital ({pct(num(perfil.isr_retencion_pct))} anual), no sobre el interés, así que se
-          cobra tengas rendimiento o no.
+          La tasa del banco menos el ISR menos la inflación. El ISR se calcula sobre el
+          capital ({pct(num(perfil.isr_retencion_pct))} anual), no sobre el interés real que pagaron —
+          pero solo aplica si la cuenta de verdad genera intereses. Una cuenta al 0% no
+          paga ISR, solo pierde valor por inflación.
         </p>
 
         {editando === 'real' && (
@@ -449,7 +457,7 @@ export function Patrimonio() {
                   {excede && <Par k={`Sobre ${mxn(tope)}`} v={pct(num(c.tasa_base))} alerta />}
                   <Par k="Interés al año" v={mxn(i)} />
                   <Par k="Tasa efectiva" v={pct(saldo ? i / saldo * 100 : 0)} />
-                  <Par k="ISR retenido" v={`−${mxn(saldo * isrRet)}`} />
+                  <Par k="ISR retenido" v={`−${mxn(i > 0 ? saldo * isrRet : 0)}`} />
                 </dl>
 
                 {cob && (

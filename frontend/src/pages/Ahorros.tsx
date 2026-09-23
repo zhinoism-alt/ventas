@@ -510,13 +510,18 @@ export default function Ahorros() {
   const totalAcumulado = metasEnCurso.reduce((s, a) => s + a.acumulado, 0)
   const gananciasAnualesEstimadas = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
 
-  // La tasa que anuncia el banco no es lo que ganas. El ISR se retiene sobre el
-  // CAPITAL (0.90% en 2026, LIF art. 24) tengas rendimiento o no, y la
-  // inflacion se lleva el resto. Esta pestana mostraba el bruto y Patrimonio el
-  // real: el mismo dinero con dos cifras distintas, y la optimista al frente.
+  // La tasa que anuncia el banco no es lo que ganas. El ISR (0.90% en 2026,
+  // LIF art. 24) se calcula sobre el CAPITAL y no sobre el interes que de
+  // verdad pagaron -- asi es como retienen los bancos en Mexico -- pero esa
+  // retencion solo existe porque hay un interes que retener: es el
+  // Capitulo VI "De los ingresos por intereses" de la LISR. Un fondo en 0%
+  // (una tarjeta de resguardo, no una cuenta que invierte) no genera ese
+  // ingreso, asi que no hay nada de donde retener. La inflacion si pega
+  // parejo: erosiona cualquier peso que tengas guardado, gane o no gane.
   const isrPct  = num2(supuestos?.isr_retencion_pct) / 100
   const inflPct = num2(supuestos?.inflacion_pct) / 100
-  const isrFondos  = totalFondos * isrPct
+  const totalFondosConRendimiento = fondos.reduce((s, f) => s + (f.rendimiento > 0 ? f.saldo : 0), 0)
+  const isrFondos  = totalFondosConRendimiento * isrPct
   const inflFondos = totalFondos * inflPct
   const gananciaReal = gananciasAnualesEstimadas - isrFondos - inflFondos
   const haySupuestos = !!supuestos
@@ -714,8 +719,9 @@ export default function Ahorros() {
               {fondos.map(f => {
                 const gananciasAnual = f.saldo * (f.rendimiento / 100)
                 // Lo que de verdad te queda: el banco paga el bruto, el ISR
-                // muerde el capital y la inflacion se lleva el resto.
-                const isrFondo      = f.saldo * isrPct
+                // muerde el capital (solo si de verdad hay rendimiento) y la
+                // inflacion se lleva el resto siempre.
+                const isrFondo      = f.rendimiento > 0 ? f.saldo * isrPct : 0
                 const inflFondo     = f.saldo * inflPct
                 const realAnual     = gananciasAnual - isrFondo - inflFondo
                 const totalAnio     = f.saldo + (haySupuestos ? realAnual : gananciasAnual)
@@ -914,7 +920,7 @@ export default function Ahorros() {
                         <div className="mt-2 rounded-lg px-3 py-2 space-y-1"
                              style={{ background: 'var(--bg)' }}>
                           <Renglon k={`Lo que paga (${f.rendimiento}%)`} v={`+${fmt(gananciasAnual)}`} />
-                          <Renglon k={`ISR ${(isrPct * 100).toFixed(2)}% del saldo`}
+                          <Renglon k={f.rendimiento > 0 ? `ISR ${(isrPct * 100).toFixed(2)}% del saldo` : 'ISR (no aplica, 0% rendimiento)'}
                                    v={`−${fmt(isrFondo)}`} tono="var(--red)" />
                           <Renglon k={`Inflación ${(inflPct * 100).toFixed(2)}%`}
                                    v={`−${fmt(inflFondo)}`} tono="var(--red)" />

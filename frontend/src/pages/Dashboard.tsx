@@ -350,8 +350,12 @@ export default function Dashboard() {
   // 7,660 alla — sin forma de saber cual creer.
   const n = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
   const rendimientoBruto    = fondos.reduce((s, f) => s + f.saldo * (f.rendimiento / 100), 0)
+  // El ISR retiene sobre el capital, pero solo si ese capital de verdad genera
+  // interes (LISR Cap. VI). Un fondo en 0% no paga ISR, solo pierde a la
+  // inflacion. Ver Ahorros.tsx para el mismo criterio.
+  const totalFondosConRendimiento = fondos.reduce((s, f) => s + (f.rendimiento > 0 ? f.saldo : 0), 0)
   const rendimientoAnual    = supuestos
-    ? rendimientoBruto - totalFondos * (n(supuestos.isr_retencion_pct) / 100) - totalFondos * (n(supuestos.inflacion_pct) / 100)
+    ? rendimientoBruto - totalFondosConRendimiento * (n(supuestos.isr_retencion_pct) / 100) - totalFondos * (n(supuestos.inflacion_pct) / 100)
     : rendimientoBruto
   // Upcoming reminders with urgency
   const upcomingRecs = recordatorios.map(r => ({
@@ -548,7 +552,7 @@ export default function Dashboard() {
               {fondos.slice(0, 3).map(f => {
                 const gananciaAnual = supuestos
                   ? f.saldo * (f.rendimiento / 100)
-                    - f.saldo * (n(supuestos.isr_retencion_pct) / 100)
+                    - (f.rendimiento > 0 ? f.saldo * (n(supuestos.isr_retencion_pct) / 100) : 0)
                     - f.saldo * (n(supuestos.inflacion_pct) / 100)
                   : f.saldo * (f.rendimiento / 100)
                 return (
