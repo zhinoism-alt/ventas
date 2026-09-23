@@ -87,7 +87,7 @@ const METODO_EMOJI: Record<string, string> = Object.fromEntries(METODOS_PAGO.map
 
 const CATEGORIAS_GASTO = [
   'Comida rápida', 'Súper', 'Transporte', 'Servicios', 'Salud',
-  'Entretenimiento', 'Regalos', 'Ropa', 'Casa', 'Seguros', 'Otro',
+  'Entretenimiento', 'Regalos', 'Ropa', 'Casa', 'Seguros', 'Mascotas', 'Otro',
 ]
 const CATEGORIAS_INGRESO = ['Nómina', 'Venta', 'Extra', 'Reembolso', 'Otro']
 const PERSONAS = [
@@ -106,7 +106,7 @@ const GASTO_COLORS   = ['var(--red)', '#fb923c', 'var(--yellow)', '#f472b6', '#a
 const CATEGORIA_EMOJI: Record<string, string> = {
   'Comida rápida': '🍔', 'Súper': '🛒', 'Transporte': '🚗', 'Servicios': '💡',
   'Salud': '🏥', 'Entretenimiento': '🎬', 'Regalos': '🎁', 'Ropa': '👕',
-  'Casa': '🏠', 'Seguros': '📄', 'Nómina': '💼', 'Venta': '📈',
+  'Casa': '🏠', 'Seguros': '📄', 'Mascotas': '🐱', 'Nómina': '💼', 'Venta': '📈',
   'Extra': '➕', 'Reembolso': '🔄', 'Otro': '💸',
 }
 
@@ -117,22 +117,25 @@ const PISTAS_CATEGORIA: [string, string][] = [
   ['pizza', 'Comida rápida'], ['subway', 'Comida rápida'], ['tacos', 'Comida rápida'],
   ['burger', 'Comida rápida'], ['mcdonalds', 'Comida rápida'], ['kfc', 'Comida rápida'],
   ['restaurante', 'Comida rápida'], ['comida', 'Comida rápida'], ['tostadas', 'Comida rápida'],
-  ['soriana', 'Súper'], ['walmart', 'Súper'], ['costco', 'Súper'], ['supermercado', 'Súper'],
+  ['soriana', 'Súper'], ['walmart', 'Súper'], ['costco', 'Súper'], ['supermercado', 'Súper'], ['mandado', 'Súper'],
   ['gasolina', 'Transporte'], ['uber', 'Transporte'], ['didi', 'Transporte'], ['taxi', 'Transporte'],
   ['parqu', 'Transporte'], ['estacionamiento', 'Transporte'],
-  ['luz', 'Servicios'], ['agua', 'Servicios'], ['internet', 'Servicios'], ['telcel', 'Servicios'], ['celular', 'Servicios'],
+  ['luz', 'Servicios'], ['agua', 'Servicios'], ['garrafon', 'Servicios'], ['internet', 'Servicios'],
+  ['telcel', 'Servicios'], ['celular', 'Servicios'],
   // 'gas' va despues de 'gasolina' a proposito: "gasolina" tiene que
   // encontrar Transporte primero, o "Gasolina" caeria aqui por error
   // (gasolina contiene "gas" como substring).
   ['gas', 'Servicios'],
   ['netflix', 'Entretenimiento'], ['spotify', 'Entretenimiento'], ['cine', 'Entretenimiento'], ['boleto', 'Entretenimiento'],
+  ['salidas', 'Entretenimiento'], ['salida', 'Entretenimiento'],
   ['farmacia', 'Salud'], ['doctor', 'Salud'], ['medico', 'Salud'], ['dentista', 'Salud'], ['hospital', 'Salud'],
   ['regalo', 'Regalos'], ['boda', 'Regalos'], ['cumpleaños', 'Regalos'], ['cumple', 'Regalos'], ['baby shower', 'Regalos'],
   ['ropa', 'Ropa'], ['zapatos', 'Ropa'],
   ['renta', 'Casa'], ['mantenimiento', 'Casa'],
   ['seguro', 'Seguros'], ['aseguranza', 'Seguros'], ['poliza', 'Seguros'],
+  ['gatas', 'Mascotas'], ['gato', 'Mascotas'], ['perro', 'Mascotas'], ['mascota', 'Mascotas'], ['veterinario', 'Mascotas'],
   ['nomina', 'Nómina'], ['sueldo', 'Nómina'], ['salario', 'Nómina'],
-  ['venta', 'Venta'], ['iptv', 'Venta'],
+  ['venta', 'Venta'], ['iptv', 'Venta'], ['elite', 'Venta'],
 ]
 
 function sugerirCategoria(descripcion: string, categorias: string[]): string | null {
