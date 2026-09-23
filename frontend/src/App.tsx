@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, Tv, BarChart3, Menu, X,
   DollarSign, RefreshCw, Wifi, WifiOff, LogOut, ChevronDown,
   Wallet, PiggyBank, FileSpreadsheet, Briefcase, Sun, Moon, Search,
-  Calendar as CalendarIcon, ShoppingCart, Sparkles,
+  Calendar as CalendarIcon, ShoppingCart, Sparkles, Receipt,
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -27,6 +27,7 @@ const Consulta = lazy(() => import('./pages/Consulta'))
 const Calendario = lazy(() => import('./pages/Calendario'))
 const ListaSuper = lazy(() => import('./pages/ListaSuper'))
 const Limpieza = lazy(() => import('./pages/Limpieza'))
+const Movimientos = lazy(() => import('./pages/Movimientos'))
 import { getExchangeRate, refreshExchangeRate, getWhatsAppStatus } from './lib/api'
 
 // ─── Tema ─────────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ function Layout() {
     { to: '/presupuesto', icon: <Wallet size={18} />,           label: 'Presupuesto',  group: 'negocio' },
     { to: '/reportes',    icon: <BarChart3 size={18} />,        label: 'Reportes',     group: 'negocio' },
     { to: '/sheets',      icon: <FileSpreadsheet size={18} />,  label: 'Sheets Sync',  group: 'negocio' },
+    { to: '/movimientos', icon: <Receipt size={18} />,         label: 'Movimientos',  group: 'vida' },
     { to: '/ahorros',     icon: <PiggyBank size={18} />,       label: 'Ahorros',      group: 'vida' },
     { to: '/personal',    icon: <LayoutDashboard size={18} />, label: 'Personal',     group: 'vida' },
     { to: '/calendario',  icon: <CalendarIcon size={18} />,    label: 'Calendario',   group: 'vida' },
@@ -245,6 +247,7 @@ function Layout() {
             <Route path="/iptv"        element={<IPTV />} />
             <Route path="/presupuesto" element={<Presupuesto />} />
             <Route path="/reportes"    element={<Reports />} />
+            <Route path="/movimientos" element={<Movimientos />} />
             <Route path="/ahorros"     element={<Ahorros />} />
             <Route path="/personal"    element={<Personal />} />
             <Route path="/calendario"  element={<Calendario />} />
