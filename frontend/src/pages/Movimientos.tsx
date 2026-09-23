@@ -87,7 +87,7 @@ const METODO_EMOJI: Record<string, string> = Object.fromEntries(METODOS_PAGO.map
 
 const CATEGORIAS_GASTO = [
   'Comida rápida', 'Súper', 'Transporte', 'Servicios', 'Salud',
-  'Entretenimiento', 'Regalos', 'Ropa', 'Casa', 'Seguros', 'Mascotas', 'Otro',
+  'Entretenimiento', 'Salidas', 'Regalos', 'Ropa', 'Casa', 'Seguros', 'Mascotas', 'Otro',
 ]
 const CATEGORIAS_INGRESO = ['Nómina', 'Venta', 'Extra', 'Reembolso', 'Otro']
 const PERSONAS = [
@@ -105,7 +105,7 @@ const GASTO_COLORS   = ['var(--red)', '#fb923c', 'var(--yellow)', '#f472b6', '#a
 // gasto -- da referencia visual de un vistazo sin tener que leer el texto.
 const CATEGORIA_EMOJI: Record<string, string> = {
   'Comida rápida': '🍔', 'Súper': '🛒', 'Transporte': '🚗', 'Servicios': '💡',
-  'Salud': '🏥', 'Entretenimiento': '🎬', 'Regalos': '🎁', 'Ropa': '👕',
+  'Salud': '🏥', 'Entretenimiento': '🎬', 'Salidas': '🎉', 'Regalos': '🎁', 'Ropa': '👕',
   'Casa': '🏠', 'Seguros': '📄', 'Mascotas': '🐱', 'Nómina': '💼', 'Venta': '📈',
   'Extra': '➕', 'Reembolso': '🔄', 'Otro': '💸',
 }
@@ -131,8 +131,13 @@ const PISTAS_CATEGORIA: [string, string][] = [
   // encontrar Transporte primero, o "Gasolina" caeria aqui por error
   // (gasolina contiene "gas" como substring).
   ['gas', 'Servicios'],
-  ['netflix', 'Entretenimiento'], ['spotify', 'Entretenimiento'], ['cine', 'Entretenimiento'], ['boleto', 'Entretenimiento'],
-  ['salidas', 'Entretenimiento'], ['salida', 'Entretenimiento'],
+  ['netflix', 'Entretenimiento'], ['spotify', 'Entretenimiento'],
+  // Salidas es su propia categoria, distinta de Entretenimiento: lo que
+  // gastan saliendo (con amigos, en pareja, a comer) contra lo que gastan
+  // quedandose en casa (streaming). Brandon fue explicito: cine, date y
+  // comer fuera van aqui.
+  ['salidas', 'Salidas'], ['salida', 'Salidas'], ['cine', 'Salidas'], ['boleto', 'Salidas'],
+  ['date', 'Salidas'], ['antro', 'Salidas'], ['bar', 'Salidas'],
   ['farmacia', 'Salud'], ['doctor', 'Salud'], ['medico', 'Salud'], ['dentista', 'Salud'], ['hospital', 'Salud'],
   ['regalo', 'Regalos'], ['boda', 'Regalos'], ['cumpleaños', 'Regalos'], ['cumple', 'Regalos'], ['baby shower', 'Regalos'],
   ['ropa', 'Ropa'], ['zapatos', 'Ropa'],
