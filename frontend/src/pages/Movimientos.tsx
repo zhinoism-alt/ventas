@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Wallet, Trash2, Pencil, X, ChevronLeft, ChevronRight,
-  HandCoins, Check, Search, CalendarRange, CreditCard, Repeat, Target, Archive, Plus, SlidersHorizontal, ChevronDown,
+  HandCoins, Check, Search, CalendarRange, CreditCard, Repeat, Target, Archive, Plus, SlidersHorizontal, ChevronDown, Plane,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -48,9 +48,12 @@ interface Movimiento {
   metodo_pago: MetodoPago | null
   recurrente_id: number | null
   monto_esperado: number | null
+  viaje_id: number | null
 }
 
 interface FondoLite { id: number; nombre: string; descripcion: string | null; color: string }
+
+interface Viaje { id: number; nombre: string; presupuesto: number | null; activo: boolean }
 
 interface Recurrente {
   id: number
@@ -87,9 +90,9 @@ const METODO_EMOJI: Record<string, string> = Object.fromEntries(METODOS_PAGO.map
 
 const CATEGORIAS_GASTO = [
   'Comida rápida', 'Súper', 'Transporte', 'Servicios', 'Salud',
-  'Entretenimiento', 'Salidas', 'Regalos', 'Ropa', 'Casa', 'Seguros', 'Mascotas', 'Otro',
+  'Entretenimiento', 'Salidas', 'Regalos', 'Ropa', 'Casa', 'Seguros', 'Mascotas', 'Otro Necesario',
 ]
-const CATEGORIAS_INGRESO = ['Nómina', 'Venta', 'Extra', 'Reembolso', 'Otro']
+const CATEGORIAS_INGRESO = ['Salario', 'Venta', 'Extra', 'Reembolso', 'Otro']
 const PERSONAS = [
   { valor: 'compartido', label: 'Compartido', emoji: '🤝', color: 'var(--yellow)' },
   { valor: 'brandon',    label: 'Brandon',    emoji: '🧔', color: 'var(--accent)' },
@@ -106,8 +109,12 @@ const GASTO_COLORS   = ['var(--red)', '#fb923c', 'var(--yellow)', '#f472b6', '#a
 const CATEGORIA_EMOJI: Record<string, string> = {
   'Comida rápida': '🍔', 'Súper': '🛒', 'Transporte': '🚗', 'Servicios': '💡',
   'Salud': '🏥', 'Entretenimiento': '🎬', 'Salidas': '🎉', 'Regalos': '🎁', 'Ropa': '👕',
-  'Casa': '🏠', 'Seguros': '📄', 'Mascotas': '🐱', 'Nómina': '💼', 'Venta': '📈',
-  'Extra': '➕', 'Reembolso': '🔄', 'Otro': '💸',
+  'Casa': '🏠', 'Seguros': '📄', 'Mascotas': '🐱', 'Salario': '💼', 'Venta': '📈',
+  'Extra': '➕', 'Reembolso': '🔄', 'Otro': '💸', 'Otro Necesario': '💸',
+  // Nombres viejos, para que el historial ya capturado (categoria = 'Nómina')
+  // siga mostrando su emoji en vez del generico -- el rename no reescribe
+  // filas existentes.
+  'Nómina': '💼',
 }
 
 // Adivina la categoria a partir de lo que Brandon escribe en "que es" --
@@ -142,9 +149,9 @@ const PISTAS_CATEGORIA: [string, string][] = [
   ['regalo', 'Regalos'], ['boda', 'Regalos'], ['cumpleaños', 'Regalos'], ['cumple', 'Regalos'], ['baby shower', 'Regalos'],
   ['ropa', 'Ropa'], ['zapatos', 'Ropa'],
   ['renta', 'Casa'], ['mantenimiento', 'Casa'],
-  ['seguro', 'Seguros'], ['aseguranza', 'Seguros'], ['poliza', 'Seguros'],
+  ['seguro', 'Seguros'], ['aseguranza', 'Seguros'], ['poliza', 'Seguros'], ['ppr', 'Seguros'],
   ['gatas', 'Mascotas'], ['gato', 'Mascotas'], ['perro', 'Mascotas'], ['mascota', 'Mascotas'], ['veterinario', 'Mascotas'],
-  ['nomina', 'Nómina'], ['sueldo', 'Nómina'], ['salario', 'Nómina'],
+  ['nomina', 'Salario'], ['sueldo', 'Salario'], ['salario', 'Salario'],
   ['venta', 'Venta'], ['iptv', 'Venta'], ['elite', 'Venta'],
 ]
 
@@ -207,9 +214,9 @@ function ultimoDiaDelMes(d: Date): string {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)
 }
 
-function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, onCerrar }: {
-  tipo: 'ingreso' | 'gasto'; fondos: FondoLite[]; editando?: Movimiento; recurrenteBase?: Recurrente
-  onGuardado: () => void; onCerrar: () => void
+function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuardado, onCerrar, onNuevoViaje }: {
+  tipo: 'ingreso' | 'gasto'; fondos: FondoLite[]; viajes: Viaje[]; editando?: Movimiento; recurrenteBase?: Recurrente
+  onGuardado: () => void; onCerrar: () => void; onNuevoViaje: (nombre: string) => Promise<number | null>
 }) {
   const { usuario } = useAuth()
   const categorias = tipo === 'gasto' ? CATEGORIAS_GASTO : CATEGORIAS_INGRESO
@@ -221,11 +228,15 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
   // el mismo, se respeta lo que puso -- nunca se le pisa una eleccion propia.
   const [categoriaTocada, setCategoriaTocada] = useState(!!editando || !!recurrenteBase)
   const [fecha, setFecha]           = useState(editando?.fecha ?? hoyISO())
-  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? recurrenteBase?.persona ?? 'compartido')
+  // Default Brandon: la mayoria de las capturas las hace el, y "Compartido"
+  // exigia un toque extra en el caso mas comun.
+  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? recurrenteBase?.persona ?? 'brandon')
   const [fondoId, setFondoId]       = useState(editando?.fondo_id ? String(editando.fondo_id) : recurrenteBase?.fondo_id ? String(recurrenteBase.fondo_id) : '')
   const [fondoTocado, setFondoTocado] = useState(!!editando?.fondo_id || !!recurrenteBase?.fondo_id)
   const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? recurrenteBase?.metodo_pago ?? '')
   const [esPrestamo, setEsPrestamo] = useState(editando?.es_prestamo ?? false)
+  const [viajeId, setViajeId]       = useState(editando?.viaje_id ? String(editando.viaje_id) : '')
+  const [nuevoViajeNombre, setNuevoViajeNombre] = useState('')
   const [guardando, setGuardando]   = useState(false)
   // Captura rapida por default: solo que-monto-categoria, que es lo que se
   // llena en 10 segundos parados en la caja. Persona/fondo/metodo/prestamo
@@ -254,11 +265,18 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
     const m = Number(monto)
     if (!m || m <= 0) return
     setGuardando(true)
+    // "+ Nuevo viaje" no abre otro modal -- crea el viaje ahi mismo antes de
+    // guardar el movimiento, para no cortar el flujo de captura.
+    let viajeIdFinal = viajeId ? Number(viajeId) : null
+    if (viajeId === 'nuevo' && nuevoViajeNombre.trim()) {
+      viajeIdFinal = await onNuevoViaje(nuevoViajeNombre.trim())
+    }
     const payload = {
       tipo, monto: m, categoria, descripcion, fecha, persona,
       fondo_id: fondoId ? Number(fondoId) : null,
       metodo_pago: metodoPago || null,
       es_prestamo: tipo === 'gasto' ? esPrestamo : false,
+      viaje_id: viajeIdFinal,
       // Si viene de una plantilla recurrente, guarda una instantanea del
       // estimado de ese momento -- si despues editan la plantilla, este
       // movimiento ya capturado no debe cambiar de opinion sobre cual era
@@ -380,6 +398,19 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
                   {METODOS_PAGO.map(m => <option key={m.valor} value={m.valor}>{m.emoji} {m.label}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="text-xs text-muted mb-1 block">¿Es de un viaje? (opcional)</label>
+                <select value={viajeId} onChange={e => setViajeId(e.target.value)} className="input w-full">
+                  <option value="">No, es del día a día</option>
+                  {viajes.map(v => <option key={v.id} value={v.id}>✈️ {v.nombre}</option>)}
+                  <option value="nuevo">+ Nuevo viaje…</option>
+                </select>
+                {viajeId === 'nuevo' && (
+                  <input autoFocus value={nuevoViajeNombre} onChange={e => setNuevoViajeNombre(e.target.value)}
+                    placeholder="Ej: Cancún 2026" className="input w-full mt-1.5" />
+                )}
+                <p className="text-xs text-dim mt-1">Se guarda aparte — no cuenta en el presupuesto ni en los reportes del día a día.</p>
+              </div>
               {tipo === 'gasto' && (
                 <label className="flex items-center gap-2 text-xs text-body cursor-pointer">
                   <input type="checkbox" checked={esPrestamo} onChange={e => setEsPrestamo(e.target.checked)} />
@@ -404,8 +435,8 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
 // pastilla de categoria, descripcion, y a la derecha el monto con los
 // botones de editar/borrar siempre visibles (no hace falta pasar el mouse
 // para saber que existen).
-function FilaMovimiento({ m, onEditar, onBorrar, destacar }: {
-  m: Movimiento; onEditar: () => void; onBorrar: () => void; destacar?: ReactNode
+function FilaMovimiento({ m, viajeNombre, onEditar, onBorrar, destacar }: {
+  m: Movimiento; viajeNombre?: string; onEditar: () => void; onBorrar: () => void; destacar?: ReactNode
 }) {
   return (
     <div className="group flex items-center gap-3 p-2.5 rounded-xl transition-colors hover:brightness-110"
@@ -423,6 +454,11 @@ function FilaMovimiento({ m, onEditar, onBorrar, destacar }: {
           <span className="text-xs text-dim">{PERSONAS.find(p => p.valor === m.persona)?.emoji} {PERSONAS.find(p => p.valor === m.persona)?.label}</span>
           {m.metodo_pago && (
             <span className="text-xs text-dim">{METODO_EMOJI[m.metodo_pago]} {METODO_LABEL[m.metodo_pago]}</span>
+          )}
+          {viajeNombre && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-soft, rgba(99,102,241,.15))', color: 'var(--accent)' }}>
+              ✈️ {viajeNombre}
+            </span>
           )}
         </div>
         <p className="text-body text-sm font-medium truncate mt-1">{m.descripcion || m.categoria}</p>
@@ -722,7 +758,7 @@ function GraficaTendencia({ movs }: { movs: Movimiento[] }) {
     const filas = []
     for (let offset = 5; offset >= 0; offset--) {
       const p = periodoConOffset(offset)
-      const delP = movs.filter(m => m.fecha >= p.inicioISO && m.fecha <= p.cierreISO)
+      const delP = movs.filter(m => m.fecha >= p.inicioISO && m.fecha <= p.cierreISO && m.viaje_id == null)
       const ingresos = delP.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
       const gastos   = delP.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0)
       filas.push({ name: p.cierre.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }), Ingresos: ingresos, Gastos: gastos })
@@ -759,6 +795,7 @@ export default function Movimientos() {
   const [recurrentes, setRecurrentes] = useState<Recurrente[]>([])
   const [presupuestos, setPresupuestos] = useState<PresupuestoCategoria[]>([])
   const [cierres, setCierres]   = useState<CierrePeriodo[]>([])
+  const [viajes, setViajes]     = useState<Viaje[]>([])
   const [cargando, setCargando] = useState(true)
   const [formAbierto, setFormAbierto] = useState<{ tipo: 'ingreso' | 'gasto'; editando?: Movimiento; recurrenteBase?: Recurrente } | null>(null)
   const [formRecurrenteAbierto, setFormRecurrenteAbierto] = useState<{ editando?: Recurrente } | null>(null)
@@ -772,7 +809,7 @@ export default function Movimientos() {
   const periodo = useMemo(() => periodoConOffset(offset), [offset])
 
   const cargar = async () => {
-    const [{ data: m }, { data: f }, { data: r }, { data: p }, { data: c }] = await Promise.all([
+    const [{ data: m }, { data: f }, { data: r }, { data: p }, { data: c }, { data: v }] = await Promise.all([
       supabase.from('movimientos').select('*')
         .order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
       supabase.from('fondos_ahorro').select('id,nombre,descripcion,color').eq('activo', true),
@@ -780,15 +817,23 @@ export default function Movimientos() {
       supabase.from('movimientos_presupuestos').select('*').eq('activo', true),
       supabase.from('movimientos_cierres').select('id,periodo_inicio,periodo_cierre,total_ingresos,total_gastos,balance')
         .order('periodo_cierre', { ascending: false }).limit(12),
+      supabase.from('viajes').select('*').eq('activo', true).order('created_at', { ascending: false }),
     ])
     setMovs((m ?? []) as Movimiento[])
     setFondos((f ?? []) as FondoLite[])
     setRecurrentes((r ?? []) as Recurrente[])
     setPresupuestos((p ?? []) as PresupuestoCategoria[])
     setCierres((c ?? []) as CierrePeriodo[])
+    setViajes((v ?? []) as Viaje[])
     setCargando(false)
   }
   useEffect(() => { cargar() }, [])
+
+  const crearViaje = async (nombre: string): Promise<number | null> => {
+    const { data } = await supabase.from('viajes').insert({ nombre }).select('id').single()
+    if (data) setViajes(vs => [{ id: data.id, nombre, presupuesto: null, activo: true }, ...vs])
+    return data?.id ?? null
+  }
 
   const delMov = async (id: number) => {
     // El lapiz y la basura quedan a unos pixeles en el celular -- un toque
@@ -803,8 +848,13 @@ export default function Movimientos() {
     await supabase.from('movimientos').update({ prestamo_pagado: true }).eq('id', id)
   }
 
+  // Los gastos de viaje son la excepcion a proposito: tienen su propio
+  // dinero aparte, y mezclarlos aqui ensuciaria el numero que responde
+  // "como vamos" del dia a dia (categorias, tendencia, proyeccion...).
+  // Siguen en el Historial y en su propia tarjeta de Viajes, solo no en
+  // el Reporte del periodo.
   const delPeriodo = useMemo(() =>
-    movs.filter(m => m.fecha >= periodo.inicioISO && m.fecha <= periodo.cierreISO),
+    movs.filter(m => m.fecha >= periodo.inicioISO && m.fecha <= periodo.cierreISO && m.viaje_id == null),
     [movs, periodo])
 
   const totalIngresos = delPeriodo.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
@@ -864,6 +914,23 @@ export default function Movimientos() {
     if (!window.confirm('¿Quitar este recurrente? Ya no aparecerá en la lista, pero lo que ya registraste con él se queda en el historial.')) return
     setRecurrentes(rs => rs.filter(r => r.id !== id)) // optimista
     await supabase.from('movimientos_recurrentes').update({ activo: false }).eq('id', id)
+  }
+
+  // Todo el historial del viaje, no solo el periodo actual -- un viaje
+  // suele cruzar la frontera de un jueves de cierre sin que eso importe.
+  const viajesResumen = useMemo(() => viajes.map(v => {
+    const items = movs.filter(m => m.viaje_id === v.id)
+    const gastos   = items.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0)
+    const ingresos = items.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
+    return { ...v, gastos, ingresos, neto: ingresos - gastos, cantidad: items.length }
+  }), [viajes, movs])
+
+  const viajeNombrePorId = useMemo(() => new Map(viajes.map(v => [v.id, v.nombre])), [viajes])
+
+  const eliminarViaje = async (id: number) => {
+    if (!window.confirm('¿Archivar este viaje? Los movimientos que ya le pusiste se quedan en el historial, solo deja de aparecer en la lista de viajes activos.')) return
+    setViajes(vs => vs.filter(v => v.id !== id)) // optimista
+    await supabase.from('viajes').update({ activo: false }).eq('id', id)
   }
 
   const presupuestoProgreso = useMemo(() =>
@@ -1114,7 +1181,7 @@ export default function Movimientos() {
                 </p>
                 <div className="space-y-1.5">
                   {items.map(m => (
-                    <FilaMovimiento key={m.id} m={m}
+                    <FilaMovimiento key={m.id} m={m} viajeNombre={m.viaje_id != null ? viajeNombrePorId.get(m.viaje_id) : undefined}
                       onEditar={() => setFormAbierto({ tipo: m.tipo, editando: m })}
                       onBorrar={() => delMov(m.id)}
                       destacar={m.es_prestamo
@@ -1273,6 +1340,40 @@ export default function Movimientos() {
         )}
       </div>
 
+      {/* ── Viajes: gastos de excepcion, aparte del presupuesto normal ── */}
+      {viajesResumen.length > 0 && (
+        <div className="card">
+          <p className="text-strong font-semibold text-sm mb-1 flex items-center gap-1.5"><Plane size={14} /> Viajes</p>
+          <p className="text-xs text-dim mb-3">Aparte del día a día — no cuentan en el Reporte del periodo ni en el presupuesto por categoría.</p>
+          <div className="space-y-1.5">
+            {viajesResumen.map(v => {
+              const pct = v.presupuesto ? Math.min(100, (v.gastos / v.presupuesto) * 100) : null
+              return (
+                <div key={v.id} className="p-3 rounded-xl" style={{ background: 'var(--bg)' }}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-sm font-medium text-body">✈️ {v.nombre}</span>
+                    <button onClick={() => eliminarViaje(v.id)} className="text-dim hover:text-red-400 flex-shrink-0"><Trash2 size={13} /></button>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-dim">{v.cantidad} movimiento{v.cantidad !== 1 ? 's' : ''}</span>
+                    <span>
+                      {v.ingresos > 0 && <span style={{ color: 'var(--green)' }} className="font-medium">+{fmt(v.ingresos)} </span>}
+                      <span style={{ color: 'var(--red)' }} className="font-medium">−{fmt(v.gastos)}</span>
+                      {v.presupuesto ? <span className="text-dim"> / {fmt(v.presupuesto)}</span> : null}
+                    </span>
+                  </div>
+                  {pct != null && (
+                    <div className="h-1.5 rounded-full overflow-hidden mt-2" style={{ background: 'var(--surface-2)' }}>
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: v.gastos > (v.presupuesto ?? 0) ? 'var(--red)' : 'var(--accent)' }} />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {cierres.length > 0 && (
         <div className="card">
           <p className="text-strong font-semibold text-sm mb-2 flex items-center gap-1.5">
@@ -1297,9 +1398,10 @@ export default function Movimientos() {
       )}
 
       {formAbierto && (
-        <FormMovimiento tipo={formAbierto.tipo} fondos={fondos} editando={formAbierto.editando} recurrenteBase={formAbierto.recurrenteBase}
+        <FormMovimiento tipo={formAbierto.tipo} fondos={fondos} viajes={viajes} editando={formAbierto.editando} recurrenteBase={formAbierto.recurrenteBase}
           onCerrar={() => setFormAbierto(null)}
-          onGuardado={() => { setFormAbierto(null); cargar() }} />
+          onGuardado={() => { setFormAbierto(null); cargar() }}
+          onNuevoViaje={crearViaje} />
       )}
       {formRecurrenteAbierto && (
         <FormRecurrente fondos={fondos} editando={formRecurrenteAbierto.editando}
