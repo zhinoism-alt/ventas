@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Wallet, Trash2, Pencil, X, ChevronLeft, ChevronRight,
-  HandCoins, Check, Search, CalendarRange, CreditCard, Repeat, Target, Archive, Plus, SlidersHorizontal,
+  HandCoins, Check, Search, CalendarRange, CreditCard, Repeat, Target, Archive, Plus, SlidersHorizontal, ChevronDown,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -227,6 +227,12 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
   const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? recurrenteBase?.metodo_pago ?? '')
   const [esPrestamo, setEsPrestamo] = useState(editando?.es_prestamo ?? false)
   const [guardando, setGuardando]   = useState(false)
+  // Captura rapida por default: solo que-monto-categoria, que es lo que se
+  // llena en 10 segundos parados en la caja. Persona/fondo/metodo/prestamo
+  // quedan un toque mas lejos, pero abiertos de una vez si ya hay datos que
+  // revisar (editando un movimiento, o registrando un recurrente que ya
+  // trae fondo/metodo precargados).
+  const [masDetalles, setMasDetalles] = useState(!!editando || !!recurrenteBase)
 
   const cambiarDescripcion = (v: string) => {
     setDescripcion(v)
@@ -293,6 +299,9 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
             <input autoFocus value={descripcion} onChange={e => cambiarDescripcion(e.target.value)}
               placeholder={tipo === 'gasto' ? 'Ej: Pizza, gasolina, Subway…' : 'Ej: Pago de nómina, venta…'}
               className="input w-full" />
+            <p className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>
+              Tip: "pizza-salidas" o "camioneta-fondo emergencia" manda esto directo a esa categoría o fondo.
+            </p>
           </div>
           <div>
             <label className="text-xs text-muted mb-1 block">Monto</label>
@@ -309,49 +318,60 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
               {categorias.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c] ?? ''} {c}</option>)}
             </select>
           </div>
-          <div>
-            <label className="text-xs text-muted mb-1 block">Fecha</label>
-            <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="input w-full" />
-          </div>
-          <div>
-            <label className="text-xs text-muted mb-1 block">¿De quién es?</label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {PERSONAS.map(p => (
-                <button key={p.valor} type="button" onClick={() => setPersona(p.valor)}
-                  className="py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={persona === p.valor
-                    ? { background: 'var(--accent)', color: '#fff' }
-                    : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-                  {p.label}
-                </button>
-              ))}
+
+          <button type="button" onClick={() => setMasDetalles(v => !v)}
+            className="w-full flex items-center justify-between text-xs font-medium py-1.5"
+            style={{ color: 'var(--text-muted)' }}>
+            <span>Más detalles (fecha, quién, fondo, método de pago…)</span>
+            <ChevronDown size={14} className="transition-transform" style={{ transform: masDetalles ? 'rotate(180deg)' : 'none' }} />
+          </button>
+
+          {masDetalles && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted mb-1 block">Fecha</label>
+                <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="input w-full" />
+              </div>
+              <div>
+                <label className="text-xs text-muted mb-1 block">¿De quién es?</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PERSONAS.map(p => (
+                    <button key={p.valor} type="button" onClick={() => setPersona(p.valor)}
+                      className="py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={persona === p.valor
+                        ? { background: 'var(--accent)', color: '#fff' }
+                        : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted mb-1 block">
+                  {tipo === 'gasto' ? '¿De qué fondo sale? (opcional)' : '¿A qué fondo entra? (opcional)'}
+                </label>
+                <select value={fondoId} onChange={e => { setFondoId(e.target.value); setFondoTocado(true) }} className="input w-full">
+                  <option value="">Sin fondo específico</option>
+                  {fondos.map(f => <option key={f.id} value={f.id}>{f.nombre}{f.descripcion ? ` · ${f.descripcion}` : ''}</option>)}
+                </select>
+                <p className="text-xs text-dim mt-1">Solo para reportear — no cambia el saldo del fondo en Ahorros.</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted mb-1 block">¿Con qué pagaste? (opcional)</label>
+                <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPago | '')} className="input w-full">
+                  <option value="">Sin especificar</option>
+                  {METODOS_PAGO.map(m => <option key={m.valor} value={m.valor}>{m.emoji} {m.label}</option>)}
+                </select>
+              </div>
+              {tipo === 'gasto' && (
+                <label className="flex items-center gap-2 text-xs text-body cursor-pointer">
+                  <input type="checkbox" checked={esPrestamo} onChange={e => setEsPrestamo(e.target.checked)} />
+                  Es préstamo — lo voy a reponer después (ej. con tarjeta de crédito)
+                </label>
+              )}
             </div>
-          </div>
-          <div>
-            <label className="text-xs text-muted mb-1 block">
-              {tipo === 'gasto' ? '¿De qué fondo sale? (opcional)' : '¿A qué fondo entra? (opcional)'}
-            </label>
-            <select value={fondoId} onChange={e => { setFondoId(e.target.value); setFondoTocado(true) }} className="input w-full">
-              <option value="">Sin fondo específico</option>
-              {fondos.map(f => <option key={f.id} value={f.id}>{f.nombre}{f.descripcion ? ` · ${f.descripcion}` : ''}</option>)}
-            </select>
-            <p className="text-xs text-dim mt-1">
-              Solo para reportear — no cambia el saldo del fondo en Ahorros. Tip: escribe "concepto - fondo" (ej. "Camioneta - Fondo Emergencia") para que lo detecte solo.
-            </p>
-          </div>
-          <div>
-            <label className="text-xs text-muted mb-1 block">¿Con qué pagaste? (opcional)</label>
-            <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPago | '')} className="input w-full">
-              <option value="">Sin especificar</option>
-              {METODOS_PAGO.map(m => <option key={m.valor} value={m.valor}>{m.emoji} {m.label}</option>)}
-            </select>
-          </div>
-          {tipo === 'gasto' && (
-            <label className="flex items-center gap-2 text-xs text-body cursor-pointer">
-              <input type="checkbox" checked={esPrestamo} onChange={e => setEsPrestamo(e.target.checked)} />
-              Es préstamo — lo voy a reponer después (ej. con tarjeta de crédito)
-            </label>
           )}
+
           <button onClick={guardar} disabled={guardando || !monto}
             className="w-full py-2.5 rounded-lg text-sm font-medium text-white mt-2 disabled:opacity-50"
             style={{ background: tipo === 'gasto' ? 'var(--red)' : 'var(--green)' }}>
@@ -754,6 +774,9 @@ export default function Movimientos() {
   useEffect(() => { cargar() }, [])
 
   const delMov = async (id: number) => {
+    // El lapiz y la basura quedan a unos pixeles en el celular -- un toque
+    // de mas ya no borra sin avisar.
+    if (!window.confirm('¿Borrar este movimiento?')) return
     setMovs(m => m.filter(x => x.id !== id)) // optimista
     await supabase.from('movimientos').delete().eq('id', id)
   }
@@ -821,6 +844,7 @@ export default function Movimientos() {
   const gastosSinEdenred = totalGastos - gastosEdenred
 
   const eliminarRecurrente = async (id: number) => {
+    if (!window.confirm('¿Quitar este recurrente? Ya no aparecerá en la lista, pero lo que ya registraste con él se queda en el historial.')) return
     setRecurrentes(rs => rs.filter(r => r.id !== id)) // optimista
     await supabase.from('movimientos_recurrentes').update({ activo: false }).eq('id', id)
   }
