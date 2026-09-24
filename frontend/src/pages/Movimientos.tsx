@@ -318,20 +318,37 @@ function FormMovimiento({ tipo, fondos, editando, recurrenteBase, onGuardado, on
               {categorias.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c] ?? ''} {c}</option>)}
             </select>
           </div>
+          <div>
+            <label className="text-xs text-muted mb-1 block">Fecha</label>
+            <div className="flex items-center gap-1.5">
+              {/* type="date" abre el calendario nativo del telefono al tocarlo
+                  (rueda en iOS, calendario en Android) -- es justo el selector
+                  de calendario que se pidio, no hace falta reinventarlo. */}
+              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="input flex-1" />
+              <button type="button" onClick={() => setFecha(hoyISO())}
+                className="text-xs px-2.5 py-2 rounded-lg font-medium flex-shrink-0"
+                style={fecha === hoyISO()
+                  ? { background: 'var(--accent)', color: '#fff' }
+                  : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                Hoy
+              </button>
+              <button type="button" onClick={() => { const a = new Date(); a.setDate(a.getDate() - 1); setFecha(a.toISOString().slice(0, 10)) }}
+                className="text-xs px-2.5 py-2 rounded-lg font-medium flex-shrink-0"
+                style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                Ayer
+              </button>
+            </div>
+          </div>
 
           <button type="button" onClick={() => setMasDetalles(v => !v)}
             className="w-full flex items-center justify-between text-xs font-medium py-1.5"
             style={{ color: 'var(--text-muted)' }}>
-            <span>Más detalles (fecha, quién, fondo, método de pago…)</span>
+            <span>Más detalles (quién, fondo, método de pago…)</span>
             <ChevronDown size={14} className="transition-transform" style={{ transform: masDetalles ? 'rotate(180deg)' : 'none' }} />
           </button>
 
           {masDetalles && (
             <div className="space-y-3">
-              <div>
-                <label className="text-xs text-muted mb-1 block">Fecha</label>
-                <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="input w-full" />
-              </div>
               <div>
                 <label className="text-xs text-muted mb-1 block">¿De quién es?</label>
                 <div className="grid grid-cols-3 gap-1.5">
