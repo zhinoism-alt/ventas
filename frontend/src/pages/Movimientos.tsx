@@ -111,10 +111,6 @@ const CATEGORIA_EMOJI: Record<string, string> = {
   'Salud': '🏥', 'Entretenimiento': '🎬', 'Salidas': '🎉', 'Regalos': '🎁', 'Ropa': '👕',
   'Casa': '🏠', 'Seguros': '📄', 'Mascotas': '🐱', 'Salario': '💼', 'Venta': '📈',
   'Extra': '➕', 'Reembolso': '🔄', 'Otro': '💸', 'Otro Necesario': '💸',
-  // Nombres viejos, para que el historial ya capturado (categoria = 'Nómina')
-  // siga mostrando su emoji en vez del generico -- el rename no reescribe
-  // filas existentes.
-  'Nómina': '💼',
 }
 
 // Adivina la categoria a partir de lo que Brandon escribe en "que es" --
