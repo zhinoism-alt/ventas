@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle,
-  Bell, PiggyBank, Tv, Package, ExternalLink, Star, ArrowRight,
+  Bell, PiggyBank, Tv, Package, ExternalLink, ArrowRight,
   Percent, RefreshCw,
 } from 'lucide-react'
 import { getSummary, getExpiringSubscriptions, formatMXN } from '../lib/api'
@@ -49,14 +49,15 @@ interface Fondo {
   color: string
 }
 
-interface Recordatorio {
+interface EventoCalendario {
   id: number
   titulo: string
-  tipo: string
-  fecha_hora: string
-  importante: boolean
-  color: string
-  completado: boolean
+  detalle: string | null
+  fecha: string
+  hora: string
+  recurrencia: 'ninguna' | 'semanal'
+  monto: number | null
+  activo: boolean
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,6 +86,39 @@ function greet() {
 function daysUntil(dateStr: string) {
   const diff = new Date(dateStr).getTime() - Date.now()
   return Math.ceil(diff / 86400000)
+}
+
+// A diferencia de daysUntil (horas exactas hasta el momento), esto compara
+// dias de calendario: un evento hoy a las 8pm debe decir "Hoy" a las 9am,
+// no "Mañana" solo porque faltan menos de 24 horas mismas.
+function diasCalendario(fecha: Date): number {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const obj = new Date(fecha); obj.setHours(0, 0, 0, 0)
+  return Math.round((obj.getTime() - hoy.getTime()) / 86400000)
+}
+
+// "Proximos Recordatorios" leia de una tabla `recordatorios` que quedo
+// huerfana desde que Calendario se construyo sobre `calendario_eventos` --
+// por eso nunca mostraba la dosis del domingo ni nada capturado ahi. Esto
+// calcula cuando cae la siguiente ocurrencia real de cada evento: para uno
+// que no se repite, su propia fecha (si ya paso, no vuelve a aparecer);
+// para uno semanal, el proximo dia que caiga en el mismo dia de la semana
+// que su fecha original, empujando a la semana siguiente si hoy es ese dia
+// pero la hora ya paso.
+function proximaOcurrencia(e: EventoCalendario): Date | null {
+  const [hh, mm] = (e.hora || '00:00:00').split(':').map(Number)
+  if (e.recurrencia === 'ninguna') {
+    const f = new Date(e.fecha + 'T00:00:00')
+    f.setHours(hh, mm, 0, 0)
+    return f >= new Date() ? f : null
+  }
+  const diaObjetivo = new Date(e.fecha + 'T00:00:00').getDay()
+  const candidato = new Date()
+  candidato.setHours(hh, mm, 0, 0)
+  const delta = (diaObjetivo - candidato.getDay() + 7) % 7
+  candidato.setDate(candidato.getDate() + delta)
+  if (candidato < new Date()) candidato.setDate(candidato.getDate() + 7)
+  return candidato
 }
 
 function formatDateTime(dt: string) {
@@ -321,7 +355,7 @@ export default function Dashboard() {
   const [expiring, setExpiring]       = useState<ExpiringSub[]>([])
   const [ahorros, setAhorros]         = useState<Ahorro[]>([])
   const [fondos, setFondos]           = useState<Fondo[]>([])
-  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([])
+  const [eventosCalendario, setEventosCalendario] = useState<EventoCalendario[]>([])
   // Los mismos supuestos que usan Ahorros y Patrimonio. Sin ellos este panel
   // mostraba el rendimiento bruto y contradecia a las otras dos pantallas.
   const [supuestos, setSupuestos] = useState<{ isr_retencion_pct: number; inflacion_pct: number } | null>(null)
@@ -329,29 +363,21 @@ export default function Dashboard() {
   const [error, setError]             = useState('')
 
   useEffect(() => {
-    const now = new Date().toISOString()
-
     Promise.all([
       getSummary(),
       getExpiringSubscriptions(7),
       supabase.from('ahorros').select('*').eq('activo', true).order('created_at', { ascending: false }),
       supabase.from('fondos_ahorro').select('*').eq('activo', true).order('created_at', { ascending: false }),
       supabase.from('finanzas_perfil').select('isr_retencion_pct,inflacion_pct').eq('id', 1).maybeSingle(),
-      supabase
-        .from('recordatorios')
-        .select('*')
-        .eq('completado', false)
-        .gte('fecha_hora', now)
-        .order('fecha_hora', { ascending: true })
-        .limit(5),
+      supabase.from('calendario_eventos').select('*').eq('activo', true),
     ])
-      .then(([s, e, a, f, sup, r]) => {
+      .then(([s, e, a, f, sup, ev]) => {
         setSummary(s.data)
         setExpiring(e.data)
         setAhorros(a.data ?? [])
         setFondos(f.data ?? [])
         setSupuestos((sup.data as { isr_retencion_pct: number; inflacion_pct: number }) ?? null)
-        setRecordatorios(r.data ?? [])
+        setEventosCalendario((ev.data ?? []) as EventoCalendario[])
       })
       .catch((err: unknown) => {
         const e = err as { message?: string; code?: string; details?: string }
@@ -415,11 +441,16 @@ export default function Dashboard() {
   const rendimientoAnual    = supuestos
     ? rendimientoBruto - totalFondosConRendimiento * (n(supuestos.isr_retencion_pct) / 100) - totalFondos * (n(supuestos.inflacion_pct) / 100)
     : rendimientoBruto
-  // Upcoming reminders with urgency
-  const upcomingRecs = recordatorios.map(r => ({
-    ...r,
-    daysLeft: daysUntil(r.fecha_hora),
-  }))
+  // Upcoming reminders con urgencia -- calculado desde calendario_eventos,
+  // no desde la tabla huerfana. Cada evento se resuelve a su proxima
+  // ocurrencia real (considerando recurrencia semanal) y se descarta si no
+  // tiene una (uno que no se repite y ya paso).
+  const upcomingRecs = eventosCalendario
+    .map(e => ({ ...e, proxima: proximaOcurrencia(e) }))
+    .filter((e): e is EventoCalendario & { proxima: Date } => e.proxima !== null)
+    .sort((a, b) => a.proxima.getTime() - b.proxima.getTime())
+    .slice(0, 5)
+    .map(e => ({ ...e, fecha_hora: e.proxima.toISOString(), daysLeft: diasCalendario(e.proxima) }))
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
@@ -700,7 +731,7 @@ export default function Dashboard() {
               <Bell size={14} className="text-indigo-400" />
               Próximos Recordatorios
             </h2>
-            <a href="/bienestar" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+            <a href="/calendario" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
               Ver todo <ArrowRight size={11} />
             </a>
           </div>
@@ -715,7 +746,9 @@ export default function Dashboard() {
               {upcomingRecs.map(r => {
                 const urgent = r.daysLeft <= 1
                 const soon = r.daysLeft <= 3
-                const accentColor = urgent ? 'var(--red)' : soon ? 'var(--yellow)' : (r.color || 'var(--accent)')
+                // Sin concatenar alpha a una var() -- ese truco ya nos rompio
+                // un fondo silenciosamente en Ahorros esta misma sesion.
+                const accentColor = urgent ? 'var(--red)' : soon ? 'var(--yellow)' : 'var(--accent)'
                 return (
                   <div
                     key={r.id}
@@ -723,15 +756,14 @@ export default function Dashboard() {
                     style={{ background: 'var(--bg)', borderLeft: `3px solid ${accentColor}` }}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        {r.importante && <Star size={11} className="text-yellow-400 flex-shrink-0" />}
-                        <p className="text-sm text-strong truncate">{r.titulo}</p>
-                      </div>
-                      <p className="text-xs text-dim mt-0.5">{formatDateTime(r.fecha_hora)}</p>
+                      <p className="text-sm text-strong truncate">{r.titulo}</p>
+                      <p className="text-xs text-dim mt-0.5">
+                        {formatDateTime(r.fecha_hora)}{r.monto ? ` · ${fmt(r.monto)}` : ''}
+                      </p>
                     </div>
                     <span
                       className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
-                      style={{ color: accentColor, background: accentColor + '18' }}
+                      style={{ color: accentColor, background: 'var(--surface-2)' }}
                     >
                       {r.daysLeft <= 0 ? 'Hoy' : r.daysLeft === 1 ? 'Mañana' : `${r.daysLeft}d`}
                     </span>
