@@ -193,11 +193,18 @@ function interpretarDestino(texto: string, categorias: string[], fondos: FondoLi
   const destino = texto.slice(guion + 1).trim()
   if (!destino) return { categoria: null, fondoId: null }
 
+  // Solo "lo que escribiste contiene el nombre completo del fondo", nunca al
+  // reves. Con las dos direcciones, mientras Brandon todavia estaba
+  // escribiendo "fire stick - venta" el destino a medio teclear ("v") ya
+  // estaba CONTENIDO DENTRO de "Fondo de Inversion" (la "v" de "inVersion")
+  // y elegia ese fondo solo, antes de que terminara de escribir la palabra
+  // que de verdad queria. Por eso "a veces" salian fondos distintos sin que
+  // el los pidiera -- dependia de que letra iba a medio camino.
   const destinoLimpio = limpiarParaComparar(destino)
-  const fondoMatch = fondos.find(f => {
+  const fondoMatch = destinoLimpio.length >= 4 ? fondos.find(f => {
     const nombreLimpio = limpiarParaComparar(f.nombre)
-    return nombreLimpio.length > 2 && (destinoLimpio.includes(nombreLimpio) || nombreLimpio.includes(destinoLimpio))
-  })
+    return nombreLimpio.length > 2 && destinoLimpio.includes(nombreLimpio)
+  }) : undefined
 
   const categoriaMatch = sugerirCategoria(destino, categorias)
   return { categoria: categoriaMatch, fondoId: fondoMatch?.id ?? null }
