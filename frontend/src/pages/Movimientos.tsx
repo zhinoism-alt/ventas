@@ -332,7 +332,7 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuar
               <span>Categoría</span>
               {!categoriaTocada && descripcion && <span className="text-dim normal-case font-normal">sugerida automáticamente</span>}
             </label>
-            <select value={categoria} onChange={e => { setCategoria(e.target.value); setCategoriaTocada(true) }} className="input w-full">
+            <select value={categoria} onChange={e => { setCategoria(e.target.value); setCategoriaTocada(true) }} className="input w-full" autoComplete="off">
               {categorias.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c] ?? ''} {c}</option>)}
             </select>
           </div>
@@ -385,7 +385,7 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuar
                 <label className="text-xs text-muted mb-1 block">
                   {tipo === 'gasto' ? '¿De qué fondo sale? (opcional)' : '¿A qué fondo entra? (opcional)'}
                 </label>
-                <select value={fondoId} onChange={e => { setFondoId(e.target.value); setFondoTocado(true) }} className="input w-full">
+                <select value={fondoId} onChange={e => { setFondoId(e.target.value); setFondoTocado(true) }} className="input w-full" autoComplete="off">
                   <option value="">Sin fondo específico</option>
                   {fondos.map(f => <option key={f.id} value={f.id}>{f.nombre}{f.descripcion ? ` · ${f.descripcion}` : ''}</option>)}
                 </select>
@@ -393,14 +393,14 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuar
               </div>
               <div>
                 <label className="text-xs text-muted mb-1 block">¿Con qué pagaste? (opcional)</label>
-                <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPago | '')} className="input w-full">
+                <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPago | '')} className="input w-full" autoComplete="off">
                   <option value="">Sin especificar</option>
                   {METODOS_PAGO.map(m => <option key={m.valor} value={m.valor}>{m.emoji} {m.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-muted mb-1 block">¿Es de un viaje? (opcional)</label>
-                <select value={viajeId} onChange={e => setViajeId(e.target.value)} className="input w-full">
+                <select value={viajeId} onChange={e => setViajeId(e.target.value)} className="input w-full" autoComplete="off">
                   <option value="">No, es del día a día</option>
                   {viajes.map(v => <option key={v.id} value={v.id}>✈️ {v.nombre}</option>)}
                   <option value="nuevo">+ Nuevo viaje…</option>
@@ -579,7 +579,7 @@ function FormRecurrente({ fondos, editando, onGuardado, onCerrar }: {
           </div>
           <div>
             <label className="text-xs text-muted mb-1 block">Categoría</label>
-            <select value={categoria} onChange={e => setCategoria(e.target.value)} className="input w-full">
+            <select value={categoria} onChange={e => setCategoria(e.target.value)} className="input w-full" autoComplete="off">
               {categorias.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c] ?? ''} {c}</option>)}
             </select>
           </div>
@@ -597,14 +597,14 @@ function FormRecurrente({ fondos, editando, onGuardado, onCerrar }: {
           </div>
           <div>
             <label className="text-xs text-muted mb-1 block">Fondo (opcional)</label>
-            <select value={fondoId} onChange={e => setFondoId(e.target.value)} className="input w-full">
+            <select value={fondoId} onChange={e => setFondoId(e.target.value)} className="input w-full" autoComplete="off">
               <option value="">Sin fondo específico</option>
               {fondos.map(f => <option key={f.id} value={f.id}>{f.nombre}{f.descripcion ? ` · ${f.descripcion}` : ''}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-muted mb-1 block">Método de pago (opcional)</label>
-            <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPago | '')} className="input w-full">
+            <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPago | '')} className="input w-full" autoComplete="off">
               <option value="">Sin especificar</option>
               {METODOS_PAGO.map(m => <option key={m.valor} value={m.valor}>{m.emoji} {m.label}</option>)}
             </select>
