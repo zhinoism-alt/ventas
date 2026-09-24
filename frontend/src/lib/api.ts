@@ -619,8 +619,18 @@ export const getIPTVStats = async () => {
     if (!month) continue
     if (!byMonth[month]) byMonth[month] = { month, revenue_mxn: 0, cost_mxn: 0, subscriptions: 0 }
     byMonth[month].revenue_mxn += ingresoDe(s)
-    byMonth[month].cost_mxn    += (s.cost_per_credit ?? 0) * (s.credits_used ?? 0)
     byMonth[month].subscriptions++
+  }
+  // El costo real es lo que se pago por los creditos (iptv_packages.price_paid),
+  // no cost_per_credit*credits_used de cada suscripcion -- ese campo casi nunca
+  // se llena a mano, asi que el costo del mes se veia en $0 aunque si se hubiera
+  // comprado el paquete (ej. $2,700 por 30 creditos). Se agrupa por el mes en que
+  // se compro el paquete, que es cuando de verdad salio el dinero.
+  for (const p of allPkgs.filter(p => p.purchase_date >= twelveAgo)) {
+    const month = p.purchase_date?.slice(0, 7)
+    if (!month) continue
+    if (!byMonth[month]) byMonth[month] = { month, revenue_mxn: 0, cost_mxn: 0, subscriptions: 0 }
+    byMonth[month].cost_mxn += p.price_currency === 'USD' ? p.price_paid * rate : p.price_paid
   }
   const monthly_revenue = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month))
 
@@ -767,7 +777,15 @@ export const getSummary = async () => {
     if (!month) continue
     if (!monthlyIPTV[month]) monthlyIPTV[month] = { revenue: 0, costo: 0 }
     monthlyIPTV[month].revenue += s.price_currency === 'USD' ? s.price_charged * rate : s.price_charged
-    monthlyIPTV[month].costo   += (s.cost_per_credit ?? 0) * (s.credits_used ?? 0)
+  }
+  // Mismo criterio que getIPTVStats: el costo real es lo que se pago por los
+  // creditos (iptv_packages.price_paid), agrupado por el mes de la compra --
+  // no cost_per_credit*credits_used de la suscripcion, que casi nunca se llena.
+  for (const p of allPkgs.filter(p => p.purchase_date >= sixAgo)) {
+    const month = p.purchase_date?.slice(0, 7)
+    if (!month) continue
+    if (!monthlyIPTV[month]) monthlyIPTV[month] = { revenue: 0, costo: 0 }
+    monthlyIPTV[month].costo += p.price_currency === 'USD' ? p.price_paid * rate : p.price_paid
   }
 
   const months: Record<string, { month: string; productos: number; iptv: number; costo_iptv: number }> = {}

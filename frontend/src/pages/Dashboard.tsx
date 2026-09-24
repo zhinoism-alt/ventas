@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
-import {
   TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle,
   Bell, PiggyBank, Tv, Package, ExternalLink, ArrowRight,
   Percent, RefreshCw,
 } from 'lucide-react'
 import { getSummary, getExpiringSubscriptions, formatMXN } from '../lib/api'
 import { supabase } from '../lib/supabase'
-import { TOOLTIP_STYLE, formatMonth } from '../lib/constants'
+import { formatMonth } from '../lib/constants'
 import { fmt } from '../lib/utils'
 import { periodoConOffset } from '../lib/periodoFinanciero'
 
@@ -415,11 +411,21 @@ export default function Dashboard() {
     ? ((ganancia / summary.total_ingresos_mxn) * 100).toFixed(1)
     : '0'
 
-  const chartData = (summary.monthly_chart || []).map(m => ({
-    name: formatMonth(m.month),
-    Productos: Math.round(m.productos || 0),
-    IPTV: Math.round(m.iptv || 0),
-  }))
+  // Forecast del mes en curso: a este ritmo, cuanto va a cerrar. La grafica
+  // de Productos+IPTV que vivia aqui se quito -- IPTV ya tiene la suya
+  // propia (con costo real de creditos) en su pagina, y mezclar productos
+  // con IPTV en el Dashboard duplicaba esa vista sin agregar nada nuevo.
+  const hoy          = new Date()
+  const mesActualStr = hoy.toISOString().slice(0, 7)
+  const diaHoy        = hoy.getDate()
+  const diasEnMes     = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
+  const entradaMes    = (summary.monthly_chart || []).find(m => m.month === mesActualStr)
+  const ingresosHastaHoy = (entradaMes?.productos ?? 0) + (entradaMes?.iptv ?? 0)
+  const costoIptvHastaHoy = entradaMes?.costo_iptv ?? 0
+  const netoIptvHastaHoy  = (entradaMes?.iptv ?? 0) - costoIptvHastaHoy
+  const factorProyeccion  = diaHoy > 0 ? diasEnMes / diaHoy : 1
+  const ingresosProyectados = ingresosHastaHoy * factorProyeccion
+  const netoIptvProyectado  = netoIptvHastaHoy * factorProyeccion
 
   // Una meta pagada ya se gasto: no es fondos, y tampoco cuenta como avance
   // pendiente. Mismo criterio que Ahorros.tsx.
@@ -563,51 +569,60 @@ export default function Dashboard() {
       {/* ── Middle Row: Chart + Ahorros ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        {/* Revenue Chart */}
+        {/* Forecast del mes en curso */}
         <div className="card lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-sm font-semibold text-strong">Ingresos Mensuales</h2>
-              <p className="text-xs text-dim mt-0.5">En MXN — últimos meses</p>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-muted">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--accent)', display: 'inline-block' }} />
-                Productos
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--green)', display: 'inline-block' }} />
-                IPTV
-              </span>
-            </div>
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold text-strong flex items-center gap-2">
+              <TrendingUp size={15} className="text-indigo-400" /> Forecast de {formatMonth(mesActualStr)}
+            </h2>
+            <p className="text-xs text-dim mt-0.5">
+              Van {diaHoy} de {diasEnMes} días — a este ritmo, así cerraría el mes.
+            </p>
           </div>
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={v => Math.abs(v) >= 10000 ? `$${Math.round(v / 1000)}k`
-                                     : Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(1)}k`
-                                     : `$${Math.round(v)}`} />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={(v: number) => formatMXN(v)}
-                  cursor={{ fill: 'rgba(99, 102, 241, 0.06)' }}
-                />
-                <Bar dataKey="Productos" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="IPTV" fill="var(--green)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[220px] flex items-center justify-center text-center">
+
+          {ingresosHastaHoy === 0 ? (
+            <div className="h-[160px] flex items-center justify-center text-center">
               <div>
                 <Package size={40} className="mx-auto mb-2 text-faint" />
-                <p className="text-dim text-sm">Sin datos aún</p>
-                <p className="text-faint text-xs mt-1">Agrega ventas para ver la gráfica</p>
+                <p className="text-dim text-sm">Sin ventas este mes todavía</p>
+                <p className="text-faint text-xs mt-1">El forecast aparece en cuanto haya la primera</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="rounded-xl p-4" style={{ background: 'var(--bg)' }}>
+                <p className="text-xs text-muted mb-2">Ingresos totales (Productos + IPTV)</p>
+                <div className="flex items-end justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-dim">Hasta hoy</p>
+                    <p className="text-lg font-bold text-strong">{formatMXN(ingresosHastaHoy)}</p>
+                  </div>
+                  <ArrowRight size={14} className="text-dim mb-1.5" />
+                  <div className="text-right">
+                    <p className="text-xs text-dim">Proyectado</p>
+                    <p className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{formatMXN(ingresosProyectados)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-4" style={{ background: 'var(--bg)' }}>
+                <p className="text-xs text-muted mb-2">Ganancia neta IPTV (después de créditos)</p>
+                <div className="flex items-end justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-dim">Hasta hoy</p>
+                    <p className="text-lg font-bold" style={{ color: netoIptvHastaHoy >= 0 ? 'var(--green)' : 'var(--red)' }}>{formatMXN(netoIptvHastaHoy)}</p>
+                  </div>
+                  <ArrowRight size={14} className="text-dim mb-1.5" />
+                  <div className="text-right">
+                    <p className="text-xs text-dim">Proyectado</p>
+                    <p className="text-lg font-bold" style={{ color: netoIptvProyectado >= 0 ? 'var(--green)' : 'var(--red)' }}>{formatMXN(netoIptvProyectado)}</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
+          <p className="text-xs text-dim mt-3">
+            El detalle de ingresos vs costo de créditos por mes ahora vive en <a href="/iptv" className="text-indigo-400 hover:text-indigo-300">IPTV</a>.
+          </p>
         </div>
 
         {/* Ahorros + Fondos Panel */}
