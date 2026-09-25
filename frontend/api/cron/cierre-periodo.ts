@@ -68,9 +68,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, accion: 'ya estaba cerrado', periodo_cierre: periodo.cierre })
     }
 
+    // viaje_id: los gastos de viaje tienen su propio dinero aparte y se
+    // excluyen del reporte del periodo en toda la app (ver viajes.sql y
+    // Movimientos.tsx delPeriodo) -- si el cierre no aplicara el mismo
+    // filtro, el numero que queda congelado para siempre en
+    // movimientos_cierres no coincidiria con el que ya vieron en pantalla.
     const { data: movs, error } = await supabase.from('movimientos')
       .select('tipo,monto,categoria,persona,fondo_id,metodo_pago')
       .gte('fecha', periodo.inicio).lte('fecha', periodo.cierre)
+      .is('viaje_id', null)
     if (error) throw error
 
     const lista = movs ?? []

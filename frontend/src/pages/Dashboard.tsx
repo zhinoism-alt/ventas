@@ -296,16 +296,25 @@ function MovimientosHUD() {
 
   useEffect(() => {
     (async () => {
-      const periodo = periodoConOffset(0)
-      const [{ data: movs }, { count: prestamos }] = await Promise.all([
-        supabase.from('movimientos').select('tipo,monto')
-          .gte('fecha', periodo.inicioISO).lte('fecha', periodo.cierreISO),
-        supabase.from('movimientos').select('id', { count: 'exact', head: true })
-          .eq('es_prestamo', true).eq('prestamo_pagado', false),
-      ])
-      const ingresos = (movs ?? []).filter((m: any) => m.tipo === 'ingreso').reduce((s: number, m: any) => s + Number(m.monto), 0)
-      const gastos   = (movs ?? []).filter((m: any) => m.tipo === 'gasto').reduce((s: number, m: any) => s + Number(m.monto), 0)
-      setDatos({ ingresos, gastos, prestamos: prestamos ?? 0 })
+      try {
+        const periodo = periodoConOffset(0)
+        const [{ data: movs }, { count: prestamos }] = await Promise.all([
+          supabase.from('movimientos').select('tipo,monto')
+            .gte('fecha', periodo.inicioISO).lte('fecha', periodo.cierreISO)
+            // Los gastos de viaje tienen su propio dinero aparte y no cuentan
+            // en el balance del periodo -- mismo criterio que delPeriodo en
+            // Movimientos.tsx, si no los dos balances no coinciden.
+            .is('viaje_id', null),
+          supabase.from('movimientos').select('id', { count: 'exact', head: true })
+            .eq('es_prestamo', true).eq('prestamo_pagado', false),
+        ])
+        const ingresos = (movs ?? []).filter((m: any) => m.tipo === 'ingreso').reduce((s: number, m: any) => s + Number(m.monto), 0)
+        const gastos   = (movs ?? []).filter((m: any) => m.tipo === 'gasto').reduce((s: number, m: any) => s + Number(m.monto), 0)
+        setDatos({ ingresos, gastos, prestamos: prestamos ?? 0 })
+      } catch {
+        // Si falla, el HUD simplemente no aparece -- el resto del Dashboard
+        // sigue funcionando y Movimientos.tsx tiene el detalle completo.
+      }
     })()
   }, [])
 
@@ -425,7 +434,14 @@ export default function Dashboard() {
   const netoIptvHastaHoy  = (entradaMes?.iptv ?? 0) - costoIptvHastaHoy
   const factorProyeccion  = diaHoy > 0 ? diasEnMes / diaHoy : 1
   const ingresosProyectados = ingresosHastaHoy * factorProyeccion
-  const netoIptvProyectado  = netoIptvHastaHoy * factorProyeccion
+  // El costo de IPTV es la compra puntual de un paquete de creditos, no un
+  // gasto que se acumula dia a dia como el ingreso -- proyectarlo con el
+  // mismo factor lineal que el ingreso inflaba (o hundia) la ganancia neta
+  // segun que tan temprano en el mes cayera la compra del paquete. El
+  // ingreso si se proyecta (se sigue vendiendo el resto del mes); el costo
+  // ya pagado se queda como esta, no se multiplica.
+  const ingresosIptvProyectados = (entradaMes?.iptv ?? 0) * factorProyeccion
+  const netoIptvProyectado  = ingresosIptvProyectados - costoIptvHastaHoy
 
   // Una meta pagada ya se gasto: no es fondos, y tampoco cuenta como avance
   // pendiente. Mismo criterio que Ahorros.tsx.

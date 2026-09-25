@@ -823,6 +823,7 @@ export const getMonthlyReport = async (year?: number) => {
   const [
     { data: sales, error: sErr },
     { data: subs,  error: subErr },
+    { data: packages, error: pkgErr },
     rateRes,
   ] = await Promise.all([
     // Rango de fechas, no LIKE: sale_date y start_date son DATE, y Postgres no
@@ -830,10 +831,12 @@ export const getMonthlyReport = async (year?: number) => {
     // "operator does not exist: date ~~ unknown" y Reportes no cargaba nada.
     supabase.from('sales').select('*').gte('sale_date', `${y}-01-01`).lt('sale_date', `${Number(y) + 1}-01-01`),
     supabase.from('iptv_subscriptions').select('*').gte('start_date', `${y}-01-01`).lt('start_date', `${Number(y) + 1}-01-01`),
+    supabase.from('iptv_packages').select('*').gte('purchase_date', `${y}-01-01`).lt('purchase_date', `${Number(y) + 1}-01-01`),
     getExchangeRate(),
   ])
   if (sErr)   throw sErr
   if (subErr) throw subErr
+  if (pkgErr) throw pkgErr
 
   const rate = rateRes.data?.usd_to_mxn ?? 17.5
 
@@ -856,7 +859,17 @@ export const getMonthlyReport = async (year?: number) => {
     if (!iptvByMonth[mes]) iptvByMonth[mes] = { mes, suscripciones: 0, ingresos: 0, costos: 0 }
     iptvByMonth[mes].suscripciones++
     iptvByMonth[mes].ingresos += s.price_currency === 'USD' ? s.price_charged * rate : s.price_charged
-    iptvByMonth[mes].costos   += (s.cost_per_credit ?? 0) * (s.credits_used ?? 0)
+  }
+  // Mismo criterio que getIPTVStats/getSummary: el costo real es lo que se
+  // pago por los creditos (iptv_packages.price_paid), agrupado por el mes de
+  // la compra -- no cost_per_credit*credits_used de la suscripcion, que casi
+  // nunca se llena a mano y dejaba el costo en $0 aunque si se hubiera
+  // comprado el paquete.
+  for (const p of packages ?? []) {
+    const mes = p.purchase_date?.slice(5, 7)
+    if (!mes) continue
+    if (!iptvByMonth[mes]) iptvByMonth[mes] = { mes, suscripciones: 0, ingresos: 0, costos: 0 }
+    iptvByMonth[mes].costos += p.price_currency === 'USD' ? p.price_paid * rate : p.price_paid
   }
 
   return {

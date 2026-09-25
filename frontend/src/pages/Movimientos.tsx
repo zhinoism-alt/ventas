@@ -12,6 +12,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/utils'
 import { TOOLTIP_STYLE } from '../lib/constants'
 import { periodoConOffset } from '../lib/periodoFinanciero'
+import { useRescate } from '../lib/useDraft'
+import { AvisoForm, AvisoRescate } from '../components/FormAvisos'
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Movimientos: reemplazo de FetPocket, capturado directo en VentasPro.
@@ -121,18 +123,18 @@ const PISTAS_CATEGORIA: [string, string][] = [
   ['burger', 'Comida rápida'], ['mcdonalds', 'Comida rápida'], ['kfc', 'Comida rápida'],
   ['restaurante', 'Comida rápida'], ['comida', 'Comida rápida'], ['tostadas', 'Comida rápida'],
   ['soriana', 'Súper'], ['walmart', 'Súper'], ['costco', 'Súper'], ['supermercado', 'Súper'], ['mandado', 'Súper'],
-  // 'garrafon' va ANTES que 'agua': el garrafon de agua purificada ($17/galon
-  // que ellos mismos van a rellenar) no es lo mismo que el servicio de JMAS,
-  // aunque la palabra "agua" aparezca en las dos ("Garrafon de agua"). Si
-  // 'agua' se revisara primero, "garrafon de agua" caeria mal en Servicios.
+  // El garrafon de agua purificada ($17/galon que ellos mismos van a
+  // rellenar) no es lo mismo que el servicio de JMAS, aunque la palabra
+  // "agua" aparezca en las dos ("Garrafon de agua"). sugerirCategoria() ya
+  // no depende del orden del array para resolver esto -- gana la pista mas
+  // larga que haga match ("garrafon", 8 letras, le gana a "agua", 4).
   ['garrafon', 'Súper'], ['garrafones', 'Súper'],
   ['gasolina', 'Transporte'], ['uber', 'Transporte'], ['didi', 'Transporte'], ['taxi', 'Transporte'],
   ['parqu', 'Transporte'], ['estacionamiento', 'Transporte'], ['camioneta', 'Transporte'],
   ['luz', 'Servicios'], ['agua', 'Servicios'], ['internet', 'Servicios'],
   ['telcel', 'Servicios'], ['celular', 'Servicios'], ['servicio', 'Servicios'], ['servicios', 'Servicios'],
-  // 'gas' va despues de 'gasolina' a proposito: "gasolina" tiene que
-  // encontrar Transporte primero, o "Gasolina" caeria aqui por error
-  // (gasolina contiene "gas" como substring).
+  // Mismo criterio: "gasolina" (8 letras) le gana a "gas" (3 letras) sin
+  // importar cual de las dos aparezca primero en este array.
   ['gas', 'Servicios'],
   ['netflix', 'Entretenimiento'], ['spotify', 'Entretenimiento'],
   // Salidas es su propia categoria, distinta de Entretenimiento: lo que
@@ -155,10 +157,18 @@ function sugerirCategoria(descripcion: string, categorias: string[]): string | n
   // normalizar() (no solo toLowerCase) para que "Garrafón" encuentre la
   // pista "garrafon" aunque el acento no coincida caracter por caracter.
   const d = normalizar(descripcion)
+  // Se recolectan TODAS las pistas que hacen match y gana la mas especifica
+  // (la mas larga), no la primera en el orden del array -- asi "garrafon"
+  // le gana a "agua" y "gasolina" le gana a "gas" sin depender de que el
+  // array este ordenado a mano para resolver esas colisiones.
+  let mejor: { pista: string; cat: string } | null = null
   for (const [pista, cat] of PISTAS_CATEGORIA) {
-    if (d.includes(normalizar(pista)) && categorias.includes(cat)) return cat
+    if (!categorias.includes(cat)) continue
+    if (d.includes(normalizar(pista)) && (!mejor || pista.length > mejor.pista.length)) {
+      mejor = { pista, cat }
+    }
   }
-  return null
+  return mejor?.cat ?? null
 }
 
 function hoyISO() { return new Date().toISOString().slice(0, 10) }
@@ -217,36 +227,47 @@ function ultimoDiaDelMes(d: Date): string {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)
 }
 
-function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuardado, onCerrar, onNuevoViaje }: {
+function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescateInicial, onGuardado, onCerrar, onNuevoViaje, onCambio }: {
   tipo: 'ingreso' | 'gasto'; fondos: FondoLite[]; viajes: Viaje[]; editando?: Movimiento; recurrenteBase?: Recurrente
+  rescateInicial?: Record<string, any>
   onGuardado: () => void; onCerrar: () => void; onNuevoViaje: (nombre: string) => Promise<number | null>
+  onCambio?: (valores: Record<string, any>) => void
 }) {
   const { usuario } = useAuth()
   const categorias = tipo === 'gasto' ? CATEGORIAS_GASTO : CATEGORIAS_INGRESO
-  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? recurrenteBase?.descripcion ?? '')
-  const [monto, setMonto]           = useState(editando ? String(editando.monto) : recurrenteBase ? String(recurrenteBase.monto_esperado) : '')
-  const [categoria, setCategoria]   = useState(editando?.categoria ?? recurrenteBase?.categoria ?? categorias[0])
+  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? recurrenteBase?.descripcion ?? rescateInicial?.descripcion ?? '')
+  const [monto, setMonto]           = useState(editando ? String(editando.monto) : recurrenteBase ? String(recurrenteBase.monto_esperado) : rescateInicial?.monto ?? '')
+  const [categoria, setCategoria]   = useState(editando?.categoria ?? recurrenteBase?.categoria ?? rescateInicial?.categoria ?? categorias[0])
   // Mientras el usuario no toque el select a mano, cada letra que escribe en
   // "que es" puede seguir moviendo la categoria sugerida. En cuanto la elige
   // el mismo, se respeta lo que puso -- nunca se le pisa una eleccion propia.
-  const [categoriaTocada, setCategoriaTocada] = useState(!!editando || !!recurrenteBase)
-  const [fecha, setFecha]           = useState(editando?.fecha ?? hoyISO())
+  const [categoriaTocada, setCategoriaTocada] = useState(!!editando || !!recurrenteBase || !!rescateInicial?.categoria)
+  const [fecha, setFecha]           = useState(editando?.fecha ?? rescateInicial?.fecha ?? hoyISO())
   // Default Brandon: la mayoria de las capturas las hace el, y "Compartido"
   // exigia un toque extra en el caso mas comun.
-  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? recurrenteBase?.persona ?? 'brandon')
-  const [fondoId, setFondoId]       = useState(editando?.fondo_id ? String(editando.fondo_id) : recurrenteBase?.fondo_id ? String(recurrenteBase.fondo_id) : '')
-  const [fondoTocado, setFondoTocado] = useState(!!editando?.fondo_id || !!recurrenteBase?.fondo_id)
-  const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? recurrenteBase?.metodo_pago ?? '')
-  const [esPrestamo, setEsPrestamo] = useState(editando?.es_prestamo ?? false)
-  const [viajeId, setViajeId]       = useState(editando?.viaje_id ? String(editando.viaje_id) : '')
-  const [nuevoViajeNombre, setNuevoViajeNombre] = useState('')
+  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? recurrenteBase?.persona ?? rescateInicial?.persona ?? 'brandon')
+  const [fondoId, setFondoId]       = useState(editando?.fondo_id ? String(editando.fondo_id) : recurrenteBase?.fondo_id ? String(recurrenteBase.fondo_id) : rescateInicial?.fondoId ?? '')
+  const [fondoTocado, setFondoTocado] = useState(!!editando?.fondo_id || !!recurrenteBase?.fondo_id || !!rescateInicial?.fondoId)
+  const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? recurrenteBase?.metodo_pago ?? rescateInicial?.metodoPago ?? '')
+  const [esPrestamo, setEsPrestamo] = useState(editando?.es_prestamo ?? rescateInicial?.esPrestamo ?? false)
+  const [viajeId, setViajeId]       = useState(editando?.viaje_id ? String(editando.viaje_id) : rescateInicial?.viajeId ?? '')
+  const [nuevoViajeNombre, setNuevoViajeNombre] = useState(rescateInicial?.nuevoViajeNombre ?? '')
   const [guardando, setGuardando]   = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   // Captura rapida por default: solo que-monto-categoria, que es lo que se
   // llena en 10 segundos parados en la caja. Persona/fondo/metodo/prestamo
   // quedan un toque mas lejos, pero abiertos de una vez si ya hay datos que
   // revisar (editando un movimiento, o registrando un recurrente que ya
   // trae fondo/metodo precargados).
-  const [masDetalles, setMasDetalles] = useState(!!editando || !!recurrenteBase)
+  const [masDetalles, setMasDetalles] = useState(!!editando || !!recurrenteBase || !!rescateInicial)
+
+  // Espeja lo escrito hacia el padre mientras el modal esta abierto -- es lo
+  // que useRescate necesita para ofrecer "Retomar" si el arbol se remonta a
+  // medio capturar (ver lib/useDraft.ts).
+  useEffect(() => {
+    onCambio?.({ tipo, descripcion, monto, categoria, fecha, persona, fondoId, metodoPago, esPrestamo, viajeId, nuevoViajeNombre })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, descripcion, monto, categoria, fecha, persona, fondoId, metodoPago, esPrestamo, viajeId, nuevoViajeNombre])
 
   const cambiarDescripcion = (v: string) => {
     setDescripcion(v)
@@ -268,11 +289,24 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuar
     const m = Number(monto)
     if (!m || m <= 0) return
     setGuardando(true)
+    setErrorGuardado(null)
     // "+ Nuevo viaje" no abre otro modal -- crea el viaje ahi mismo antes de
-    // guardar el movimiento, para no cortar el flujo de captura.
-    let viajeIdFinal = viajeId ? Number(viajeId) : null
-    if (viajeId === 'nuevo' && nuevoViajeNombre.trim()) {
+    // guardar el movimiento, para no cortar el flujo de captura. Si eligio
+    // "nuevo" pero no escribio nombre, no hay nada que crear: se avisa en
+    // vez de guardar el gasto sin el viaje que creyo que estaba ligando.
+    let viajeIdFinal: number | null = viajeId && viajeId !== 'nuevo' ? Number(viajeId) : null
+    if (viajeId === 'nuevo') {
+      if (!nuevoViajeNombre.trim()) {
+        setGuardando(false)
+        setErrorGuardado('Escribe un nombre para el viaje nuevo, o quita la selección.')
+        return
+      }
       viajeIdFinal = await onNuevoViaje(nuevoViajeNombre.trim())
+      if (viajeIdFinal == null) {
+        setGuardando(false)
+        setErrorGuardado('No se pudo crear el viaje. Intenta de nuevo.')
+        return
+      }
     }
     const payload = {
       tipo, monto: m, categoria, descripcion, fecha, persona,
@@ -287,12 +321,11 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuar
       recurrente_id: editando ? editando.recurrente_id : (recurrenteBase?.id ?? null),
       monto_esperado: editando ? editando.monto_esperado : (recurrenteBase?.monto_esperado ?? null),
     }
-    if (editando) {
-      await supabase.from('movimientos').update(payload).eq('id', editando.id)
-    } else {
-      await supabase.from('movimientos').insert({ ...payload, registrado_por: usuario?.nombre ?? null })
-    }
+    const { error } = editando
+      ? await supabase.from('movimientos').update(payload).eq('id', editando.id)
+      : await supabase.from('movimientos').insert({ ...payload, registrado_por: usuario?.nombre ?? null })
     setGuardando(false)
+    if (error) { setErrorGuardado('No se pudo guardar: ' + error.message); return }
     onGuardado()
   }
 
@@ -428,6 +461,7 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, onGuar
             style={{ background: tipo === 'gasto' ? 'var(--red)' : 'var(--green)' }}>
             {guardando ? 'Guardando…' : 'Guardar'}
           </button>
+          <AvisoForm mensaje={errorGuardado} />
         </div>
       </div>
     </div>
@@ -524,31 +558,41 @@ function TarjetaCategorias({ titulo, datos, colores }: { titulo: string; datos: 
 
 // Alta/edicion de una plantilla recurrente. Sin fecha ni prestamo -- eso
 // vive en el movimiento real cuando lo registran, no en la plantilla.
-function FormRecurrente({ fondos, editando, onGuardado, onCerrar }: {
-  fondos: FondoLite[]; editando?: Recurrente; onGuardado: () => void; onCerrar: () => void
+function FormRecurrente({ fondos, editando, rescateInicial, onGuardado, onCerrar, onCambio }: {
+  fondos: FondoLite[]; editando?: Recurrente; rescateInicial?: Record<string, any>
+  onGuardado: () => void; onCerrar: () => void; onCambio?: (valores: Record<string, any>) => void
 }) {
-  const [tipo, setTipo]             = useState<'ingreso' | 'gasto'>(editando?.tipo ?? 'gasto')
+  const [tipo, setTipo]             = useState<'ingreso' | 'gasto'>(editando?.tipo ?? rescateInicial?.tipo ?? 'gasto')
   const categorias = tipo === 'gasto' ? CATEGORIAS_GASTO : CATEGORIAS_INGRESO
-  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? '')
-  const [montoEsperado, setMontoEsperado] = useState(editando ? String(editando.monto_esperado) : '')
-  const [categoria, setCategoria]   = useState(editando?.categoria ?? categorias[0])
-  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? 'compartido')
-  const [fondoId, setFondoId]       = useState(editando?.fondo_id ? String(editando.fondo_id) : '')
-  const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? '')
+  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? rescateInicial?.descripcion ?? '')
+  const [montoEsperado, setMontoEsperado] = useState(editando ? String(editando.monto_esperado) : rescateInicial?.montoEsperado ?? '')
+  const [categoria, setCategoria]   = useState(editando?.categoria ?? rescateInicial?.categoria ?? categorias[0])
+  const [persona, setPersona]       = useState<'brandon' | 'itzel' | 'compartido'>(editando?.persona ?? rescateInicial?.persona ?? 'compartido')
+  const [fondoId, setFondoId]       = useState(editando?.fondo_id ? String(editando.fondo_id) : rescateInicial?.fondoId ?? '')
+  const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? rescateInicial?.metodoPago ?? '')
   const [guardando, setGuardando]   = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
+
+  useEffect(() => {
+    onCambio?.({ tipo, descripcion, montoEsperado, categoria, persona, fondoId, metodoPago })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, descripcion, montoEsperado, categoria, persona, fondoId, metodoPago])
 
   const guardar = async () => {
     const m = Number(montoEsperado)
     if (!descripcion.trim() || !m || m <= 0) return
     setGuardando(true)
+    setErrorGuardado(null)
     const payload = {
       descripcion, tipo, categoria, monto_esperado: m, persona,
       fondo_id: fondoId ? Number(fondoId) : null,
       metodo_pago: metodoPago || null,
     }
-    if (editando) await supabase.from('movimientos_recurrentes').update(payload).eq('id', editando.id)
-    else await supabase.from('movimientos_recurrentes').insert(payload)
+    const { error } = editando
+      ? await supabase.from('movimientos_recurrentes').update(payload).eq('id', editando.id)
+      : await supabase.from('movimientos_recurrentes').insert(payload)
     setGuardando(false)
+    if (error) { setErrorGuardado('No se pudo guardar: ' + error.message); return }
     onGuardado()
   }
 
@@ -617,6 +661,7 @@ function FormRecurrente({ fondos, editando, onGuardado, onCerrar }: {
             style={{ background: 'var(--accent)' }}>
             {guardando ? 'Guardando…' : 'Guardar'}
           </button>
+          <AvisoForm mensaje={errorGuardado} />
         </div>
       </div>
     </div>
@@ -625,20 +670,27 @@ function FormRecurrente({ fondos, editando, onGuardado, onCerrar }: {
 
 // Editar todos los limites de presupuesto por categoria de una sola vez --
 // mas rapido que abrir un modal por categoria. 0 o vacio = sin limite.
-function FormPresupuestos({ presupuestos, onGuardado, onCerrar }: {
-  presupuestos: PresupuestoCategoria[]; onGuardado: () => void; onCerrar: () => void
+function FormPresupuestos({ presupuestos, rescateInicial, onGuardado, onCerrar, onCambio }: {
+  presupuestos: PresupuestoCategoria[]; rescateInicial?: Record<string, string>
+  onGuardado: () => void; onCerrar: () => void; onCambio?: (valores: Record<string, string>) => void
 }) {
   const [valores, setValores] = useState<Record<string, string>>(() => {
     const inicial: Record<string, string> = {}
     CATEGORIAS_GASTO.forEach(c => {
       const existente = presupuestos.find(p => p.categoria === c)
-      inicial[c] = existente ? String(existente.limite) : ''
+      inicial[c] = existente ? String(existente.limite) : rescateInicial?.[c] ?? ''
     })
     return inicial
   })
   const [guardando, setGuardando] = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const [sugiriendo, setSugiriendo] = useState(false)
   const [sugerencia, setSugerencia] = useState<{ fuente: string; omitidos: string[] } | null>(null)
+
+  useEffect(() => {
+    onCambio?.(valores)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valores])
 
   // Combinacion que Brandon pidio: el Presupuesto (Google Sheet) sigue
   // siendo la fuente para lo estructural (PPR, seguros de vida, viajes) --
@@ -675,13 +727,26 @@ function FormPresupuestos({ presupuestos, onGuardado, onCerrar }: {
 
   const guardar = async () => {
     setGuardando(true)
+    setErrorGuardado(null)
     const filas = CATEGORIAS_GASTO
       .map(c => ({ categoria: c, limite: Number(valores[c]) }))
       .filter(f => f.limite > 0)
     // Borra los que quedaron en 0/vacio y sube el resto -- mas simple que
     // reconciliar altas/bajas una por una.
-    await supabase.from('movimientos_presupuestos').delete().neq('id', 0)
-    if (filas.length) await supabase.from('movimientos_presupuestos').insert(filas)
+    const { error: errorBorrar } = await supabase.from('movimientos_presupuestos').delete().neq('id', 0)
+    if (errorBorrar) {
+      setGuardando(false)
+      setErrorGuardado('No se pudo guardar: ' + errorBorrar.message)
+      return
+    }
+    if (filas.length) {
+      const { error: errorInsertar } = await supabase.from('movimientos_presupuestos').insert(filas)
+      if (errorInsertar) {
+        setGuardando(false)
+        setErrorGuardado('Se borraron los límites anteriores pero los nuevos no se guardaron: ' + errorInsertar.message + '. Vuelve a intentar antes de cerrar.')
+        return
+      }
+    }
     setGuardando(false)
     onGuardado()
   }
@@ -730,6 +795,7 @@ function FormPresupuestos({ presupuestos, onGuardado, onCerrar }: {
           style={{ background: 'var(--accent)' }}>
           {guardando ? 'Guardando…' : 'Guardar'}
         </button>
+        <AvisoForm mensaje={errorGuardado} />
       </div>
     </div>
   )
@@ -800,55 +866,83 @@ export default function Movimientos() {
   const [cierres, setCierres]   = useState<CierrePeriodo[]>([])
   const [viajes, setViajes]     = useState<Viaje[]>([])
   const [cargando, setCargando] = useState(true)
-  const [formAbierto, setFormAbierto] = useState<{ tipo: 'ingreso' | 'gasto'; editando?: Movimiento; recurrenteBase?: Recurrente } | null>(null)
-  const [formRecurrenteAbierto, setFormRecurrenteAbierto] = useState<{ editando?: Recurrente } | null>(null)
-  const [formPresupuestosAbierto, setFormPresupuestosAbierto] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [formAbierto, setFormAbierto] = useState<{ tipo: 'ingreso' | 'gasto'; editando?: Movimiento; recurrenteBase?: Recurrente; rescateInicial?: Record<string, any> } | null>(null)
+  const [formRecurrenteAbierto, setFormRecurrenteAbierto] = useState<{ editando?: Recurrente; rescateInicial?: Record<string, any> } | null>(null)
+  const [formPresupuestosAbierto, setFormPresupuestosAbierto] = useState<{ rescateInicial?: Record<string, string> } | null>(null)
   const [offset, setOffset]     = useState(0)
   const [busqueda, setBusqueda] = useState('')
   const [filtroDesde, setFiltroDesde] = useState('')
   const [filtroHasta, setFiltroHasta] = useState('')
   const [mostrarRango, setMostrarRango] = useState(false)
 
+  // Espejo de lo que se esta escribiendo en cada modal mientras esta abierto,
+  // para que useRescate pueda ofrecer "Retomar" si el arbol se remonta a
+  // medio capturar (Clerk revalidando sesion, el navegador descartando la
+  // pestana, etc.) -- mismo patron que ya usa IPTV.tsx.
+  const [borradorMov, setBorradorMov] = useState<Record<string, any> | null>(null)
+  const [borradorRecurrente, setBorradorRecurrente] = useState<Record<string, any> | null>(null)
+  const [borradorPresupuestos, setBorradorPresupuestos] = useState<Record<string, any> | null>(null)
+  const rMov = useRescate('movimientos-form', formAbierto ? borradorMov : null)
+  const rRecurrente = useRescate('movimientos-recurrente', formRecurrenteAbierto ? borradorRecurrente : null)
+  const rPresupuestos = useRescate('movimientos-presupuestos', formPresupuestosAbierto ? borradorPresupuestos : null)
+
   const periodo = useMemo(() => periodoConOffset(offset), [offset])
 
   const cargar = async () => {
-    const [{ data: m }, { data: f }, { data: r }, { data: p }, { data: c }, { data: v }] = await Promise.all([
-      supabase.from('movimientos').select('*')
-        .order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
-      supabase.from('fondos_ahorro').select('id,nombre,descripcion,color').eq('activo', true),
-      supabase.from('movimientos_recurrentes').select('*').eq('activo', true).order('descripcion'),
-      supabase.from('movimientos_presupuestos').select('*').eq('activo', true),
-      supabase.from('movimientos_cierres').select('id,periodo_inicio,periodo_cierre,total_ingresos,total_gastos,balance')
-        .order('periodo_cierre', { ascending: false }).limit(12),
-      supabase.from('viajes').select('*').eq('activo', true).order('created_at', { ascending: false }),
-    ])
-    setMovs((m ?? []) as Movimiento[])
-    setFondos((f ?? []) as FondoLite[])
-    setRecurrentes((r ?? []) as Recurrente[])
-    setPresupuestos((p ?? []) as PresupuestoCategoria[])
-    setCierres((c ?? []) as CierrePeriodo[])
-    setViajes((v ?? []) as Viaje[])
-    setCargando(false)
+    try {
+      const [
+        { data: m, error: eM }, { data: f, error: eF }, { data: r, error: eR },
+        { data: p, error: eP }, { data: c, error: eC }, { data: v, error: eV },
+      ] = await Promise.all([
+        supabase.from('movimientos').select('*')
+          .order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
+        supabase.from('fondos_ahorro').select('id,nombre,descripcion,color').eq('activo', true),
+        supabase.from('movimientos_recurrentes').select('*').eq('activo', true).order('descripcion'),
+        supabase.from('movimientos_presupuestos').select('*').eq('activo', true),
+        supabase.from('movimientos_cierres').select('id,periodo_inicio,periodo_cierre,total_ingresos,total_gastos,balance')
+          .order('periodo_cierre', { ascending: false }).limit(12),
+        supabase.from('viajes').select('*').eq('activo', true).order('created_at', { ascending: false }),
+      ])
+      const err = eM || eF || eR || eP || eC || eV
+      if (err) throw err
+      setMovs((m ?? []) as Movimiento[])
+      setFondos((f ?? []) as FondoLite[])
+      setRecurrentes((r ?? []) as Recurrente[])
+      setPresupuestos((p ?? []) as PresupuestoCategoria[])
+      setCierres((c ?? []) as CierrePeriodo[])
+      setViajes((v ?? []) as Viaje[])
+      setError(null)
+    } catch (err: any) {
+      setError('No se pudo cargar Movimientos: ' + (err?.message ?? 'error desconocido') + '. Intenta recargar la página.')
+    } finally {
+      setCargando(false)
+    }
   }
   useEffect(() => { cargar() }, [])
 
   const crearViaje = async (nombre: string): Promise<number | null> => {
-    const { data } = await supabase.from('viajes').insert({ nombre }).select('id').single()
-    if (data) setViajes(vs => [{ id: data.id, nombre, presupuesto: null, activo: true }, ...vs])
-    return data?.id ?? null
+    const { data, error } = await supabase.from('viajes').insert({ nombre }).select('id').single()
+    if (error) { setError('No se pudo crear el viaje: ' + error.message); return null }
+    setViajes(vs => [{ id: data.id, nombre, presupuesto: null, activo: true }, ...vs])
+    return data.id
   }
 
   const delMov = async (id: number) => {
     // El lapiz y la basura quedan a unos pixeles en el celular -- un toque
     // de mas ya no borra sin avisar.
     if (!window.confirm('¿Borrar este movimiento?')) return
+    const previos = movs
     setMovs(m => m.filter(x => x.id !== id)) // optimista
-    await supabase.from('movimientos').delete().eq('id', id)
+    const { error } = await supabase.from('movimientos').delete().eq('id', id)
+    if (error) { setMovs(previos); setError('No se pudo borrar: ' + error.message) }
   }
 
   const marcarRepuesto = async (id: number) => {
+    const previos = movs
     setMovs(ms => ms.map(m => m.id === id ? { ...m, prestamo_pagado: true } : m)) // optimista
-    await supabase.from('movimientos').update({ prestamo_pagado: true }).eq('id', id)
+    const { error } = await supabase.from('movimientos').update({ prestamo_pagado: true }).eq('id', id)
+    if (error) { setMovs(previos); setError('No se pudo marcar como repuesto: ' + error.message) }
   }
 
   // Los gastos de viaje son la excepcion a proposito: tienen su propio
@@ -915,8 +1009,10 @@ export default function Movimientos() {
 
   const eliminarRecurrente = async (id: number) => {
     if (!window.confirm('¿Quitar este recurrente? Ya no aparecerá en la lista, pero lo que ya registraste con él se queda en el historial.')) return
+    const previos = recurrentes
     setRecurrentes(rs => rs.filter(r => r.id !== id)) // optimista
-    await supabase.from('movimientos_recurrentes').update({ activo: false }).eq('id', id)
+    const { error } = await supabase.from('movimientos_recurrentes').update({ activo: false }).eq('id', id)
+    if (error) { setRecurrentes(previos); setError('No se pudo quitar el recurrente: ' + error.message) }
   }
 
   // Todo el historial del viaje, no solo el periodo actual -- un viaje
@@ -932,8 +1028,10 @@ export default function Movimientos() {
 
   const eliminarViaje = async (id: number) => {
     if (!window.confirm('¿Archivar este viaje? Los movimientos que ya le pusiste se quedan en el historial, solo deja de aparecer en la lista de viajes activos.')) return
+    const previos = viajes
     setViajes(vs => vs.filter(v => v.id !== id)) // optimista
-    await supabase.from('viajes').update({ activo: false }).eq('id', id)
+    const { error } = await supabase.from('viajes').update({ activo: false }).eq('id', id)
+    if (error) { setViajes(previos); setError('No se pudo archivar el viaje: ' + error.message) }
   }
 
   const presupuestoProgreso = useMemo(() =>
@@ -1010,6 +1108,8 @@ export default function Movimientos() {
         </div>
       </div>
 
+      <AvisoForm mensaje={error} />
+
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => setFormAbierto({ tipo: 'gasto' })}
           className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5 transition-transform hover:scale-[1.02]"
@@ -1022,6 +1122,22 @@ export default function Movimientos() {
           <TrendingUp size={20} /> Registrar ingreso
         </button>
       </div>
+
+      {rMov.rescate && !formAbierto && (
+        <AvisoRescate que={rMov.rescate.tipo === 'gasto' ? 'un gasto' : 'un ingreso'}
+          onDescartar={rMov.descartar}
+          onRetomar={() => setFormAbierto({ tipo: rMov.rescate!.tipo, rescateInicial: rMov.rescate! })} />
+      )}
+      {rRecurrente.rescate && !formRecurrenteAbierto && (
+        <AvisoRescate que={rRecurrente.rescate.descripcion ? `"${rRecurrente.rescate.descripcion}"` : 'un recurrente'}
+          onDescartar={rRecurrente.descartar}
+          onRetomar={() => setFormRecurrenteAbierto({ rescateInicial: rRecurrente.rescate! })} />
+      )}
+      {rPresupuestos.rescate && !formPresupuestosAbierto && (
+        <AvisoRescate que="tu presupuesto por categoría"
+          onDescartar={rPresupuestos.descartar}
+          onRetomar={() => setFormPresupuestosAbierto({ rescateInicial: rPresupuestos.rescate! })} />
+      )}
 
       {/* ── Reporte del periodo (jueves a jueves) ── */}
       <div className="card">
@@ -1288,7 +1404,7 @@ export default function Movimientos() {
       <div className="card">
         <div className="flex items-center justify-between mb-3">
           <p className="text-strong font-semibold text-sm flex items-center gap-1.5"><Target size={14} /> Presupuesto por categoría</p>
-          <button onClick={() => setFormPresupuestosAbierto(true)} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+          <button onClick={() => setFormPresupuestosAbierto({})} className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
             style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
             {presupuestos.length ? 'Editar límites' : '+ Poner límites'}
           </button>
@@ -1402,19 +1518,23 @@ export default function Movimientos() {
 
       {formAbierto && (
         <FormMovimiento tipo={formAbierto.tipo} fondos={fondos} viajes={viajes} editando={formAbierto.editando} recurrenteBase={formAbierto.recurrenteBase}
-          onCerrar={() => setFormAbierto(null)}
-          onGuardado={() => { setFormAbierto(null); cargar() }}
+          rescateInicial={formAbierto.rescateInicial}
+          onCambio={setBorradorMov}
+          onCerrar={() => { setFormAbierto(null); setBorradorMov(null) }}
+          onGuardado={() => { setFormAbierto(null); setBorradorMov(null); cargar() }}
           onNuevoViaje={crearViaje} />
       )}
       {formRecurrenteAbierto && (
-        <FormRecurrente fondos={fondos} editando={formRecurrenteAbierto.editando}
-          onCerrar={() => setFormRecurrenteAbierto(null)}
-          onGuardado={() => { setFormRecurrenteAbierto(null); cargar() }} />
+        <FormRecurrente fondos={fondos} editando={formRecurrenteAbierto.editando} rescateInicial={formRecurrenteAbierto.rescateInicial}
+          onCambio={setBorradorRecurrente}
+          onCerrar={() => { setFormRecurrenteAbierto(null); setBorradorRecurrente(null) }}
+          onGuardado={() => { setFormRecurrenteAbierto(null); setBorradorRecurrente(null); cargar() }} />
       )}
       {formPresupuestosAbierto && (
-        <FormPresupuestos presupuestos={presupuestos}
-          onCerrar={() => setFormPresupuestosAbierto(false)}
-          onGuardado={() => { setFormPresupuestosAbierto(false); cargar() }} />
+        <FormPresupuestos presupuestos={presupuestos} rescateInicial={formPresupuestosAbierto.rescateInicial}
+          onCambio={setBorradorPresupuestos}
+          onCerrar={() => { setFormPresupuestosAbierto(null); setBorradorPresupuestos(null) }}
+          onGuardado={() => { setFormPresupuestosAbierto(null); setBorradorPresupuestos(null); cargar() }} />
       )}
     </div>
   )
