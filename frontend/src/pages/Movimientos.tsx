@@ -180,6 +180,14 @@ function normalizar(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
+// Mayuscula solo la primera letra -- el resto se queda como lo escribieron
+// (para no romper cosas como "PPR Brandon" o "iPhone"). Antes cada quien
+// tecleaba "Gasolina" o "gasolina" segun le saliera, y el Historial se veia
+// con mayusculas y minusculas mezcladas sin ningun criterio.
+function capitalizar(s: string): string {
+  return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s
+}
+
 // Quita palabras de enlace para comparar "fondo de emergencia" contra
 // "Fondo Emergencia" -- son el mismo nombre, pero el "de" de en medio rompe
 // una comparacion de substring directa.
@@ -270,7 +278,7 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescat
   }, [tipo, descripcion, monto, categoria, fecha, persona, fondoId, metodoPago, esPrestamo, viajeId, nuevoViajeNombre])
 
   const cambiarDescripcion = (v: string) => {
-    setDescripcion(v)
+    setDescripcion(capitalizar(v))
     // "Pizza-salidas" o "Camioneta - Fondo de Emergencia": lo que va despues
     // del guion es el hard-code de ellos para decir a que categoria o fondo
     // quieren que se vaya el gasto, y gana sobre lo que adivinaria la
@@ -336,8 +344,8 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescat
         <div className="flex items-center justify-between mb-4">
           <p className="text-strong font-semibold flex items-center gap-2">
             {tipo === 'gasto'
-              ? <><TrendingDown size={16} style={{ color: 'var(--red)' }} /> {editando ? 'Editar gasto' : recurrenteBase ? `Registrar: ${recurrenteBase.descripcion}` : 'Nuevo gasto'}</>
-              : <><TrendingUp size={16} style={{ color: 'var(--green)' }} /> {editando ? 'Editar ingreso' : recurrenteBase ? `Registrar: ${recurrenteBase.descripcion}` : 'Nuevo ingreso'}</>}
+              ? <><TrendingDown size={16} style={{ color: 'var(--red)' }} /> {editando ? 'Editar gasto' : recurrenteBase ? `Registrar: ${capitalizar(recurrenteBase.descripcion)}` : 'Nuevo gasto'}</>
+              : <><TrendingUp size={16} style={{ color: 'var(--green)' }} /> {editando ? 'Editar ingreso' : recurrenteBase ? `Registrar: ${capitalizar(recurrenteBase.descripcion)}` : 'Nuevo ingreso'}</>}
           </p>
           <button onClick={onCerrar} className="text-dim"><X size={18} /></button>
         </div>
@@ -498,7 +506,7 @@ function FilaMovimiento({ m, viajeNombre, onEditar, onBorrar, destacar }: {
             </span>
           )}
         </div>
-        <p className="text-body text-sm font-medium truncate mt-1">{m.descripcion || m.categoria}</p>
+        <p className="text-body text-sm font-medium truncate mt-1">{capitalizar(m.descripcion) || m.categoria}</p>
         {m.monto_esperado != null && m.monto_esperado !== m.monto && (
           <p className="text-xs mt-0.5" style={{ color: m.monto > m.monto_esperado ? 'var(--red)' : 'var(--green)' }}>
             {m.monto > m.monto_esperado ? '↑' : '↓'} {fmt(Math.abs(m.monto - m.monto_esperado))} {m.monto > m.monto_esperado ? 'sobre' : 'bajo'} lo esperado ({fmt(m.monto_esperado)})
@@ -615,7 +623,7 @@ function FormRecurrente({ fondos, editando, rescateInicial, onGuardado, onCerrar
           </div>
           <div>
             <label className="text-xs text-muted mb-1 block">Descripción</label>
-            <input autoFocus value={descripcion} onChange={e => setDescripcion(e.target.value)}
+            <input autoFocus value={descripcion} onChange={e => setDescripcion(capitalizar(e.target.value))}
               placeholder="Ej: Gas, Luz, Renta, Internet…" className="input w-full" />
           </div>
           <div>
@@ -1110,16 +1118,21 @@ export default function Movimientos() {
 
       <AvisoForm mensaje={error} />
 
+      {/* Protagonistas de la pagina: capturar es lo que se hace aqui la mayor
+          parte del tiempo, asi que van primero, grandes, y en el mismo orden
+          Ingresos-luego-Gastos que ya usa el resto de la pantalla (Reporte
+          del periodo, por persona, por fondo...) para que el verde y el rojo
+          queden alineados en vez de invertidos entre bloques. */}
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => setFormAbierto({ tipo: 'gasto' })}
-          className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5 transition-transform hover:scale-[1.02]"
-          style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)', boxShadow: '0 4px 14px -4px rgba(239,68,68,.5)' }}>
-          <TrendingDown size={20} /> Registrar gasto
-        </button>
         <button onClick={() => setFormAbierto({ tipo: 'ingreso' })}
-          className="py-4 rounded-xl text-white font-medium flex flex-col items-center gap-1.5 transition-transform hover:scale-[1.02]"
-          style={{ background: 'linear-gradient(135deg, #22c55e, #15803d)', boxShadow: '0 4px 14px -4px rgba(34,197,94,.5)' }}>
-          <TrendingUp size={20} /> Registrar ingreso
+          className="py-6 rounded-xl text-white font-semibold text-base flex flex-col items-center gap-2 transition-transform hover:scale-[1.02]"
+          style={{ background: 'linear-gradient(135deg, #22c55e, #15803d)', boxShadow: '0 6px 18px -4px rgba(34,197,94,.55)' }}>
+          <TrendingUp size={26} /> Registrar ingreso
+        </button>
+        <button onClick={() => setFormAbierto({ tipo: 'gasto' })}
+          className="py-6 rounded-xl text-white font-semibold text-base flex flex-col items-center gap-2 transition-transform hover:scale-[1.02]"
+          style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)', boxShadow: '0 6px 18px -4px rgba(239,68,68,.55)' }}>
+          <TrendingDown size={26} /> Registrar gasto
         </button>
       </div>
 
@@ -1157,20 +1170,22 @@ export default function Movimientos() {
           </button>
         </div>
 
+        {/* Sin el gradiente solido que tenian antes -- competia con los
+            botones de Registrar de arriba por ser "lo mas llamativo" de la
+            pantalla. El numero sigue siendo grande y a color, solo el fondo
+            ya no es protagonista. */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl p-4 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #22c55e, #15803d)' }}>
-            <TrendingUp size={54} className="absolute -right-2 -bottom-3 text-white/15" />
-            <p className="text-xs text-white/80 mb-1 font-medium uppercase tracking-wide">Ingresos</p>
-            <p className="text-2xl font-extrabold text-white">{fmt(totalIngresos)}</p>
+          <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
+            <TrendingUp size={54} className="absolute -right-2 -bottom-3" style={{ color: 'var(--green)', opacity: 0.12 }} />
+            <p className="text-xs mb-1 font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Ingresos</p>
+            <p className="text-2xl font-extrabold" style={{ color: 'var(--green)' }}>{fmt(totalIngresos)}</p>
           </div>
-          <div className="rounded-2xl p-4 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}>
-            <TrendingDown size={54} className="absolute -right-2 -bottom-3 text-white/15" />
-            <p className="text-xs text-white/80 mb-1 font-medium uppercase tracking-wide">Gastos</p>
-            <p className="text-2xl font-extrabold text-white">{fmt(totalGastos)}</p>
+          <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
+            <TrendingDown size={54} className="absolute -right-2 -bottom-3" style={{ color: 'var(--red)', opacity: 0.12 }} />
+            <p className="text-xs mb-1 font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Gastos</p>
+            <p className="text-2xl font-extrabold" style={{ color: 'var(--red)' }}>{fmt(totalGastos)}</p>
             {gastosEdenred > 0 && (
-              <p className="text-xs text-white/75 mt-0.5">🥕 {fmt(gastosEdenred)} con Edenred</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>🥕 {fmt(gastosEdenred)} con Edenred</p>
             )}
           </div>
         </div>
@@ -1203,7 +1218,7 @@ export default function Movimientos() {
                   {CATEGORIA_EMOJI[m.categoria] ?? '💸'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-body text-sm font-medium truncate">{m.descripcion || m.categoria}</p>
+                  <p className="text-body text-sm font-medium truncate">{capitalizar(m.descripcion) || m.categoria}</p>
                   <p className="text-xs text-dim">{fmt(m.monto)} · {PERSONAS.find(p => p.valor === m.persona)?.label} · {m.fecha}</p>
                 </div>
                 <button onClick={() => marcarRepuesto(m.id)}
@@ -1439,7 +1454,7 @@ export default function Movimientos() {
                   {CATEGORIA_EMOJI[r.categoria] ?? '💸'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-body text-sm font-medium truncate">{r.descripcion}</p>
+                  <p className="text-body text-sm font-medium truncate">{capitalizar(r.descripcion)}</p>
                   <p className="text-xs text-dim">≈ {fmt(r.monto_esperado)} · {PERSONAS.find(p => p.valor === r.persona)?.label}</p>
                 </div>
                 <button onClick={() => setFormAbierto({ tipo: r.tipo, recurrenteBase: r })}
