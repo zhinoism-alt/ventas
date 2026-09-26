@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { fmt } from '../lib/utils'
+import { fmt, hoyISO } from '../lib/utils'
 import { TOOLTIP_STYLE } from '../lib/constants'
 import { periodoConOffset } from '../lib/periodoFinanciero'
 import { useRescate } from '../lib/useDraft'
@@ -170,8 +170,6 @@ function sugerirCategoria(descripcion: string, categorias: string[]): string | n
   }
   return mejor?.cat ?? null
 }
-
-function hoyISO() { return new Date().toISOString().slice(0, 10) }
 
 // Sin acentos y sin mayusculas para que "categoria" encuentre "categoría" y
 // "Súper" se encuentre buscando "super". String.normalize('NFD') separa la
@@ -394,7 +392,7 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescat
                   : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
                 Hoy
               </button>
-              <button type="button" onClick={() => { const a = new Date(); a.setDate(a.getDate() - 1); setFecha(a.toISOString().slice(0, 10)) }}
+              <button type="button" onClick={() => { const a = new Date(); a.setDate(a.getDate() - 1); setFecha(hoyISO(a)) }}
                 className="text-xs px-2.5 py-2 rounded-lg font-medium flex-shrink-0"
                 style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
                 Ayer

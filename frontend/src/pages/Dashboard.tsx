@@ -7,7 +7,7 @@ import {
 import { getSummary, getExpiringSubscriptions, formatMXN } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { formatMonth } from '../lib/constants'
-import { fmt } from '../lib/utils'
+import { fmt, hoyISO } from '../lib/utils'
 import { periodoConOffset } from '../lib/periodoFinanciero'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ function BannerPendientes() {
           ? supabase.from('limpieza_tareas').select('id').eq('activo', true)
               .then(async ({ data: tareas }) => {
                 if (!tareas?.length) return 0
-                const sabadoISO = hoy.toISOString().slice(0, 10)
+                const sabadoISO = hoyISO(hoy)
                 const { data: hechas } = await supabase.from('limpieza_estado')
                   .select('tarea_id').eq('semana', sabadoISO)
                 return tareas.length - (hechas?.length ?? 0)
@@ -227,7 +227,7 @@ function BannerPendientes() {
 
       const hoyDia = hoy.getDay()
       const deHoy = ((ev ?? []) as EventoPendiente[]).filter(e => {
-        if (e.recurrencia === 'ninguna') return e.fecha === hoy.toISOString().slice(0, 10)
+        if (e.recurrencia === 'ninguna') return e.fecha === hoyISO(hoy)
         return new Date(e.fecha + 'T00:00:00').getDay() === hoyDia
       }).sort((a, b) => a.hora.localeCompare(b.hora))
 
@@ -425,7 +425,7 @@ export default function Dashboard() {
   // propia (con costo real de creditos) en su pagina, y mezclar productos
   // con IPTV en el Dashboard duplicaba esa vista sin agregar nada nuevo.
   const hoy          = new Date()
-  const mesActualStr = hoy.toISOString().slice(0, 7)
+  const mesActualStr = hoyISO(hoy).slice(0, 7)
   const diaHoy        = hoy.getDate()
   const diasEnMes     = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
   const entradaMes    = (summary.monthly_chart || []).find(m => m.month === mesActualStr)
