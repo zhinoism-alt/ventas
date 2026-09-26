@@ -68,18 +68,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, accion: 'ya estaba cerrado', periodo_cierre: periodo.cierre })
     }
 
-    // viaje_id: los gastos de viaje tienen su propio dinero aparte y se
-    // excluyen del reporte del periodo en toda la app (ver viajes.sql y
-    // Movimientos.tsx delPeriodo) -- si el cierre no aplicara el mismo
-    // filtro, el numero que queda congelado para siempre en
-    // movimientos_cierres no coincidiria con el que ya vieron en pantalla.
     const { data: movs, error } = await supabase.from('movimientos')
-      .select('tipo,monto,categoria,persona,fondo_id,metodo_pago')
+      .select('tipo,monto,categoria,persona,fondo_id,metodo_pago,es_aportacion,viaje_id')
       .gte('fecha', periodo.inicio).lte('fecha', periodo.cierre)
-      .is('viaje_id', null)
     if (error) throw error
 
-    const lista = movs ?? []
+    // Mismo criterio que cuentaEnPresupuesto en frontend/src/lib/periodoFinanciero.ts
+    // (duplicado aqui por la misma razon que periodoDe arriba): un viaje tiene
+    // su propio dinero aparte; un ingreso que se va directo a un fondo nunca
+    // fue liquido; un gasto que "sale de" un fondo usa ahorro ya contado antes,
+    // salvo que sea una aportacion real. Si el cierre no aplicara el mismo
+    // filtro que Movimientos.tsx, el numero que queda congelado para siempre
+    // en movimientos_cierres no coincidiria con el que ya vieron en pantalla.
+    const lista = (movs ?? []).filter(m => {
+      if (m.viaje_id != null) return false
+      if (m.fondo_id == null) return true
+      if (m.tipo === 'ingreso') return false
+      return m.es_aportacion
+    })
     const totalIngresos = lista.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.monto), 0)
     const totalGastos    = lista.filter(m => m.tipo === 'gasto').reduce((s, m) => s + Number(m.monto), 0)
 

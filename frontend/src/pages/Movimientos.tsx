@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fmt, hoyISO } from '../lib/utils'
 import { TOOLTIP_STYLE } from '../lib/constants'
-import { periodoConOffset } from '../lib/periodoFinanciero'
+import { periodoConOffset, cuentaEnPresupuesto } from '../lib/periodoFinanciero'
 import { useRescate } from '../lib/useDraft'
 import { AvisoForm, AvisoRescate } from '../components/FormAvisos'
 
@@ -51,6 +51,10 @@ interface Movimiento {
   recurrente_id: number | null
   monto_esperado: number | null
   viaje_id: number | null
+  // Solo aplica a gastos con fondo_id: true = metiste dinero liquido al
+  // fondo (cuenta como gasto del periodo), false = retiro de ahorro ya
+  // guardado (no es gasto nuevo, no cuenta).
+  es_aportacion: boolean
 }
 
 interface FondoLite { id: number; nombre: string; descripcion: string | null; color: string }
@@ -256,6 +260,10 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescat
   const [fondoTocado, setFondoTocado] = useState(!!editando?.fondo_id || !!recurrenteBase?.fondo_id || !!rescateInicial?.fondoId)
   const [metodoPago, setMetodoPago] = useState(editando?.metodo_pago ?? recurrenteBase?.metodo_pago ?? rescateInicial?.metodoPago ?? '')
   const [esPrestamo, setEsPrestamo] = useState(editando?.es_prestamo ?? rescateInicial?.esPrestamo ?? false)
+  // Solo importa si hay fondo elegido: aportar (meter dinero al fondo) es
+  // gasto real del periodo; sin marcar, un gasto con fondo se entiende como
+  // retiro de ahorro ya guardado y no cuenta.
+  const [esAportacion, setEsAportacion] = useState(editando?.es_aportacion ?? rescateInicial?.esAportacion ?? false)
   const [viajeId, setViajeId]       = useState(editando?.viaje_id ? String(editando.viaje_id) : rescateInicial?.viajeId ?? '')
   const [nuevoViajeNombre, setNuevoViajeNombre] = useState(rescateInicial?.nuevoViajeNombre ?? '')
   const [guardando, setGuardando]   = useState(false)
@@ -271,9 +279,9 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescat
   // que useRescate necesita para ofrecer "Retomar" si el arbol se remonta a
   // medio capturar (ver lib/useDraft.ts).
   useEffect(() => {
-    onCambio?.({ tipo, descripcion, monto, categoria, fecha, persona, fondoId, metodoPago, esPrestamo, viajeId, nuevoViajeNombre })
+    onCambio?.({ tipo, descripcion, monto, categoria, fecha, persona, fondoId, metodoPago, esPrestamo, esAportacion, viajeId, nuevoViajeNombre })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipo, descripcion, monto, categoria, fecha, persona, fondoId, metodoPago, esPrestamo, viajeId, nuevoViajeNombre])
+  }, [tipo, descripcion, monto, categoria, fecha, persona, fondoId, metodoPago, esPrestamo, esAportacion, viajeId, nuevoViajeNombre])
 
   const cambiarDescripcion = (v: string) => {
     setDescripcion(capitalizar(v))
@@ -319,6 +327,7 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescat
       fondo_id: fondoId ? Number(fondoId) : null,
       metodo_pago: metodoPago || null,
       es_prestamo: tipo === 'gasto' ? esPrestamo : false,
+      es_aportacion: tipo === 'gasto' && !!fondoId ? esAportacion : false,
       viaje_id: viajeIdFinal,
       // Si viene de una plantilla recurrente, guarda una instantanea del
       // estimado de ese momento -- si despues editan la plantilla, este
@@ -431,7 +440,16 @@ function FormMovimiento({ tipo, fondos, viajes, editando, recurrenteBase, rescat
                   <option value="">Sin fondo específico</option>
                   {fondos.map(f => <option key={f.id} value={f.id}>{f.nombre}{f.descripcion ? ` · ${f.descripcion}` : ''}</option>)}
                 </select>
-                <p className="text-xs text-dim mt-1">Solo para reportear — no cambia el saldo del fondo en Ahorros.</p>
+                <p className="text-xs text-dim mt-1">
+                  Solo para reportear — no cambia el saldo del fondo en Ahorros.
+                  {tipo === 'ingreso' && fondoId && ' Como se va directo al fondo, no es dinero líquido: no entra al Reporte del periodo.'}
+                </p>
+                {tipo === 'gasto' && fondoId && (
+                  <label className="flex items-center gap-2 text-xs text-body cursor-pointer mt-2">
+                    <input type="checkbox" checked={esAportacion} onChange={e => setEsAportacion(e.target.checked)} />
+                    Es una aportación al fondo — sin marcar, se cuenta como retiro de ahorro ya guardado y no entra al Reporte del periodo
+                  </label>
+                )}
               </div>
               <div>
                 <label className="text-xs text-muted mb-1 block">¿Con qué pagaste? (opcional)</label>
@@ -676,8 +694,8 @@ function FormRecurrente({ fondos, editando, rescateInicial, onGuardado, onCerrar
 
 // Editar todos los limites de presupuesto por categoria de una sola vez --
 // mas rapido que abrir un modal por categoria. 0 o vacio = sin limite.
-function FormPresupuestos({ presupuestos, rescateInicial, onGuardado, onCerrar, onCambio }: {
-  presupuestos: PresupuestoCategoria[]; rescateInicial?: Record<string, string>
+function FormPresupuestos({ presupuestos, movs, rescateInicial, onGuardado, onCerrar, onCambio }: {
+  presupuestos: PresupuestoCategoria[]; movs: Movimiento[]; rescateInicial?: Record<string, string>
   onGuardado: () => void; onCerrar: () => void; onCambio?: (valores: Record<string, string>) => void
 }) {
   const [valores, setValores] = useState<Record<string, string>>(() => {
@@ -692,6 +710,7 @@ function FormPresupuestos({ presupuestos, rescateInicial, onGuardado, onCerrar, 
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const [sugiriendo, setSugiriendo] = useState(false)
   const [sugerencia, setSugerencia] = useState<{ fuente: string; omitidos: string[] } | null>(null)
+  const [sugerenciaMes, setSugerenciaMes] = useState<string | null>(null)
 
   useEffect(() => {
     onCambio?.(valores)
@@ -712,6 +731,7 @@ function FormPresupuestos({ presupuestos, rescateInicial, onGuardado, onCerrar, 
       .order('anio', { ascending: false }).order('mes', { ascending: false })
       .limit(1).maybeSingle()
     setSugiriendo(false)
+    setSugerenciaMes(null)
     if (!data) { setSugerencia({ fuente: '', omitidos: [] }); return }
 
     const items = [...(data.datos?.necesarios ?? []), ...(data.datos?.noNecesarios ?? [])] as { concepto: string; monto: number }[]
@@ -729,6 +749,28 @@ function FormPresupuestos({ presupuestos, rescateInicial, onGuardado, onCerrar, 
     })
     const fuente = new Date(data.anio, data.mes - 1, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
     setSugerencia({ fuente, omitidos })
+  }
+
+  // La otra fuente posible: no lo que se planeo en el Sheet, sino lo que de
+  // verdad se gasto el periodo pasado en Movimientos -- mismo criterio de
+  // cuentaEnPresupuesto (sin viajes, sin retiros de fondo) para que el
+  // numero de partida sea comparable con el Reporte del periodo. Sirve para
+  // ir llevando el limite de un periodo al siguiente y ajustandolo a mano.
+  const sugerirDesdeMesPasado = () => {
+    const anterior = periodoConOffset(1)
+    const gastosPorCategoria: Record<string, number> = {}
+    movs
+      .filter(m => m.fecha >= anterior.inicioISO && m.fecha <= anterior.cierreISO && m.tipo === 'gasto' && cuentaEnPresupuesto(m))
+      .forEach(m => { gastosPorCategoria[m.categoria] = (gastosPorCategoria[m.categoria] ?? 0) + m.monto })
+    setValores(v => {
+      const nuevo = { ...v }
+      CATEGORIAS_GASTO.forEach(c => {
+        if (gastosPorCategoria[c] != null) nuevo[c] = String(Math.round(gastosPorCategoria[c] * 100) / 100)
+      })
+      return nuevo
+    })
+    setSugerencia(null)
+    setSugerenciaMes(Object.keys(gastosPorCategoria).length ? anterior.etiqueta : `${anterior.etiqueta} (sin gastos registrados)`)
   }
 
   const guardar = async () => {
@@ -766,11 +808,18 @@ function FormPresupuestos({ presupuestos, rescateInicial, onGuardado, onCerrar, 
         </div>
         <p className="text-xs text-dim mb-3">Cuánto quieren gastar como máximo por categoría cada periodo. Déjalo vacío para no ponerle límite.</p>
 
-        <button onClick={sugerirDesdePresupuesto} disabled={sugiriendo}
-          className="w-full mb-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
-          style={{ background: 'var(--surface-2)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>
-          ✨ {sugiriendo ? 'Buscando…' : 'Sugerir desde mi Presupuesto'}
-        </button>
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
+          <button onClick={sugerirDesdePresupuesto} disabled={sugiriendo}
+            className="py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+            style={{ background: 'var(--surface-2)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>
+            ✨ {sugiriendo ? 'Buscando…' : 'Desde mi Presupuesto'}
+          </button>
+          <button onClick={sugerirDesdeMesPasado}
+            className="py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5"
+            style={{ background: 'var(--surface-2)', color: 'var(--text-body)', border: '1px solid var(--border-hi)' }}>
+            📅 Desde el mes pasado
+          </button>
+        </div>
         {sugerencia && (
           <div className="rounded-lg p-2.5 mb-3 text-xs" style={{ background: 'var(--surface-2)' }}>
             {sugerencia.fuente ? (
@@ -783,6 +832,11 @@ function FormPresupuestos({ presupuestos, rescateInicial, onGuardado, onCerrar, 
             ) : (
               <p className="text-dim">No encontramos ningún mes sincronizado en tu Presupuesto todavía.</p>
             )}
+          </div>
+        )}
+        {sugerenciaMes && (
+          <div className="rounded-lg p-2.5 mb-3 text-xs" style={{ background: 'var(--surface-2)' }}>
+            <p className="text-body">Sugerido desde lo que de verdad gastaste en <span className="font-medium">{sugerenciaMes}</span>. Ajusta si hace falta y guarda.</p>
           </div>
         )}
 
@@ -833,7 +887,7 @@ function GraficaTendencia({ movs }: { movs: Movimiento[] }) {
     const filas = []
     for (let offset = 5; offset >= 0; offset--) {
       const p = periodoConOffset(offset)
-      const delP = movs.filter(m => m.fecha >= p.inicioISO && m.fecha <= p.cierreISO && m.viaje_id == null)
+      const delP = movs.filter(m => m.fecha >= p.inicioISO && m.fecha <= p.cierreISO && cuentaEnPresupuesto(m))
       const ingresos = delP.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
       const gastos   = delP.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0)
       filas.push({ name: p.cierre.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }), Ingresos: ingresos, Gastos: gastos })
@@ -955,9 +1009,12 @@ export default function Movimientos() {
   // dinero aparte, y mezclarlos aqui ensuciaria el numero que responde
   // "como vamos" del dia a dia (categorias, tendencia, proyeccion...).
   // Siguen en el Historial y en su propia tarjeta de Viajes, solo no en
-  // el Reporte del periodo.
+  // el Reporte del periodo. Mismo criterio para lo que mueve dinero hacia o
+  // desde un fondo sin ser un aporte real (ver cuentaEnPresupuesto): un
+  // ingreso que se va directo al fondo nunca fue liquido, y un retiro de
+  // ahorro ya guardado no es gasto nuevo.
   const delPeriodo = useMemo(() =>
-    movs.filter(m => m.fecha >= periodo.inicioISO && m.fecha <= periodo.cierreISO && m.viaje_id == null),
+    movs.filter(m => m.fecha >= periodo.inicioISO && m.fecha <= periodo.cierreISO && cuentaEnPresupuesto(m)),
     [movs, periodo])
 
   const totalIngresos = delPeriodo.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
@@ -1544,7 +1601,7 @@ export default function Movimientos() {
           onGuardado={() => { setFormRecurrenteAbierto(null); setBorradorRecurrente(null); cargar() }} />
       )}
       {formPresupuestosAbierto && (
-        <FormPresupuestos presupuestos={presupuestos} rescateInicial={formPresupuestosAbierto.rescateInicial}
+        <FormPresupuestos presupuestos={presupuestos} movs={movs} rescateInicial={formPresupuestosAbierto.rescateInicial}
           onCambio={setBorradorPresupuestos}
           onCerrar={() => { setFormPresupuestosAbierto(null); setBorradorPresupuestos(null) }}
           onGuardado={() => { setFormPresupuestosAbierto(null); setBorradorPresupuestos(null); cargar() }} />

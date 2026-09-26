@@ -8,7 +8,7 @@ import { getSummary, getExpiringSubscriptions, formatMXN } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { formatMonth } from '../lib/constants'
 import { fmt, hoyISO } from '../lib/utils'
-import { periodoConOffset } from '../lib/periodoFinanciero'
+import { periodoConOffset, cuentaEnPresupuesto } from '../lib/periodoFinanciero'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -299,17 +299,17 @@ function MovimientosHUD() {
       try {
         const periodo = periodoConOffset(0)
         const [{ data: movs }, { count: prestamos }] = await Promise.all([
-          supabase.from('movimientos').select('tipo,monto')
-            .gte('fecha', periodo.inicioISO).lte('fecha', periodo.cierreISO)
-            // Los gastos de viaje tienen su propio dinero aparte y no cuentan
-            // en el balance del periodo -- mismo criterio que delPeriodo en
-            // Movimientos.tsx, si no los dos balances no coinciden.
-            .is('viaje_id', null),
+          // viaje_id, fondo_id y es_aportacion se filtran en el cliente con
+          // cuentaEnPresupuesto -- mismo criterio que delPeriodo en
+          // Movimientos.tsx, si no los dos balances no coinciden.
+          supabase.from('movimientos').select('tipo,monto,fondo_id,es_aportacion,viaje_id')
+            .gte('fecha', periodo.inicioISO).lte('fecha', periodo.cierreISO),
           supabase.from('movimientos').select('id', { count: 'exact', head: true })
             .eq('es_prestamo', true).eq('prestamo_pagado', false),
         ])
-        const ingresos = (movs ?? []).filter((m: any) => m.tipo === 'ingreso').reduce((s: number, m: any) => s + Number(m.monto), 0)
-        const gastos   = (movs ?? []).filter((m: any) => m.tipo === 'gasto').reduce((s: number, m: any) => s + Number(m.monto), 0)
+        const delPeriodo = (movs ?? []).filter(cuentaEnPresupuesto)
+        const ingresos = delPeriodo.filter((m: any) => m.tipo === 'ingreso').reduce((s: number, m: any) => s + Number(m.monto), 0)
+        const gastos   = delPeriodo.filter((m: any) => m.tipo === 'gasto').reduce((s: number, m: any) => s + Number(m.monto), 0)
         setDatos({ ingresos, gastos, prestamos: prestamos ?? 0 })
       } catch {
         // Si falla, el HUD simplemente no aparece -- el resto del Dashboard

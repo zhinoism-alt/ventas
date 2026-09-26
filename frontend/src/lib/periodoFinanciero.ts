@@ -59,3 +59,29 @@ export function periodoConOffset(offset: number): PeriodoFinanciero {
   while (mes < 0) { mes += 12; anio -= 1 }
   return periodoDe(new Date(anio, mes, 15))
 }
+
+/**
+ * Que cuenta en el Reporte del periodo, el presupuesto por categoria y la
+ * tendencia -- compartido entre Movimientos.tsx y el HUD del Dashboard para
+ * que los dos muestren el mismo numero (antes viaje_id se filtraba aparte en
+ * cada lado y se desincronizaban).
+ *
+ * Un viaje tiene su propio dinero aparte. Un ingreso etiquetado con fondo se
+ * fue directo al ahorro/inversion, nunca paso por lo liquido. Un gasto que
+ * "sale de" un fondo esta usando ahorro que ya se conto cuando se guardo, no
+ * es gasto nuevo -- salvo que sea una aportacion real (dinero liquido que
+ * SI sale este periodo hacia el fondo).
+ */
+export interface MovimientoPresupuesto {
+  tipo: 'ingreso' | 'gasto'
+  fondo_id: number | null
+  es_aportacion: boolean
+  viaje_id: number | null
+}
+
+export function cuentaEnPresupuesto(m: MovimientoPresupuesto): boolean {
+  if (m.viaje_id != null) return false
+  if (m.fondo_id == null) return true
+  if (m.tipo === 'ingreso') return false
+  return m.es_aportacion
+}
