@@ -162,19 +162,33 @@ export default function Presupuesto() {
 
   useEffect(() => { cargar() }, [cargar])
 
+  // Descubre las pestanas de la hoja. Se separa de sincroniza() para poder
+  // llamarla antes de sincronizar (una pestana nueva, como "Octubre", no
+  // aparecia hasta recargar la pagina entera -- nada volvia a leer la lista
+  // salvo este efecto, que solo corre una vez al montar o cuando cambia el
+  // enlace configurado).
+  const descubrirHojas = useCallback(async (pub_id: string) => {
+    setHojasEstado('cargando')
+    try {
+      const h = await listaHojas(pub_id)
+      setHojas(h)
+      setHojasEstado('listas')
+      return h
+    } catch (e) {
+      setHojasEstado('error')
+      avisaError(`No se pudieron leer las pestañas de tu hoja: ${e instanceof Error ? e.message : String(e)}`)
+      return null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Descubrir pestanas en cuanto hay configuracion.
   useEffect(() => {
     if (!config?.pub_id) return
     let vivo = true
-    setHojasEstado('cargando')
-    listaHojas(config.pub_id)
-      .then(h => { if (vivo) { setHojas(h); setHojasEstado('listas') } })
-      .catch(e => {
-        if (!vivo) return
-        setHojasEstado('error')
-        avisaError(`No se pudieron leer las pestañas de tu hoja: ${e.message}`)
-      })
+    descubrirHojas(config.pub_id).then(h => { if (!vivo) return })
     return () => { vivo = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config?.pub_id])
 
   // ── Sincronizacion ────────────────────────────────────────────────────────
@@ -203,20 +217,34 @@ export default function Presupuesto() {
       avisaError('Todavía estoy leyendo las pestañas de tu hoja. Dame un segundo.')
       return
     }
-    const candidatas = hojasDeMeses(hojas, ANIO_HOY)
+    // Vuelve a leer las pestanas antes de sincronizar -- si acabas de agregar
+    // "Octubre" en el Sheet, la lista que ya estaba en memoria (de cuando se
+    // abrio la pagina) todavia no la conoce. Sin este refresco no aparecia
+    // hasta recargar la pagina entera.
+    const frescas = await descubrirHojas(config.pub_id)
+    if (!frescas) return
+
+    const candidatas = hojasDeMeses(frescas, ANIO_HOY)
     if (!candidatas.length) {
-      avisaError(hojas.length
-        ? `Encontré ${hojas.length} pestañas pero ninguna se llama como un mes (Enero, Febrero…).`
+      avisaError(frescas.length
+        ? `Encontré ${frescas.length} pestañas pero ninguna se llama como un mes (Enero, Febrero…).`
         : 'No encontré pestañas en tu hoja. Revisa que el enlace sea el de «Publicar en la web».')
       return
     }
 
+    // hojaDelMes puede regresar una pestana sin anio en el nombre (ej. "Septiembre"
+    // a secas) -- su campo `anio` viene null en ese caso. Antes eso se colaba
+    // tal cual al INSERT y reventaba "null value in column anio" porque la
+    // columna es NOT NULL; aqui se rellena con el anio que el usuario esta
+    // viendo, igual que hojasDeMeses ya hace para "Todos".
+    const anioSel = Math.floor(sel / 100), mesSel = sel % 100
+    const hallada = todos ? null : hojaDelMes(frescas, anioSel, mesSel)
     const objetivo = todos
       ? candidatas
-      : [hojaDelMes(hojas, Math.floor(sel / 100), sel % 100)].filter(Boolean) as typeof candidatas
+      : hallada ? [{ ...hallada, anio: hallada.anio ?? anioSel, mes: hallada.mes ?? mesSel }] : []
 
     if (!objetivo.length) {
-      avisaError(`Tu hoja no tiene una pestaña de ${MESES[(sel % 100) - 1]} ${Math.floor(sel / 100)}.`)
+      avisaError(`Tu hoja no tiene una pestaña de ${MESES[mesSel - 1]} ${anioSel}.`)
       return
     }
 
@@ -237,7 +265,7 @@ export default function Presupuesto() {
     } finally {
       setSincronizando(null)
     }
-  }, [config, hojas, hojasEstado, sel, sincronizaHoja, cargar])
+  }, [config, hojasEstado, sel, sincronizaHoja, cargar, descubrirHojas])
 
   // Auto-sync del mes en curso: solo si esta activado y el dato ya no es de hoy.
   useEffect(() => {
