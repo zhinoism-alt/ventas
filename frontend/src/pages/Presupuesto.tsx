@@ -257,11 +257,13 @@ export default function Presupuesto() {
   }, [config?.id, config?.auto_sync, hojas.length])
 
   // ── Guardar ajustes ───────────────────────────────────────────────────────
-  const guardaConfig = async (cambios: Partial<Config>) => {
-    if (!config) return
-    const nuevo = { ...config, ...cambios }
-    setConfig(nuevo)
-    await supabase.from('presupuesto_config').update(cambios).eq('id', config.id)
+  const guardaConfig = async (cambios: Partial<Config>): Promise<boolean> => {
+    if (!config) return false
+    const anterior = config
+    setConfig({ ...config, ...cambios })
+    const { error: err } = await supabase.from('presupuesto_config').update(cambios).eq('id', config.id)
+    if (err) { setConfig(anterior); setError(`No se pudo guardar: ${err.message}`); return false }
+    return true
   }
 
   const agregaOtro = async () => {
@@ -307,10 +309,13 @@ export default function Presupuesto() {
     const id = pubIdDeUrl(urlBorrador)
     if (!id) { setError('Ese enlace no parece de "Publicar en la web". Debe contener /spreadsheets/d/e/2PACX-…'); return }
     setError(null)
-    if (config) await guardaConfig({ pub_id: id, url: urlBorrador })
-    else {
-      const { data } = await supabase.from('presupuesto_config')
+    if (config) {
+      const ok = await guardaConfig({ pub_id: id, url: urlBorrador })
+      if (!ok) return
+    } else {
+      const { data, error: err } = await supabase.from('presupuesto_config')
         .insert({ nombre: 'Presupuesto', pub_id: id, url: urlBorrador }).select().single()
+      if (err) { setError(`No se pudo guardar el enlace: ${err.message}`); return }
       setConfig(data as Config)
     }
     setHojas([])
