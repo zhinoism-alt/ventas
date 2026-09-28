@@ -32,5 +32,23 @@
       "Bash(git add --all*)",
       "Bash(git add .)"
     ]
+  },
+  "enabledPlugins": {
+    "engineering-skills@claude-code-skills": true,
+    "a11y-audit@claude-code-skills": true,
+    "karpathy-coder@claude-code-skills": true,
+    "finance-skills@claude-code-skills": true,
+    "business-investment-advisor@claude-code-skills": true,
+    "linkedin@claude-code-skills": true,
+    "business-growth-skills@claude-code-skills": true,
+    "roast@claude-code-skills": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-skills": {
+      "source": {
+        "source": "github",
+        "repo": "alirezarezvani/claude-skills"
+      }
+    }
   }
 }
